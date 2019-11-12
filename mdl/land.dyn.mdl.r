@@ -17,6 +17,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/drought.r")
   source("mdl/cohort.establish.r")
   source("mdl/afforestation.r")
+  source("mdl/forest.mgmt.r")
   
   
   ## Load scenario definition (global variables and scenario parameters)
@@ -129,6 +130,15 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
+      ## 3. FOREST MANAGEMENT
+      managed <- integer()
+      if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
+        managed <- prob.igni(land, orography)
+        temp.fmgmt.schedule <- temp.fmgmt.schedule[-1] 
+      }
+      
+      
+      burnt.cells <- integer()
       ## 4. FIRE
       if(processes[fire.id] & t %in% temp.fire.schedule){
         pigni <- prob.igni(land, clim, orography, interface)
@@ -136,7 +146,7 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      ## 7. DROUGHT
+      ## 6. DROUGHT
       kill.cells <- integer()
       if(processes[drought.id] & t %in% temp.drought.schedule){
         kill.cells <- drought(land, clim, t)
