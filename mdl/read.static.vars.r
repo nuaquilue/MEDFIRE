@@ -2,7 +2,6 @@
 ## Build 3 rdata with Study area mask, Coordinates and static spatial variables
 ######################################################################################3
 
-
 read.static.vars <- function(){
   
   library(raster)
@@ -38,6 +37,5 @@ read.static.vars <- function(){
                           solar=SOLAR[], road=ROAD[], dist.path=DIST.PATH[], slope.pctg=SLOPE.PCTG[])
   orography <- orography[!is.na(MASK[]),]
   save(orography, file="inputlyrs/rdata/orography.rdata")
-  
   
 }
