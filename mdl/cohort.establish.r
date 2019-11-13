@@ -2,7 +2,7 @@
 ##
 ######################################################################################
 
-cohort.establish <- function(land, coord, clim, sdm, orography, spp.distrib.rad, drought.id){
+cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad, drought.id){
   
   ## Tracking
   print("Cohort establishment")

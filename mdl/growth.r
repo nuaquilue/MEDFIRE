@@ -12,16 +12,16 @@ growth <- function(land, clim){
   growth.coeff.shrub <- read.table("inputfiles/GrowthShrub.txt", header=T)
   
   ## Growth of species when SDM in, species when SDM out, and shrub
-  aux.spp <- filter(land, spp<=13) %>% select(cell.id, spp, biom) 
-  aux.spp <- cbind(aux.spp, filter(clim, spp<=13) %>% select(sdm, sqi)) 
+  aux.spp <- filter(land, spp<=13) %>% select(cell.id, spp, biom) %>% 
+             left_join(select(clim, cell.id, sdm, sqi)) 
   aux.spp.sdmin <- filter(aux.spp, sdm==1) %>% left_join(growth.coeff) %>% 
                    mutate(increment = x*biom/10 + x2*(biom/10)^2 ) %>%
                    mutate(increment=ifelse(increment<c,c,increment)) %>% select(cell.id, increment)
   aux.spp.sdmout <- filter(aux.spp, sdm==0) %>% left_join(filter(growth.coeff, sqi==1)) %>% 
                     mutate(increment = x*biom/10 + x2*(biom/10)^2 ) %>%
                     mutate(increment=ifelse(increment<c,c,increment)) %>% select(cell.id, increment)
-  aux.shrub <- filter(land, spp==14) %>% select(cell.id, spp, biom) 
-  aux.shrub <- cbind(aux.shrub, filter(clim, spp==14) %>% select(sdm, sqi))         
+  aux.shrub <- filter(land, spp==14) %>% select(cell.id, spp, biom) %>%
+               left_join(select(clim, cell.id, sdm, sqi))         
   aux.shrub <- left_join(aux.shrub, growth.coeff.shrub)  %>%
                mutate(increment = a*log(biom/10000) + b ) %>% 
                mutate(increment = ifelse(increment<=0, b*1000, increment)) %>% select(cell.id, increment)

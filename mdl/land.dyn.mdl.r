@@ -52,6 +52,11 @@ land.dyn.mdl <- function(scn.name){
                "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
                   
   
+  ## Global constants
+  eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
+  eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
+  eq.ba.carbon <- read.table("inputfiles/EqBasalAreaCarbon.txt", header=T)
+  
   ## Build the baseline time sequence and the time sequence of the processes (shared for all runs). 
   ## 1. Climate change, 2. Interfaces, 3. Forest management
   ## 4. Wildfires, 5. Prescribed burns, 6. Drought, 7. Post-fire regeneration,
@@ -82,9 +87,18 @@ land.dyn.mdl <- function(scn.name){
   
   ## Initialize model global parameters (equal for all scn)
   ## It's faster to initialize them in land.dyn.mdl() function than throught define.scenario()
+  ## Anyways, they should be in define.scenario.r
   spp.distrib.rad <- 20 	# neighborhood radius to determine which species belong to that region (in pixels)
   shrub.colon.rad <- 5 		#
 
+  
+  ## Tracking data.frames
+  track.fmgmt <- data.frame(run=NA, year=NA, spp=NA, sylvi=NA, sawlog=NA, wood=NA)
+  track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
+  track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
+  track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
+  track.land <- data.frame(run=NA, year=NA, spp=NA, vol=NA, volbark=NA, carbon=NA)
+  
   
   ## Start the simulations   
   irun=1   # for testing
@@ -131,9 +145,10 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 3. FOREST MANAGEMENT
-      managed <- integer()
       if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
-        managed <- prob.igni(land, orography)
+        aux <- forest.mgmt(land, clim, orography, coord, t)
+        report <- group_by(aux, spp, sylvi) %>% summarize(sawlog=sum(vol.sawlog), wood=sum(vol.wood))
+        track.fmgmt <- rbind(track.fmgmt, data.frame(run=irun, year=t, report))
         temp.fmgmt.schedule <- temp.fmgmt.schedule[-1] 
       }
       
@@ -146,55 +161,86 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
+      ## 5. PRESCRIBED BURNS
+      if(processes[pb.id] & t %in% temp.pb.schedule){
+        temp.pb.schedule <- temp.pb.schedule[-1] 
+      }
+      
+      
       ## 6. DROUGHT
       kill.cells <- integer()
       if(processes[drought.id] & t %in% temp.drought.schedule){
         kill.cells <- drought(land, clim, t)
         land$tsdist[land$cell.id %in% kill.cells] <- 0
         land$distype[land$cell.id %in% kill.cells] <- drought.id
+        track.drougth <- rbind(track.drougth,
+                              data.frame(run=irun, year=t, 
+                                         filter(land, cell.id %in% kill.cells) %>% group_by(spp) %>% summarize(ha=length(spp))) )
         temp.drought.schedule <- temp.drought.schedule[-1] 
       }
       
       
-      ## 9. COHORT ESTABLISHMENT
+      ## 7. POST-FIRE REGENERATION
+      if(processes[post.fire.id] & t %in% temp.post.fire.schedule){
+        temp.post.fire.schedule <- temp.post.fire.schedule[-1] 
+      }
+      
+      
+      ## 8. COHORT ESTABLISHMENT
       if(processes[cohort.id] & t %in% temp.cohort.schedule & length(kill.cells)>0){
-        aux  <- cohort.establish(land, coord, clim, sdm, orography, spp.distrib.rad, drought.id)
+        aux  <- cohort.establish(land, clim, orography, sdm, coord, spp.distrib.rad, drought.id)
+        spp.out <- land$spp[land$cell.id %in% kill.cells]
         land$spp[land$cell.id %in% kill.cells] <- aux$spp
         land$biom[land$cell.id %in% kill.cells] <- growth(aux, aux)
         clim$spp[clim$cell.id %in% kill.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% kill.cells] <- 1
         clim$sqi[clim$cell.id %in% kill.cells] <- aux$sqi
+        track.cohort <- rbind(track.cohort, data.frame(run=irun, year=t, table(spp.out, aux$spp)))
         rm(aux); rm(kill.cells); gc()
         temp.cohort.schedule <- temp.cohort.schedule[-1] 
       }
       
       
-      ## 10. AFFORESTATION
+      ## 9. AFFORESTATION
       if(processes[afforest.id] & t %in% temp.afforest.schedule){
-        aux  <- afforestation(land, coord, clim, sdm, orography, shrub.colon.rad)
+        aux  <- afforestation(land, clim, orography, sdm, coord, shrub.colon.rad)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- growth(aux, aux)
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
+        track.afforest <- rbind(track.afforest, data.frame(run=irun, year=t, table(aux$spp)))
         temp.afforest.schedule <- temp.afforest.schedule[-1] 
       }
       
       
-      ## 11. GROWTH
+      ## 10. GROWTH
       if(processes[growth.id] & t %in% temp.growth.schedule){
         land$biom <- growth(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
+        aux <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol) %>% 
+               mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+               left_join(eq.ba.volbark) %>% 
+               mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+               left_join(eq.ba.carbon) %>% 
+               mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
+               summarise(vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+        track.land <- rbind(track.land, data.frame(run=irun, year=t, aux))
         temp.growth.schedule <- temp.growth.schedule[-1] 
       }
       
-      print("Writing outputs")
-      save(land, file=paste0(out.path, "/rdata/land_", t, ".rdata"))
     } # time
   
   } # run
   
-  
-  
+  print("Writing outputs")
+  write.table(track.fmgmt[-1,], paste0(out.path, "/Management.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
+  names(track.cohort)[4:5] <- c("spp.in", "ha")
+  write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
+  names(track.afforest)[3:4] <- c("spp", "ha")
+  write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
+
 }

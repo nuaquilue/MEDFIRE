@@ -2,7 +2,7 @@
 ##
 ######################################################################################
 
-afforestation <- function(land, coord, clim, sdm, orography, shrub.colon.rad){
+afforestation <- function(land, clim, orography, sdm, coord, shrub.colon.rad){
   
   ## Tracking
   print("Afforestation")

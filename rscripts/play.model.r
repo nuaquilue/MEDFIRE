@@ -1,4 +1,3 @@
-
 rm(list=ls())
 setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
 setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC

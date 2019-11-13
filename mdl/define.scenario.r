@@ -65,11 +65,11 @@ define.scenario <- function(scn.name){
   #                       cohort.step, afforest.step, growth.step)
   
   ## Time lenght (in years) of a model simulation, from 2010 to 2100
-  time.horizon <- 91
+  time.horizon <- 5# 91
   
   ## Characteristics specific of this scenario
   clim.scn <- "RCP45"
-  harvest.dmnd <- "DemandHarvest_Bioenergy.txt"
+  harvest.dmnd <- "DemandHarvest_Bioenergy"
     
   # ## FIRE disturbance definitions: distributions of fire regime per FRZone
   # fire.regime.file <- "inputfiles/NumFires.txt"
