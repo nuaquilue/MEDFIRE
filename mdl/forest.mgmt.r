@@ -16,8 +16,10 @@ forest.mgmt <- function(land, coord, orography){
   ## The num of pixels is sequentially: 3+1*2, 5+3*2+1*2, 7+5*2+3*2+1*2, ...
   nneigh <- seq(3,41,2) + cumsum(seq(1,40,2)*2)
   
-  ## 
-  
+  ## find cells suitable for management: slope.pctg <=30% and dist.path <= 500m
+  suit.harvest <- left_join(land, select(orography, cell.id, slope.pctg, dist.path)) %>%
+                  filter(land$spp <= 13 & slope.pctg <= 30 & dist.path <= 500) %>%
+                  filter(land$spp != 9) # exclude quercus suber, not managed for sawlogs neither wood
   
   
   ## Coordinates of killed cells and their closest neighbours (do not count for the cell itself)
