@@ -1,6 +1,6 @@
 
 rm(list=ls())
-setwd("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE")
+setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")
 
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
 source("mdl/read.static.vars.r")
