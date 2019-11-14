@@ -147,8 +147,11 @@ land.dyn.mdl <- function(scn.name){
       ## 3. FOREST MANAGEMENT
       if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
         aux <- forest.mgmt(land, clim, orography, coord, t)
-        report <- group_by(aux, spp, sylvi) %>% summarize(sawlog=sum(vol.sawlog), wood=sum(vol.wood))
-        track.fmgmt <- rbind(track.fmgmt, data.frame(run=irun, year=t, report))
+        land$tsdist[land$cell.id %in% aux$cell.id] <- 0
+        land$distype[land$cell.id %in% aux$cell.id] <- fmgmt.id*10+aux$sylvi
+        track.fmgmt <- rbind(track.fmgmt, 
+                             data.frame(run=irun, year=t, 
+                                        group_by(aux, spp, sylvi) %>% summarize(sawlog=sum(vol.sawlog), wood=sum(vol.wood))))
         temp.fmgmt.schedule <- temp.fmgmt.schedule[-1] 
       }
       

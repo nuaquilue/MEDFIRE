@@ -31,6 +31,51 @@ forest.mgmt <- function(land, clim, orography, coord, t){
                   filter(spp != 9) # exclude quercus suber, not managed for sawlogs neither wood
   
 
+  ## Idem for "final" harvesting
+  if(dmnd.sawlog>0){
+    suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
+      left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
+      filter(biom/10>=minab.fin) %>% mutate(ba.extract=pctgextract.fin*biom/1000) %>%
+      left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
+      mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
+    suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.90, 0.95)
+    suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
+    suit.harvest <- suit.harvest[order(suit.harvest$priority, decreasing=F),]  
+    cum.vol <- cumsum(suit.harvest$vol.sawlog) 
+    if(max(cum.vol)>=dmnd.sawlog)
+      cell.id.harvest <- suit.harvest$cell.id[1:which(cum.vol>dmnd.sawlog)[1]]
+    else
+      cell.id.harvest <- suit.harvest$cell.id
+    dmnd.sawlog <- dmnd.sawlog - sum(suit.harvest$vol.sawlog[suit.harvest$cell.id %in% cell.id.harvest])
+    dmnd.wood <- dmnd.wood - sum(suit.harvest$vol.wood[suit.harvest$cell.id %in% cell.id.harvest])
+    harvesting <- filter(suit.harvest, cell.id %in% cell.id.harvest) %>%
+                  select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=3)
+  }
+  
+  ## Idem for "dissmenatory" harvesting
+  if(dmnd.sawlog>0){
+    suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
+      left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
+      filter(biom/10>=minab.diss) %>%
+      mutate(ba.extract=pmin(biom/10-thab.diss, pctgextract.diss*biom/1000)) %>%
+      left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
+      mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
+    suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.65, 0.85)
+    suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
+    suit.harvest <- suit.harvest[order(suit.harvest$priority, decreasing=F),]  
+    cum.vol <- cumsum(suit.harvest$vol.sawlog) 
+    if(max(cum.vol)>=dmnd.sawlog)
+      cell.id.harvest <- suit.harvest$cell.id[1:which(cum.vol>dmnd.sawlog)[1]]
+    else
+      cell.id.harvest <- suit.harvest$cell.id
+    dmnd.sawlog <- dmnd.sawlog - sum(suit.harvest$vol.sawlog[suit.harvest$cell.id %in% cell.id.harvest])
+    dmnd.wood <- dmnd.wood - sum(suit.harvest$vol.wood[suit.harvest$cell.id %in% cell.id.harvest])
+    harvesting <- rbind(harvesting,
+                        filter(suit.harvest, cell.id %in% cell.id.harvest) %>%
+                          select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=2))
+  }
+  
+  
   ## Find locations suitable for "preparatory" harvesting according to current biomass
   ## Prioritize locations according to slope, dist.path and volume
   ## Harvest as much sawlogs as needed to meet the demand
@@ -54,54 +99,12 @@ forest.mgmt <- function(land, clim, orography, coord, t){
       cell.id.harvest <- suit.harvest$cell.id
     dmnd.sawlog <- dmnd.sawlog - sum(suit.harvest$vol.sawlog[suit.harvest$cell.id %in% cell.id.harvest])
     dmnd.wood <- dmnd.wood - sum(suit.harvest$vol.wood[suit.harvest$cell.id %in% cell.id.harvest])
-    harvesting <- filter(suit.harvest, cell.id %in% cell.id.harvest) %>%
-                  select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=1)
+    harvesting <- rbind(harvesting,
+                        filter(suit.harvest, cell.id %in% cell.id.harvest) %>%
+                        select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=1) )
   }
   
-  ## Idem for "dissmenatory" harvesting
-  if(dmnd.sawlog>0){
-    suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
-                    left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
-                    filter(biom/10>=minab.diss) %>%
-                    mutate(ba.extract=pmin(biom/10-thab.diss, pctgextract.diss*biom/1000)) %>%
-                    left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
-                    mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
-    suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.65, 0.85)
-    suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
-    suit.harvest <- suit.harvest[order(suit.harvest$priority, decreasing=F),]  
-    cum.vol <- cumsum(suit.harvest$vol.sawlog) 
-    if(max(cum.vol)>=dmnd.sawlog)
-      cell.id.harvest <- suit.harvest$cell.id[1:which(cum.vol>dmnd.sawlog)[1]]
-    else
-      cell.id.harvest <- suit.harvest$cell.id
-    dmnd.sawlog <- dmnd.sawlog - sum(suit.harvest$vol.sawlog[suit.harvest$cell.id %in% cell.id.harvest])
-    dmnd.wood <- dmnd.wood - sum(suit.harvest$vol.wood[suit.harvest$cell.id %in% cell.id.harvest])
-    harvesting <- rbind(harvesting,
-                        filter(suit.harvest, cell.id %in% cell.id.harvest) %>%
-                        select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=2))
-  }
- 
-  ## Idem for "final" harvesting
-  if(dmnd.sawlog>0){
-    suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
-                    left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
-                    filter(biom/10>=minab.fin) %>% mutate(ba.extract=pctgextract.fin*biom/1000) %>%
-                    left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
-                    mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
-    suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.90, 0.95)
-    suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
-    suit.harvest <- suit.harvest[order(suit.harvest$priority, decreasing=F),]  
-    cum.vol <- cumsum(suit.harvest$vol.sawlog) 
-    if(max(cum.vol)>=dmnd.sawlog)
-      cell.id.harvest <- suit.harvest$cell.id[1:which(cum.vol>dmnd.sawlog)[1]]
-    else
-      cell.id.harvest <- suit.harvest$cell.id
-    dmnd.sawlog <- dmnd.sawlog - sum(suit.harvest$vol.sawlog[suit.harvest$cell.id %in% cell.id.harvest])
-    dmnd.wood <- dmnd.wood - sum(suit.harvest$vol.wood[suit.harvest$cell.id %in% cell.id.harvest])
-    harvesting <- rbind(harvesting,
-                        filter(suit.harvest, cell.id %in% cell.id.harvest) %>%
-                        select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=3))
-  }
+  
   
   ## Now harvest for Wood
   if(dmnd.wood>0){

@@ -19,8 +19,8 @@ save(interface, file="inputlyrs/rdata/interface.rdata")
 
 # set the scenario
 source("mdl/define.scenario.r")
-scn.name <- "Test01"
-define.scenario("Test01")
+scn.name <- "Test02"
+define.scenario("Test02")
 
 # run the model
 source("mdl/land.dyn.mdl.r")  

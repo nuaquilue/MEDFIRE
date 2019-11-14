@@ -17,7 +17,7 @@ growth <- function(land, clim){
   aux.spp.sdmin <- filter(aux.spp, sdm==1) %>% left_join(growth.coeff) %>% 
                    mutate(increment = x*biom/10 + x2*(biom/10)^2 ) %>%
                    mutate(increment=ifelse(increment<c,c,increment)) %>% select(cell.id, increment)
-  aux.spp.sdmout <- filter(aux.spp, sdm==0) %>% left_join(filter(growth.coeff, sqi==1)) %>% 
+  aux.spp.sdmout <- filter(aux.spp, sdm==0) %>% left_join(filter(growth.coeff, sqi==1) %>% select(-sqi)) %>% 
                     mutate(increment = x*biom/10 + x2*(biom/10)^2 ) %>%
                     mutate(increment=ifelse(increment<c,c,increment)) %>% select(cell.id, increment)
   aux.shrub <- filter(land, spp==14) %>% select(cell.id, spp, biom) %>%
