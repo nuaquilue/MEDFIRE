@@ -222,11 +222,11 @@ land.dyn.mdl <- function(scn.name){
         land$biom <- growth(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
-        aux <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol) %>% 
+        aux <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
                mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
-               left_join(eq.ba.volbark) %>% 
+               left_join(eq.ba.volbark, by="spp") %>% 
                mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
-               left_join(eq.ba.carbon) %>% 
+               left_join(eq.ba.carbon, by="spp") %>% 
                mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
                summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux))

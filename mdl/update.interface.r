@@ -7,15 +7,11 @@ update.interface <- function(land){
   ## Traking
   print("Update interfaces")
   
-  ## Path of .asc rasters
-  mdl.path <- "C:/WORK/MEDMOD/SpatialModels/MEDFIRE_II"
-  
-  ## UTM
-  UTM <- raster(paste0(mdl.path, "/inputlyrs/asc/UTM1k_100m.asc"))
-  utm <- data.frame(cell.id=1:ncell(UTM),  utm=UTM[])
+  ## UTM df
+  load("inputlyrs/rdata/utm.rdata")
   
   ## Join utm info to land
-  land.utm <- left_join(land, utm) 
+  land.utm <- left_join(land, utm, by="cell.id") 
   
   ## Count each land type per utm, compute percentages
   landtype <- aggregate(list(tot=land.utm$spp>0,
@@ -67,7 +63,8 @@ update.interface <- function(land){
   interface$x <- apply(interface[,-1] * matrix(1:7, nrow=nrow(interface), ncol=7, byrow=T), 1, sum )
   
   ## Join to the final data.frame
-  land.utm <- left_join(land.utm, select(interface, utm, x)) %>% select(cell.id, x)
+  land.utm <- left_join(land.utm, select(interface, utm, x), by="utm") %>% select(cell.id, x)
   # save(interface, file=paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
   return(land.utm) 
+  
 }

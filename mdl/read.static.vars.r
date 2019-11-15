@@ -38,4 +38,9 @@ read.static.vars <- function(){
   orography <- orography[!is.na(MASK[]),]
   save(orography, file="inputlyrs/rdata/orography.rdata")
   
+  ## UTM
+  UTM <- raster(paste0(mdl.path, "/inputlyrs/asc/UTM1k_100m.asc"))
+  utm <- data.frame(cell.id=1:ncell(UTM),  utm=UTM[])
+  save(utm, file="inputlyrs/rdata/utm.rdata")
+  
 }
