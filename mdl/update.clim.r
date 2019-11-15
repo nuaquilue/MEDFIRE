@@ -41,12 +41,12 @@ update.clim <- function(land, orography, MASK, species, decade, clim.scn){
 
   ## Compute SQ and SQI
   clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope) %>% 
-          left_join(site.quality.spp) %>% left_join(site.quality.index) %>% 
+          left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
           mutate(aux=c0+c_temp*temp+c_temp2*temp*temp+c_precip*precip+c_precip2*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
           mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=th_50, 1, ifelse(sq<=th_90, 2, 3))) %>%
           select(cell.id, spp, temp, precip, sdm, sqi)
   ## SQI for shrubs
-  sqi.shrub <- filter(clim, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub) %>%
+  sqi.shrub <- filter(clim, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by="spp") %>%
                mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
                       aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,
                       aux.boix=c0_boix+c_temp_boix*temp+c_temp2_boix*temp*temp+c_precip_boix*precip+c_precip2_boix*precip*precip,

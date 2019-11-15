@@ -26,7 +26,8 @@ forest.mgmt <- function(land, clim, orography, coord, t){
       # nneigh <- seq(3,41,2) + cumsum(seq(1,40,2)*2)
   
   ## Find cells usable for management: forest with slope.pctg <=30% and dist.path <= 500m
-  suit.mgmt <- left_join(select(land, -tsdist, -distype), select(orography, cell.id, slope.pctg, dist.path)) %>%
+  suit.mgmt <- left_join(select(land, -tsdist, -distype), 
+                         select(orography, cell.id, slope.pctg, dist.path), by="cell.id") %>%
                   filter(spp <= 13 & slope.pctg <= 30 & dist.path <= 500) %>%
                   filter(spp != 9) # exclude quercus suber, not managed for sawlogs neither wood
   
@@ -34,9 +35,9 @@ forest.mgmt <- function(land, clim, orography, coord, t){
   ## Idem for "final" harvesting
   if(dmnd.sawlog>0){
     suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
-      left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
+      left_join(select(clim, cell.id, sqi), by="cell.id") %>% left_join(mgmt.rules, by = c("spp", "sqi")) %>%
       filter(biom/10>=minab.fin) %>% mutate(ba.extract=pctgextract.fin*biom/1000) %>%
-      left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
+      left_join(eq.ba.vol, by = "spp") %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
       mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
     suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.90, 0.95)
     suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
@@ -55,10 +56,10 @@ forest.mgmt <- function(land, clim, orography, coord, t){
   ## Idem for "dissmenatory" harvesting
   if(dmnd.sawlog>0){
     suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
-      left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
+      left_join(select(clim, cell.id, sqi), by="cell.id") %>% left_join(mgmt.rules, by = c("spp", "sqi")) %>%
       filter(biom/10>=minab.diss) %>%
       mutate(ba.extract=pmin(biom/10-thab.diss, pctgextract.diss*biom/1000)) %>%
-      left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
+      left_join(eq.ba.vol, by = "spp") %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
       mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
     suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.65, 0.85)
     suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
@@ -84,10 +85,10 @@ forest.mgmt <- function(land, clim, orography, coord, t){
   ## and try to cluster the interventions
   if(dmnd.sawlog>0){
     suit.harvest <- filter(suit.mgmt, spp %in% c(1:7,12:13)) %>%
-                    left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
+                    left_join(select(clim, cell.id, sqi), by="cell.id") %>% left_join(mgmt.rules, by = c("spp", "sqi")) %>%
                     filter(biom/10>=minab.prep) %>%
                     mutate(ba.extract=pmin(biom/10-thab.prep, pctgextract.prep*biom/1000)) %>%
-                    left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
+                    left_join(eq.ba.vol, by = "spp") %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
                     mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
     suit.harvest$vol.sawlog <- suit.harvest$vol.extract*runif(nrow(suit.harvest), 0.65, 0.85)
     suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog
@@ -109,9 +110,9 @@ forest.mgmt <- function(land, clim, orography, coord, t){
   ## Now harvest for Wood
   if(dmnd.wood>0){
     suit.harvest <- filter(suit.mgmt, spp %in% 8:10) %>%
-                    left_join(select(clim, cell.id, sqi)) %>% left_join(mgmt.rules) %>%
+                    left_join(select(clim, cell.id, sqi), by="cell.id") %>% left_join(mgmt.rules, by = c("spp", "sqi")) %>%
                     filter(biom/10>=minab.fin) %>% mutate(ba.extract=pctgextract.fin*biom/1000) %>%
-                    left_join(eq.ba.vol) %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
+                    left_join(eq.ba.vol, by = "spp") %>% mutate(vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) %>%
                     mutate(priority=(slope.pctg+1)*(dist.path+1)*(1/vol.extract))
     suit.harvest$vol.sawlog <- 0
     suit.harvest$vol.wood <- suit.harvest$vol.extract - suit.harvest$vol.sawlog

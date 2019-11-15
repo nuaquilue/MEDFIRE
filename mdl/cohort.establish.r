@@ -22,7 +22,7 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
   nneigh <- seq(3,41,2) + cumsum(seq(1,40,2)*2)
 
   ## Coordinates of killed cells and their closest neighbours (do not count for the cell itself)
-  killed.coord <- filter(land, tsdist==0, distype==drought.id) %>% select(cell.id) %>% left_join(coord)
+  killed.coord <- filter(land, tsdist==0, distype==drought.id) %>% select(cell.id) %>% left_join(coord, by = "cell.id")
   neigh.id <- nn2(coord[,-1], killed.coord[,-1],  searchtype="priority", k=nneigh[spp.distrib.rad])
   neigh.id <- neigh.id$nn.idx
   neigh.spp <- data.frame(cell.id=coord$cell.id[neigh.id[,1]],
@@ -36,8 +36,9 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
   ## Look up cells killed by drought, add sqi data, then add the sencondary species
   ## (according to dominant spp and sqi), then add sdm of all tree species and finally
   ## add the number of forest spp in the neighbourhood
-  killed <- filter(land, tsdist==0, distype==drought.id) %>% left_join(select(clim, cell.id, sqi)) %>%
-            left_join(secondary.spp) %>% left_join(sdm) %>% left_join(neigh.spp)
+  killed <- filter(land, tsdist==0, distype==drought.id) %>% left_join(select(clim, cell.id, sqi), by = "cell.id") %>%
+            left_join(secondary.spp, by = c("spp", "sqi")) %>% left_join(sdm, by = "cell.id") %>% 
+            left_join(neigh.spp, by = "cell.id")
     
   ## Select spp among available
   new.cohort <- data.frame(cell.id=killed$cell.id,
@@ -46,13 +47,13 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
                            biom=0, sdm=1 )
   
   ## Join climatic and orographic variables to compute sq and then sqi
-  new.cohort <- left_join(new.cohort, select(clim, cell.id, temp, precip)) %>% 
-                left_join(select(orography, cell.id, aspect, slope)) %>%
-                left_join(site.quality.spp) %>% left_join(site.quality.index) %>% 
+  new.cohort <- left_join(new.cohort, select(clim, cell.id, temp, precip), by = "cell.id") %>% 
+                left_join(select(orography, cell.id, aspect, slope), by = "cell.id") %>%
+                left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
                 mutate(aux=c0+c_temp*temp+c_temp2*temp*temp+c_precip*precip+c_precip2*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
                 mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=th_50, 1, ifelse(sq<=th_90, 2, 3))) %>%
                 select(cell.id, spp, temp, precip,  biom, sdm, sqi)
-  sqi.shrub <- filter(new.cohort, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub) %>%
+  sqi.shrub <- filter(new.cohort, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by = "spp") %>%
                mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
                       aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,
                       aux.boix=c0_boix+c_temp_boix*temp+c_temp2_boix*temp*temp+c_precip_boix*precip+c_precip2_boix*precip*precip,

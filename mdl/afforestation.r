@@ -25,7 +25,7 @@ afforestation <- function(land, clim, orography, sdm, coord, shrub.colon.rad){
   ## Coordinates of killed cells and their closest neighbours (do not count for the cell itself)
   shrub.coord <- filter(land, tsdist>=20, spp==14) %>% select(cell.id) 
   shrub.coord <- data.frame(cell.id=shrub.coord[sample(1:nrow(shrub.coord), 10000, replace=F),1])
-  shrub.coord <- left_join(shrub.coord, coord)
+  shrub.coord <- left_join(shrub.coord, coord, by = "cell.id")
   neigh.id <- nn2(coord[,-1], shrub.coord[,-1],  searchtype="priority", k=nneigh[shrub.colon.rad]) 
   neigh.id <- neigh.id$nn.idx  # dim 10.000 x 61
   
@@ -61,9 +61,9 @@ afforestation <- function(land, clim, orography, sdm, coord, shrub.colon.rad){
                         spp=apply(nneigh[x,], 1, select.spp) )
   
   ## Join climatic and orographic variables to compute sq and then sqi
-  new.spp <- left_join(new.spp, select(clim, cell.id, temp, precip)) %>% 
-             left_join(select(orography, cell.id, aspect, slope)) %>%
-             left_join(site.quality.spp) %>% left_join(site.quality.index) %>% 
+  new.spp <- left_join(new.spp, select(clim, cell.id, temp, precip), by = "cell.id") %>% 
+             left_join(select(orography, cell.id, aspect, slope), by = "cell.id") %>%
+             left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
              mutate(aux=c0+c_temp*temp+c_temp2*temp*temp+c_precip*precip+c_precip2*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
              mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=th_50, 1, ifelse(sq<=th_90, 2, 3))) %>%
              select(cell.id, spp, sqi) %>% mutate(biom=0, sdm=1)

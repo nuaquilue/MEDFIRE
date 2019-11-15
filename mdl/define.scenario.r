@@ -29,7 +29,7 @@ define.scenario <- function(scn.name){
   # plot.fires <- FALSE
 
   ## Number of runs (i.e. replicas)
-  nrun <- 10
+  nrun <- 1
   
   ## Processes of the model included (IN our OUT)
   ## 1. Climate change, 2. Interfaces, 3. Forest management

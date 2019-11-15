@@ -97,7 +97,7 @@ land.dyn.mdl <- function(scn.name){
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
   track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
-  track.land <- data.frame(run=NA, year=NA, spp=NA, vol=NA, volbark=NA, carbon=NA)
+  track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   
   
   ## Start the simulations   
@@ -126,7 +126,7 @@ land.dyn.mdl <- function(scn.name){
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
-      print(paste0("scn: ", scn.name," - run: ", irun, " - time: ", t))
+      print(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon))
     
       
       ## 1. CLIMATE CHANGE  
@@ -228,7 +228,7 @@ land.dyn.mdl <- function(scn.name){
                mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
                left_join(eq.ba.carbon) %>% 
                mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
-               summarise(vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+               summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux))
         temp.growth.schedule <- temp.growth.schedule[-1] 
       }
