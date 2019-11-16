@@ -44,6 +44,7 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/mask.rdata")
   load("inputlyrs/rdata/coordinates.rdata")
   load("inputlyrs/rdata/orography.rdata")
+  load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
   
   
@@ -146,7 +147,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 3. FOREST MANAGEMENT
       if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
-        aux <- forest.mgmt(land, clim, orography, coord, t)
+        aux <- forest.mgmt(land, clim, harvest, coord, t)
         land$tsdist[land$cell.id %in% aux$cell.id] <- 0
         land$distype[land$cell.id %in% aux$cell.id] <- fmgmt.id*10+aux$sylvi
         track.fmgmt <- rbind(track.fmgmt, 

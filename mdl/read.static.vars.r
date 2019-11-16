@@ -7,7 +7,7 @@ read.static.vars <- function(){
   library(raster)
   library(tidyverse)
   
-  print("Reading orographyic variables")
+  print("Reading orographyic, utm, harvest-restriction variables")
   
   ## To not copy all .asc layers in the inputlyrs folder of MEDFIRE in SpatialModelsR, I read them
   ## directly form the MEDFIRE_II folder in SpatialModels
@@ -23,24 +23,31 @@ read.static.vars <- function(){
   coord <- filter(coord, !is.na(mask)) %>% select(-mask)
   save(coord, file="inputlyrs/rdata/coordinates.rdata") 
   
-  ## Read initial state vars
+  ## Read initial state vars,  build and save the data frame
   ELEVATION <- raster(paste0(mdl.path, "/inputlyrs/asc/DEM_100m.asc"))
   ASPECT <- raster(paste0(mdl.path, "/inputlyrs/asc/Aspect_100m.asc"))
   SLOPE <- raster(paste0(mdl.path, "/inputlyrs/asc/SlopeDegree_100m.asc"))
   SOLAR <- raster(paste0(mdl.path, "/inputlyrs/asc/SolarRad_100m.asc"))
   ROAD <- raster(paste0(mdl.path, "/inputlyrs/asc/DensRoad_100m.asc"))
-  DIST.PATH <- raster(paste0(mdl.path, "/inputlyrs/asc/DistPath_100m.asc"))
-  SLOPE.PCTG <- raster(paste0(mdl.path, "/inputlyrs/asc/SlopePctg_100m.asc"))
-  
-  ## Build data frame
   orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], 
-                          solar=SOLAR[], road=ROAD[], dist.path=DIST.PATH[], slope.pctg=SLOPE.PCTG[])
+                          solar=SOLAR[], road=ROAD[])
   orography <- orography[!is.na(MASK[]),]
   save(orography, file="inputlyrs/rdata/orography.rdata")
   
-  ## UTM
+  ## UTM layer
   UTM <- raster(paste0(mdl.path, "/inputlyrs/asc/UTM1k_100m.asc"))
   utm <- data.frame(cell.id=1:ncell(UTM),  utm=UTM[])
   save(utm, file="inputlyrs/rdata/utm.rdata")
+  
+  ## Layers for forest management
+  DIST.PATH <- raster(paste0(mdl.path, "/inputlyrs/asc/DistPath_100m.asc"))
+  SLOPE.PCTG <- raster(paste0(mdl.path, "/inputlyrs/asc/SlopePctg_100m.asc"))
+  PROTECT.AREA <- raster(paste0(mdl.path, "/inputlyrs/asc/ENPE_100m.asc"))
+  type.protect.area <- foreign::read.dbf("c:/work/medmod/inputlayers_MEDFIRE_II/protectareas/enpe.dbf")
+  protect.area <- as.data.frame(PROTECT.AREA[]); names(protect.area) <- "VALUE"
+  protect.area <- left_join(protect.area, select(type.protect.area, VALUE, TYPE), by="VALUE")
+  harvest <- data.frame(protect.area=protect.area$TYPE, dist.path=DIST.PATH[], slope.pctg=SLOPE.PCTG[])
+  harvest <- harvest[!is.na(MASK[]),]
+  save(harvest, file="inputlyrs/rdata/harvest.rdata")
   
 }
