@@ -29,13 +29,13 @@ define.scenario <- function(scn.name){
   # plot.fires <- FALSE
 
   ## Number of runs (i.e. replicas)
-  nrun <- 1
+  nrun <- 2
   
   ## Processes of the model included (IN our OUT)
   ## 1. Climate change, 2. Interfaces, 3. Forest management
   ## 4. Wildfires, 5. Prescribed burns, 6. Drought, 7. Post-fire regeneration,
   ## 8. Cohort establihsment, 9. Afforestation, 10. Growth
-  processes <- c(TRUE, TRUE, TRUE, F, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)
+  processes <- c(TRUE, TRUE, FALSE, F, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE)
   
   ## Fix the recurrence (in years) of each process 
   ## 1. Climate change
