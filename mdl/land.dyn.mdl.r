@@ -230,7 +230,9 @@ land.dyn.mdl <- function(scn.name){
                left_join(eq.ba.carbon, by="spp") %>% 
                mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
                summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
-        track.land <- rbind(track.land, data.frame(run=irun, year=t, aux))
+        aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
+                     summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
+        track.land <- rbind(track.land, data.frame(run=irun, year=t, aux), data.frame(run=irun, year=t, aux.shrub))
         temp.growth.schedule <- temp.growth.schedule[-1] 
       }
       

@@ -6,10 +6,11 @@ play <- function(){
   source("rscripts/03.reporting.r")
   
   scn.name <- "Test02"
+  plot.abundance(scn.name)
   plot.drought(scn.name)
   plot.cohort(scn.name)
   plot.afforest(scn.name)
-  plot.abundance(scn.name)
+  
 }
 
 species.name.color <- function(){
@@ -141,45 +142,64 @@ plot.abundance <- function(scn.name){
               left_join(select(species, spp, name, type), by="spp")
   
   ## PLOT Abundance area
-  p1 <- ggplot(data=dta.land, aes(x=year, y=area/100, colour=name)) +
+  p1 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=area/100, colour=name)) +
         geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Abundance - Area") + ylab("km2") + theme_bw()
   ## PLOT Abundance volume with bark
-  p2 <- ggplot(data=dta.land, aes(x=year, y=volbark/10^6, colour=name)) +
+  p2 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=volbark/10^6, colour=name)) +
         geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species",values=as.character(species$color.sort)) + 
         ggtitle("Abundance - Volume with bark") + ylab("m3/10^6") + theme_bw() 
   ## PLOT Abundance carbon
-  p3 <- ggplot(data=dta.land, aes(x=year, y=carbon/10^6, colour=name)) +
+  p3 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=carbon/10^6, colour=name)) +
         geom_smooth( method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Abundance - Carbon") + ylab("t/10^6") + theme_bw()
   ## PLOT Percentage area
-  p4 <- ggplot(data=dta.land, aes(x=year, y=pctg.area, colour=name)) +
+  p4 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=pctg.area, colour=name)) +
         geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Percentage - Area") + ylab("%") + theme_bw()
   ## PLOT Percentage volume with bark
-  p5 <- ggplot(data=dta.land, aes(x=year, y=pctg.volbark, colour=name)) +
+  p5 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=pctg.volbark, colour=name)) +
         geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species",values=as.character(species$color.sort)) + 
         ggtitle("Percentage - Volume with bark") + ylab("%") + theme_bw() 
   ## PLOT Percentage carbon
-  p6 <- ggplot(data=dta.land, aes(x=year, y=pctg.carbon, colour=name)) +
+  p6 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=pctg.carbon, colour=name)) +
         geom_smooth( method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Percentage - Carbon") + ylab("%") + theme_bw()
   ## PLOT Relative increment volume with bark
-  p7 <- ggplot(data=dta.land, aes(x=year, y=rel.volbark, colour=name)) +
+  p7 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=rel.volbark, colour=name)) +
         geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species",values=as.character(species$color.sort)) + 
         ggtitle("Relative abundance - Volume with bark") + ylab("m3/ha") + theme_bw() 
   ## PLOT Relative increment carbon
-  p8 <- ggplot(data=dta.land, aes(x=year, y=rel.carbon, colour=name)) +
+  p8 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=rel.carbon, colour=name)) +
         geom_smooth( method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Relative abundance - Carbon") + ylab("t/ha") + theme_bw()
+  
+  ## PLOTs for SHRUBS
+  p9 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=area/100, colour=name)) +
+        geom_smooth(method = "loess", size=1.5) + 
+        scale_color_manual("Species", values=as.character(species$color.sort)[14]) + 
+        ggtitle("Abundance - Area") + ylab("km2") + theme_bw()
+  p10 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=vol/10^9, colour=name)) +
+         geom_smooth(method = "loess", size=1.5) + 
+         scale_color_manual("Species",values=as.character(species$color.sort)[14]) + 
+         ggtitle("Abundance - Mass") + ylab("t/10^9") + theme_bw() 
+  p11 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=pctg.area, colour=name)) +
+         geom_smooth(method = "loess", size=1.5) +
+         scale_color_manual("Species", values=as.character(species$color.sort)[14]) + 
+         ggtitle("Percentage - Area") + ylab("%") + theme_bw()
+  p12 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=pctg.vol, colour=name)) +
+         geom_smooth(method = "loess", size=1.5) + 
+         scale_color_manual("Species",values=as.character(species$color.sort)[14]) + 
+         ggtitle("Percentage - Mass") + ylab("%") + theme_bw() 
+  
   
   ## Save in tiff
   tiff(paste0("rscripts/outs/Abundance_", scn.name, ".tiff"), width=1800, height=500)
@@ -191,6 +211,11 @@ plot.abundance <- function(scn.name){
   tiff(paste0("rscripts/outs/AbundanceRel_", scn.name, ".tiff"), width=1200, height=500)
   gridExtra::grid.arrange(p7,p8, nrow=1)
   dev.off() 
+  tiff(paste0("rscripts/outs/AbundanceShrub_", scn.name, ".tiff"), width=1200, height=500)
+  gridExtra::grid.arrange(p9,p10,p11,p12, nrow=2)
+  dev.off() 
+  
+  
 }
 
 
