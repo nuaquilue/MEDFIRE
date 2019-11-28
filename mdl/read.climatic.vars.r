@@ -1,4 +1,7 @@
-
+######################################################################################
+###  read.climatic.vars()
+###
+######################################################################################
 
 read.climatic.vars <- function(){
   
@@ -9,21 +12,29 @@ read.climatic.vars <- function(){
   ## Mask of the study area
   load("inputlyrs/rdata/mask.rdata")
   
-  ## Path of .asc rasters
-  mdl.path <- "C:/WORK/MEDMOD/SpatialModels/MEDFIRE_II"
-  
   ## List the name of the forest species
   species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
                "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
+
+  ## Default extent of raster maps of Catalonia  
+  extCat <- extent(c(250000, 540000, 4480000, 4760000))
   
-  for(clim.scn in c("RCP45", "RCP85")){
+  for(clim.scn in c("rcp45", "rcp85")){
     for(decade in seq(10,90,10)){
       
       print(paste("Building:", clim.scn, "-", decade))
       
-      ## Update temp and precip
-      TEMP <- raster(paste0(mdl.path, "/inputlyrs/asc/TempMinAnnual_", clim.scn, "_", decade, "_100m.asc"))
-      PRECIP <- raster(paste0(mdl.path, "/inputlyrs/asc/PrecipAccumAnnual_", clim.scn, "_", decade, "_100m.asc"))
+      ## Update annual minimum temp and annual precip
+      TEMP <- raster(paste0("inputlyrs/asc/", clim.scn, "/", decade, "/mnan.asc"))
+      TEMPcat <- setExtent(TEMP, extCat, keepres=T, snap=FALSE)
+      TEMP100 <- disaggregate(TEMPcat, fact=c(10,10))
+      PRECIP <- raster(paste0("inputlyrs/asc/", clim.scn, "/", decade, "/plan.asc"))
+      PRECIPcat <- setExtent(PRECIP, extCat, keepres=T, snap=FALSE)
+      PRECIP100 <- disaggregate(PRECIPcat, fact=c(10,10))
+      rm(TEMP); rm(TEMPcat); rm(PRECIP); rm(PRECIPcat)
+      
+      ## Update list of SDMs
+      load(paste0("inputlyrs/rdata/SDM_", clim.scn, "_", decade, "_100m.rdata"))
       
       ## Build a data frame with MASK, TEMP, PRECIP and SDMs per spp
       clim <- data.frame(cell.id=1:ncell(MASK), mask=MASK[], temp=TEMP[], precip=PRECIP[])

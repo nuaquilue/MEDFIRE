@@ -68,7 +68,7 @@ define.scenario <- function(scn.name){
   time.horizon <-  91
   
   ## Characteristics specific of this scenario
-  clim.scn <- "RCP45"
+  clim.scn <- "rcp4.5"
   harvest.dmnd <- "DemandHarvest_Bioenergy"
     
   # ## FIRE disturbance definitions: distributions of fire regime per FRZone
