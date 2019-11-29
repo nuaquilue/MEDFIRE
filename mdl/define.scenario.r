@@ -27,7 +27,7 @@ define.scenario <- function(scn.name){
   write.tbl.outputs <- TRUE
 
   ## Number of runs (i.e. replicas)
-  nrun <- 1
+  nrun <- 10
   
   ## Processes of the model included (IN our OUT)
   ## 1. Climate change, 2. Interfaces, 3. Forest management
@@ -63,10 +63,11 @@ define.scenario <- function(scn.name){
   #                       cohort.step, afforest.step, growth.step)
   
   ## Time lenght (in years) of a model simulation, from 2010 to 2100
-  time.horizon <-  10
+  time.horizon <-  91
   
   ## Characteristics specific of this scenario
-  clim.scn <- "rcp45"
+  clim.scn <- "rcp85"
+  psdm <- 10
   harvest.dmnd <- "DemandHarvest_Bioenergy"
     
   ## " Save all the variables in .r file to be further loaded by landscape.dyn.r"

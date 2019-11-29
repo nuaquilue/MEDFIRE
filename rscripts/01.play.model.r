@@ -1,5 +1,5 @@
 rm(list=ls())
-setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
+setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
 setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
@@ -19,7 +19,7 @@ save(interface, file="inputlyrs/rdata/interface.rdata")
 
 # set the scenario
 source("mdl/define.scenario.r")
-scn.name <- "Test03"
+scn.name <- "Test03_rcp85_10p"
 define.scenario(scn.name)
 
 # run the model

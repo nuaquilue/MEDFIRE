@@ -64,9 +64,9 @@ afforestation <- function(land, clim, orography, sdm, coord, shrub.colon.rad){
   new.spp <- left_join(new.spp, select(clim, cell.id, temp, precip), by = "cell.id") %>% 
              left_join(select(orography, cell.id, aspect, slope), by = "cell.id") %>%
              left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-             mutate(aux=c0+c_temp*temp+c_temp2*temp*temp+c_precip*precip+c_precip2*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
-             mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=th_50, 1, ifelse(sq<=th_90, 2, 3))) %>%
-             select(cell.id, spp, sqi) %>% mutate(biom=0, sdm=1)
+             mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
+             mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
+             select(cell.id, spp, sqi) %>% mutate(biom=0, age=1, sdm=1)
   
   return(new.spp)
    

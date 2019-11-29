@@ -44,15 +44,15 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
   new.cohort <- data.frame(cell.id=killed$cell.id,
                            spp=apply(select(killed, phalepensis:shrub) * 
                                        select(killed, sdm.phalepensis:sdm.shrub) * select(killed, X1:X14), 1, select.cohort), 
-                           biom=0, sdm=1 )
+                           biom=0, sdm=1, age=1 )
   
   ## Join climatic and orographic variables to compute sq and then sqi
   new.cohort <- left_join(new.cohort, select(clim, cell.id, temp, precip), by = "cell.id") %>% 
                 left_join(select(orography, cell.id, aspect, slope), by = "cell.id") %>%
                 left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-                mutate(aux=c0+c_temp*temp+c_temp2*temp*temp+c_precip*precip+c_precip2*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
-                mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=th_50, 1, ifelse(sq<=th_90, 2, 3))) %>%
-                select(cell.id, spp, temp, precip,  biom, sdm, sqi)
+                mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
+                mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
+                select(cell.id, spp, temp, precip, biom, age, sdm, sqi)
   sqi.shrub <- filter(new.cohort, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by = "spp") %>%
                mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
                       aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,

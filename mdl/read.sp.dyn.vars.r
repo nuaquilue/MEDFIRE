@@ -16,7 +16,7 @@ read.sp.dyn.vars <- function(){
   ## Read initial state vars
   LCF <- raster(paste0(mdl.path, "/inputlyrs/asc/LCFspp10_100m.asc"))
   BIOMASS <- raster(paste0(mdl.path, "/inputlyrs/asc/Biomass10.10_100m.asc"))
-  AGE <- raster(paste0(mdl.path, "/inputlyrs/asc/VegetAge10_100m.asc"))
+  AGE <- raster("inputlyrs/asc/NewTSF_ForestAge.asc")
   TSDIST <- raster(paste0(mdl.path, "/inputlyrs/asc/TSDisturb10_100m.asc"))
   
   ## Build data frame

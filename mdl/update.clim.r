@@ -3,7 +3,7 @@
 ######################################################################################
 
 
-update.clim <- function(land, orography, MASK, species, decade, clim.scn){
+update.clim <- function(land, orography, MASK, species, decade, clim.scn, psdm){
 
   ## Tracking
   print("Updating climatic variables")
@@ -14,7 +14,7 @@ update.clim <- function(land, orography, MASK, species, decade, clim.scn){
   site.quality.shrub <- read.table("inputfiles/SiteQualityShrub.txt", header=T)
   
   ## Update temp and precip
-  load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", decade, ".rdata"))
+  load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", decade, ".rdata"))
   load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
   
   ## Join land.cover.spp, aspect and slope data
@@ -42,8 +42,8 @@ update.clim <- function(land, orography, MASK, species, decade, clim.scn){
   ## Compute SQ and SQI
   clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-          mutate(aux=c0+c_temp*temp+c_temp2*temp*temp+c_precip*precip+c_precip2*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
-          mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=th_50, 1, ifelse(sq<=th_90, 2, 3))) %>%
+          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
+          mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
           select(cell.id, spp, temp, precip, sdm, sqi)
   ## SQI for shrubs
   sqi.shrub <- filter(clim, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by="spp") %>%

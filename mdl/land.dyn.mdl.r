@@ -132,8 +132,8 @@ land.dyn.mdl <- function(scn.name){
       
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
-        clim <- update.clim(land, orography, MASK, species, decade=(1+floor(t/10))*10, clim.scn)
-        load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", (1+floor(t/10))*10, ".rdata"))
+        clim <- update.clim(land, orography, MASK, species, decade=(1+floor(t/10))*10, clim.scn, psdm)
+        load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", (1+floor(t/10))*10, ".rdata"))
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
       
@@ -195,7 +195,7 @@ land.dyn.mdl <- function(scn.name){
         aux  <- cohort.establish(land, clim, orography, sdm, coord, spp.distrib.rad, drought.id)
         spp.out <- land$spp[land$cell.id %in% kill.cells]
         land$spp[land$cell.id %in% kill.cells] <- aux$spp
-        land$biom[land$cell.id %in% kill.cells] <- growth(aux, aux)
+        land$biom[land$cell.id %in% kill.cells] <- growth.10y(aux, aux)
         clim$spp[clim$cell.id %in% kill.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% kill.cells] <- 1
         clim$sqi[clim$cell.id %in% kill.cells] <- aux$sqi
@@ -209,7 +209,7 @@ land.dyn.mdl <- function(scn.name){
       if(processes[afforest.id] & t %in% temp.afforest.schedule){
         aux  <- afforestation(land, clim, orography, sdm, coord, shrub.colon.rad)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
-        land$biom[land$cell.id %in% aux$cell.id] <- growth(aux, aux)
+        land$biom[land$cell.id %in% aux$cell.id] <- growth.10y(aux, aux)
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
@@ -220,7 +220,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 10. GROWTH
       if(processes[growth.id] & t %in% temp.growth.schedule){
-        land$biom <- growth(land, clim)
+        land$biom <- growth.10y(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
         aux <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
