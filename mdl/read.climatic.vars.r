@@ -1,12 +1,15 @@
 ######################################################################################
 ###  read.climatic.vars()
 ###
+### L'ordre d'espècies segueix sent:
+### 1"Pinus sylvestris",2"Pinus uncinata",3"Pinus pinea",4"Pinus halepensis",5"Pinus nigra",
+### 6"Pinus pinaster",7"Abies alba",8"Quercus faginea",9"Quercus ilex",10"Quercus suber",
+### 11"Quercus humilis",12"Fagus sylvatica",13"OTrees."
 ######################################################################################
 
 read.climatic.vars <- function(){
   
   library(raster)
-  library(RANN)  # for nn2()
   library(tidyverse)
   
   ## Mask of the study area
@@ -34,32 +37,35 @@ read.climatic.vars <- function(){
       PRECIP <- disaggregate(PRECIP, fact=c(10,10))
       PRECIP <- extend(PRECIP, extCat)
       
-      ## Update list of SDMs
-      ## Change resolution and extend to match the default
-      load(paste0("inputlyrs/rdata/SDM_", clim.scn, "_", decade, "_100m.rdata"))
-      for(i in 1:length(sdm.proj)){
-        sdm.proj[[i]] <- disaggregate(sdm.proj[[i]], fact=c(10,10))
-        sdm.proj[[i]] <- extend(sdm.proj[[i]], extCat)
-      }
-        
-      ## Build a data frame with MASK, TEMP, PRECIP and SDMs per spp
+      ## Build a data frame with MASK, TEMP, and PRECIP 
+      ## And keep only cells from CAT
       clim <- data.frame(cell.id=1:ncell(MASK), mask=MASK[], temp=TEMP[], precip=PRECIP[])
-      for(i in order.spp.sdm)
-        clim <- cbind(clim, data.frame(spp=sdm.proj[[i]][]))
-      names(clim)[5:17] <- species
-      
-      ## Save SDM of all spp in a data.frame, for cells in CAT
-      sdm <- clim[!is.na(clim$mask),]
-      sdm <- select(sdm, -mask, -temp, -precip) 
-      names(sdm)[-1] <- paste0("sdm.",species)
-      sdm$sdm.shrub <- 1
-      save(sdm, file=paste0("inputlyrs/rdata/sdm_", clim.scn, "_", decade, ".rdata"))
-      
-      ## Now, again, keep only cells from CAT
       clim  <-  clim[!is.na(clim$mask),]
       clim <- select(clim, cell.id, temp, precip)
       save(clim, file=paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
       
+      for(p in c(5,10)){
+        
+        ## Update list of SDMs
+        ## Change resolution and extend to match the default
+        ## Build a data frame with MASK and SDMs per spp
+        load(paste0("inputlyrs/asc/SDM_", p, "p_", clim.scn, "_", decade, "_100m.rdata"))
+        sdm  <- data.frame(cell.id=1:ncell(MASK), mask=MASK[])
+        for(i in order.spp.sdm){
+          sdm.proj[[i]] <- disaggregate(sdm.proj[[i]], fact=c(10,10))
+          sdm.proj[[i]] <- extend(sdm.proj[[i]], extCat)
+          sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
+        }
+        names(sdm)[3:15] <- species
+      
+        ## Save SDM of all spp in a data.frame, for cells in CAT
+        sdm <- sdm[!is.na(sdm$mask),]
+        sdm <- select(sdm, -mask) 
+        names(sdm)[-1] <- paste0("sdm.", species)
+        sdm$sdm.shrub <- 1
+        save(sdm, file=paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_", decade, ".rdata"))
+      
+      } #p
     } # decade
   } # clim.scn
   
