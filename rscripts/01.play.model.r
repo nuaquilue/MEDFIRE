@@ -1,6 +1,16 @@
 rm(list=ls())
 setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
-setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+
+# set the scenario
+source("mdl/define.scenario.r")
+scn.name <- "Test03_rcp45_10p"
+define.scenario(scn.name)
+
+# run the model
+source("mdl/land.dyn.mdl.r")  
+system.time(land.dyn.mdl(scn.name)  )
+
 
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
 source("mdl/read.static.vars.r")
@@ -16,12 +26,3 @@ source("mdl/update.interface.r")
 load("inputlyrs/rdata/land.rdata")
 interface <- update.interface(land)
 save(interface, file="inputlyrs/rdata/interface.rdata")
-
-# set the scenario
-source("mdl/define.scenario.r")
-scn.name <- "Test03_rcp85_10p"
-define.scenario(scn.name)
-
-# run the model
-source("mdl/land.dyn.mdl.r")  
-system.time(land.dyn.mdl(scn.name)  )

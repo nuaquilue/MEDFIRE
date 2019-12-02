@@ -27,7 +27,7 @@ define.scenario <- function(scn.name){
   write.tbl.outputs <- TRUE
 
   ## Number of runs (i.e. replicas)
-  nrun <- 10
+  nrun <- 1
   
   ## Processes of the model included (IN our OUT)
   ## 1. Climate change, 2. Interfaces, 3. Forest management
@@ -66,7 +66,7 @@ define.scenario <- function(scn.name){
   time.horizon <-  91
   
   ## Characteristics specific of this scenario
-  clim.scn <- "rcp85"
+  clim.scn <- "rcp45"
   psdm <- 10
   harvest.dmnd <- "DemandHarvest_Bioenergy"
     

@@ -1,11 +1,11 @@
 play <- function(){
   rm(list=ls())  
-  # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
-  setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+   setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
+  # setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
   
   source("rscripts/03.reporting.r")
   
-  scn.name <- "Test02"
+  scn.name <- "Test03_rcp45_5p"
   plot.abundance(scn.name)
   plot.drought(scn.name)
   plot.cohort(scn.name)
