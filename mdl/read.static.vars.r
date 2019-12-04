@@ -50,4 +50,13 @@ read.static.vars <- function(){
   harvest <- harvest[!is.na(MASK[]),]
   save(harvest, file="inputlyrs/rdata/harvest.rdata")
   
+  ## Layers for fire
+  mdl.path <- "C:/WORK/MEDMOD/SpatialModels/MEDFIRE.v8"
+  IGNI.WIND <- raster(paste0(mdl.path, "/inputlyrs/asc/IgniWind_100m.asc"))
+  IGNI.TOPO <- raster(paste0(mdl.path, "/inputlyrs/asc/IgniTopo_100m.asc"))
+  igni.fst <- data.frame(igni.wind=IGNI.WIND[], igni.topo=IGNI.TOPO[])
+  igni.fst <- igni.fst[!is.na(MASK[]),]
+  save(igni.fst, file="inputlyrs/rdata/igni.fst.rdata")
+  
+  
 }
