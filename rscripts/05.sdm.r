@@ -1,5 +1,5 @@
-# setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
-setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+ setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
+# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 library(raster)
 library(tidyverse)
 
@@ -15,39 +15,84 @@ p <- 5; clim.scn <- "rcp45"
 species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
              "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
 ## Build sdm per decade
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_10.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,10); sdm10 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_20.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,20); sdm20 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_30.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,30); sdm30 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_40.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,40); sdm40 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_50.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,50); sdm50 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_60.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,60); sdm60 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_70.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,70); sdm70 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_80.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,80); sdm80 <- sdm
-load(paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_90.rdata"))
-sdm[,-1] <- ifelse(sdm[,-1]==0,NA,90); sdm90 <- sdm
-sdm.accum.pmin <- pmin(sdm10,sdm20,sdm30,sdm40,sdm50,sdm60,sdm70,sdm80,sdm90, na.rm=T)
-sdm.accum.pmax <- pmax(sdm10,sdm20,sdm30,sdm40,sdm50,sdm60,sdm70,sdm80,sdm90, na.rm=T)
-rm(sdm)
+sdm.5p.rcp45 <- list()
+sdm.5p.rcp85 <- list()
+sdm.10p.rcp45 <- list()
+sdm.10p.rcp85 <- list()
+for(decade in seq(10,90,10)){
+  load(paste0("inputlyrs/rdata/sdm_5p_rcp45_", decade,".rdata"))
+  sdm[,-1] <- ifelse(sdm[,-1]==0, NA, decade)
+  sdm.5p.rcp45[[decade/10]] <- sdm
+  load(paste0("inputlyrs/rdata/sdm_5p_rcp85_", decade,".rdata"))
+  sdm[,-1] <- ifelse(sdm[,-1]==0, NA, decade)
+  sdm.5p.rcp85[[decade/10]] <- sdm
+  load(paste0("inputlyrs/rdata/sdm_10p_rcp45_", decade,".rdata"))
+  sdm[,-1] <- ifelse(sdm[,-1]==0, NA, decade)
+  sdm.10p.rcp45[[decade/10]] <- sdm
+  load(paste0("inputlyrs/rdata/sdm_10p_rcp85_", decade,".rdata"))
+  sdm[,-1] <- ifelse(sdm[,-1]==0, NA, decade)
+  sdm.10p.rcp85[[decade/10]] <- sdm
+}
+sdm.5p.rcp45.pmin <- pmin(sdm.5p.rcp45[[1]],sdm.5p.rcp45[[2]],sdm.5p.rcp45[[3]],sdm.5p.rcp45[[4]], sdm.5p.rcp45[[5]],
+                          sdm.5p.rcp45[[6]],sdm.5p.rcp45[[7]],sdm.5p.rcp45[[8]],sdm.5p.rcp45[[9]], na.rm=T)
+sdm.5p.rcp45.pmax <- pmax(sdm.5p.rcp45[[1]],sdm.5p.rcp45[[2]],sdm.5p.rcp45[[3]],sdm.5p.rcp45[[4]], sdm.5p.rcp45[[5]],
+                          sdm.5p.rcp45[[6]],sdm.5p.rcp45[[7]],sdm.5p.rcp45[[8]],sdm.5p.rcp45[[9]], na.rm=T)
+sdm.5p.rcp85.pmin <- pmin(sdm.5p.rcp85[[1]],sdm.5p.rcp85[[2]],sdm.5p.rcp85[[3]],sdm.5p.rcp85[[4]], sdm.5p.rcp85[[5]],
+                          sdm.5p.rcp85[[6]],sdm.5p.rcp85[[7]],sdm.5p.rcp85[[8]],sdm.5p.rcp85[[9]], na.rm=T)
+sdm.5p.rcp85.pmax <- pmax(sdm.5p.rcp85[[1]],sdm.5p.rcp85[[2]],sdm.5p.rcp85[[3]],sdm.5p.rcp85[[4]], sdm.5p.rcp85[[5]],
+                          sdm.5p.rcp85[[6]],sdm.5p.rcp85[[7]],sdm.5p.rcp85[[8]],sdm.5p.rcp85[[9]], na.rm=T)
+sdm.10p.rcp45.pmin <- pmin(sdm.10p.rcp45[[1]],sdm.10p.rcp45[[2]],sdm.10p.rcp45[[3]],sdm.10p.rcp45[[4]], sdm.10p.rcp45[[5]],
+                          sdm.10p.rcp45[[6]],sdm.10p.rcp45[[7]],sdm.10p.rcp45[[8]],sdm.10p.rcp45[[9]], na.rm=T)
+sdm.10p.rcp45.pmax <- pmax(sdm.10p.rcp45[[1]],sdm.10p.rcp45[[2]],sdm.10p.rcp45[[3]],sdm.10p.rcp45[[4]], sdm.10p.rcp45[[5]],
+                          sdm.10p.rcp45[[6]],sdm.10p.rcp45[[7]],sdm.10p.rcp45[[8]],sdm.10p.rcp45[[9]], na.rm=T)
+sdm.10p.rcp85.pmin <- pmin(sdm.10p.rcp85[[1]],sdm.10p.rcp85[[2]],sdm.10p.rcp85[[3]],sdm.10p.rcp85[[4]], sdm.10p.rcp85[[5]],
+                          sdm.10p.rcp85[[6]],sdm.10p.rcp85[[7]],sdm.10p.rcp85[[8]],sdm.10p.rcp85[[9]], na.rm=T)
+sdm.10p.rcp85.pmax <- pmax(sdm.10p.rcp85[[1]],sdm.10p.rcp85[[2]],sdm.10p.rcp85[[3]],sdm.10p.rcp85[[4]], sdm.10p.rcp85[[5]],
+                          sdm.10p.rcp85[[6]],sdm.10p.rcp85[[7]],sdm.10p.rcp85[[8]],sdm.10p.rcp85[[9]], na.rm=T)
+rm(sdm.5p.rcp45); rm(sdm.5p.rcp85); rm(sdm.10p.rcp45); rm(sdm.10p.rcp85)
 ## Plot accumulated sdm per species
 for(spp in species){
-  tiff(paste0("rscripts/outs/sdm.accum_", scn, "_", spp, ".tiff"), width = 1600, height=800)
-  par(mfrow=c(1,2))
-  SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.accum.pmin[,which(spp == species)+1]
-  plot(SDM, col=rainbow(9)[9:1], main=paste("Gain SDM", spp))
-  SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.accum.pmax[,which(spp == species)+1]
-  plot(SDM, col=rainbow(9)[9:1], main=paste("Lost SDM", spp)); dev.off()
+  tiff(paste0("rscripts/outs/sdm.accum_", spp, ".tiff"), width = 800, height=800)
+  par(mfrow=c(2,2))
+  SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.5p.rcp45.pmin[,which(spp == species)+1]
+  plot(SDM, col=rainbow(9)[9:1], main=paste("Gain SDM", spp, "RCP45 th5%"))
+  SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.5p.rcp45.pmax[,which(spp == species)+1]
+  plot(SDM, col=rainbow(9)[9:1], main=paste("Lost SDM", spp, "RCP45 th5%"))
+  SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.5p.rcp85.pmin[,which(spp == species)+1]
+  plot(SDM, col=rainbow(9)[9:1], main=paste("Gain SDM", spp, "RCP85 th5%"))
+  SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.5p.rcp85.pmax[,which(spp == species)+1]
+  plot(SDM, col=rainbow(9)[9:1], main=paste("Lost SDM", spp, "RCP85 th5%")); dev.off()
 }
 
 
-################## Compute continuous SDM ##################
+################## Build SDM IN-OUT with th 1% as done by QUIM ##################
+rm(list=ls()); gc()
+coeff <- read.table("inputfiles/SDMmdl.txt", header=T)
+for(scn in c("rcp45", "rcp85")){
+  for(decade in seq(10,90,10)){
+    MNAN <- raster(paste0("inputlyrs/asc/", scn, "/", decade, "/mnan.asc"))
+    MXAN <- raster(paste0("inputlyrs/asc/", scn, "/", decade, "/mxan.asc"))
+    PLAN <- raster(paste0("inputlyrs/asc/", scn, "/", decade, "/plan.asc"))
+    RAD <- raster(paste0("inputlyrs/asc/", scn, "/", decade, "/Radan.asc"))
+    sdm.proj <- list()
+    for(i in 1:nrow(coeff)){  
+      print(paste("Scenario", scn, "- Decade", decade, "- Spp", i))
+      P <- coeff$c[i] + coeff$c_mnan[i]*MNAN + coeff$c2_mnan[i]*MNAN*MNAN +
+           coeff$c_mxan[i]*MXAN + coeff$c2_mxan[i]*MXAN*MXAN + 
+           coeff$c_plan[i]*PLAN + coeff$c2_plan[i]*PLAN*PLAN +
+           coeff$c_rad[i]*RAD + coeff$c2_rad[i]*RAD*RAD
+      Z <- 1/(1+exp(-P)); z <- Z[]
+      q1 <- quantile(z, p=0.1, na.rm=T)
+      th1 <- mean(z[z<=q1], na.rm=T)
+      z <- ifelse(z<=th1,0,1)
+      Z[] <- z
+      sdm.proj[[i]] <- Z
+    }
+  }
+}
+
+
+      ################## Compute continuous SDM ##################
 rm(list=ls()); gc()
 extCat <- extent(c(250000, 540000, 4480000, 4760000)) ## Default extent of raster maps of Catalonia  
 coeff <- read.table("inputfiles/SDMmdl.txt", header=T)
@@ -120,7 +165,7 @@ for(scn in c("rcp45", "rcp85")){
       geom_vline(aes(xintercept=th5$x), color="red", linetype="dashed", size=1) +
       geom_vline(aes(xintercept=th10$x), color="violet", linetype="dashed", size=1) +
       facet_wrap(.~key)
-    tiff(paste0("rscripts/outs/sdm.dist_", scn, "_", species[i], ".tiff"), width = 800, height=800)
+    tiff(paste0("rscripts/outs/sdm.dist_", scn, "_", species[i], ".tiff"), width=800, height=800)
     p
     dev.off()
   }
