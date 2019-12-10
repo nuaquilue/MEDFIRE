@@ -18,7 +18,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/cohort.establish.r")
   source("mdl/afforestation.r")
   source("mdl/forest.mgmt.r")
-  
+  source("mdl/fire.regime.r")
   
   ## Load scenario definition (global variables and scenario parameters)
   ## and customized scenario parameters
@@ -161,6 +161,7 @@ land.dyn.mdl <- function(scn.name){
       ## 4. FIRE
       if(processes[fire.id] & t %in% temp.fire.schedule){
         pigni <- prob.igni(land, clim, orography, interface)
+        burnt.cells.wind <- fire.regime(land, orography, pigni, swc=1, t, burnt.cells)
         temp.fire.schedule <- temp.fire.schedule[-1] 
       }
       

@@ -15,7 +15,7 @@ forest.mgmt <- function(land, clim, orography, coord, t){
   # eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
   
   ## Sawlog and Wood demands
-  dmnd <- read.table(paste0("inputfiles/", harvest.dmnd, ".txt"), header=T)
+  dmnd <- read.table(paste0("inputfiles/", file.dmnd.harvest, ".txt"), header=T)
   dmnd.sawlog <- dmnd$Sawlogs[t]
   dmnd.wood <- dmnd$Primary[t]
   

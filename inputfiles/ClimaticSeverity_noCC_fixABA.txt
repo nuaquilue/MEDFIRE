@@ -1,10 +1,10 @@
-Year	ABAwind	ABAheat	ABAregu	ProbSevr
-1	445	0	0	45
-2	13558	0	0	45
-3	299	0	0	45
-4	891	178	0	45
-5	1263	0	0	45
-6	0	0	0	45
+year	aba.wind	aba.heat	aba.regu	prob.sevr
+1	296	0	0	0
+2	445	0	0	0
+3	13558	0	0	100
+4	299	0	0	0
+5	891	178	0	0
+6	1263	0	0	0
 7	0	0	0	45
 8	0	0	0	45
 9	0	0	0	45
@@ -89,3 +89,4 @@ Year	ABAwind	ABAheat	ABAregu	ProbSevr
 88	0	0	0	45
 89	0	0	0	45
 90	0	0	0	45
+91	0	0	0	45

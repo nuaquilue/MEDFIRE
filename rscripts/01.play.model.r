@@ -1,6 +1,6 @@
 rm(list=ls())
 setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
-# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+ setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
 # set the scenario
 source("mdl/define.scenario.r")

@@ -68,7 +68,9 @@ define.scenario <- function(scn.name){
   ## Characteristics specific of this scenario
   clim.scn <- "rcp45"
   psdm <- 10
-  harvest.dmnd <- "DemandHarvest_Bioenergy"
+  file.dmnd.harvest <- "DemandHarvest_Bioenergy"
+  file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
+  file.pctg.hot.days <- "PctgHotDays_rcp45"
     
   ## " Save all the variables in .r file to be further loaded by landscape.dyn.r"
   if(!file.exists(out.path))

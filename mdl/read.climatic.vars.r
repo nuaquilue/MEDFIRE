@@ -18,7 +18,7 @@ read.climatic.vars <- function(){
   ## List the name of the forest species
   species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
                "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
-  order.spp.sdm <- c(4,5,3,1,6,2,7,9,10,8,11,12,13)
+      # order.spp.sdm <- c(4,5,3,1,6,2,7,9,10,8,11,12,13)
     
   ## Default extent of raster maps of Catalonia  
   extCat <- extent(c(250000, 540000, 4480000, 4760000))
@@ -26,7 +26,7 @@ read.climatic.vars <- function(){
   for(clim.scn in c("rcp45", "rcp85")){
     for(decade in seq(10,90,10)){
       
-      print(paste("Building:", clim.scn, "-", decade))
+      print(paste("Building: scenario", clim.scn, "- decade", decade))
       
       ## Update annual minimum temp and annual precip
       ## Change resolution and extend to match the default
@@ -44,20 +44,27 @@ read.climatic.vars <- function(){
       clim <- select(clim, cell.id, temp, precip)
       save(clim, file=paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
       
-      for(p in c(5,10)){
+      for(p in c(1, 5, 10)){
+        
+        print(paste("Threshold", p))
         
         ## Update list of SDMs
         ## Change resolution and extend to match the default
         ## Build a data frame with MASK and SDMs per spp
+            # load(paste0("inputlyrs/asc/SDM_", p, "p_", clim.scn, "_", decade, "_1km.rdata"))
+            # sdm  <- data.frame(cell.id=1:ncell(MASK), mask=MASK[])
+            # for(i in order.spp.sdm){
+            #   sdm.proj[[i]] <- disaggregate(sdm.proj[[i]], fact=c(10,10))
+            #   sdm.proj[[i]] <- extend(sdm.proj[[i]], extCat)
+            #   sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
+            # }
+            # names(sdm)[3:15] <- species
         load(paste0("inputlyrs/asc/SDM_", p, "p_", clim.scn, "_", decade, "_100m.rdata"))
         sdm  <- data.frame(cell.id=1:ncell(MASK), mask=MASK[])
-        for(i in order.spp.sdm){
-          sdm.proj[[i]] <- disaggregate(sdm.proj[[i]], fact=c(10,10))
-          sdm.proj[[i]] <- extend(sdm.proj[[i]], extCat)
+        for(i in 1:13)
           sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
-        }
         names(sdm)[3:15] <- species
-      
+        
         ## Save SDM of all spp in a data.frame, for cells in CAT
         sdm <- sdm[!is.na(sdm$mask),]
         sdm <- select(sdm, -mask) 

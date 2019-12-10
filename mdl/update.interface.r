@@ -2,8 +2,6 @@
 
 update.interface <- function(land){
   
-  library(raster)
-  
   ## Traking
   print("Update interfaces")
   

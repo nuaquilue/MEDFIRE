@@ -4,7 +4,7 @@ prob.igni <- function(land, clim, orography, interface){
   ## Tracking
   print("Prob. ignition")
   
-  ## Read species reproductive age and afforestation model
+  ## Read ignition probability model
   pigni.mdl <- unlist(read.table("inputfiles/ProbIgniMdl.txt", header=T))
   
   z = pigni.mdl[1] + pigni.mdl[2]*orography$elev + pigni.mdl[3]*orography$slope/10 + pigni.mdl[4]*clim$precip + 

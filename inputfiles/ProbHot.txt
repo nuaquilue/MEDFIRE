@@ -1,4 +1,4 @@
-SWT	Inter	Slope
+swc	inter	slope
 1	-3.064	22.727
 2	-3.064	22.727
 
