@@ -1,11 +1,11 @@
 play <- function(){
   rm(list=ls())  
-   setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
-  # setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+  setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
+  setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
   
   source("rscripts/03.reporting.r")
   
-  scn.name <- "Test03_rcp45_5p"
+  scn.name <- "Test03_rcp85_5p"
   plot.abundance(scn.name)
   plot.drought(scn.name)
   plot.cohort(scn.name)
@@ -53,13 +53,21 @@ plot.drought <- function(scn.name){
                  left_join(select(species, spp, name), by="spp") %>%
                  mutate(pctg.kill=100*ha/area)
   ## Accumualted area and pctg killed by drought
-  dta.accum <- dta.drought
+  dta.accum <- data.frame(decade=2010, spp=1:13)
+  dta.accum <- left_join(dta.accum, filter(dta.drought, decade==2010) %>% select(decade, spp, ha), by = c("decade", "spp")) %>%
+               left_join(dta.land, by = c("decade", "spp"))
+  dta.accum$ha[is.na(dta.accum$ha)] <- 0
   for(d in seq(2020,2090,10)){
+    aux <- data.frame(decade=d, spp=1:13)
+    aux <- left_join(aux,  filter(dta.drought, decade==d) %>% select(decade, spp, ha), by = c("decade", "spp"))%>%
+           left_join(dta.land, by = c("decade", "spp"))
+    aux$ha[is.na(aux$ha)] <- 0
+    dta.accum <- rbind(dta.accum,aux)
     dta.accum$ha[dta.accum$decade==d] <- dta.accum$ha[dta.accum$decade==d] + dta.accum$ha[dta.accum$decade==(d-10)]
-    dta.accum$area[dta.accum$decade==d] <- dta.accum$area[dta.accum$decade==d] + dta.accum$area[dta.accum$decade==(d-10)]
   }
   dta.accum$pctg.kill <- 100*dta.accum$ha/dta.accum$area
-  
+  dta.accum$name <- rep(species$name[-14],1)
+    
   ## PLOT Area killed by decade (km2) 
   p1 <- ggplot(data=dta.drought, aes(x=as.factor(decade), y=ha/100, fill=name)) + geom_bar(stat="identity") +
         scale_fill_manual("Species", values=as.character(species$color.sort)) + 

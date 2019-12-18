@@ -6,6 +6,7 @@
 land.dyn.mdl <- function(scn.name){
   
   ## Load required packages and functions 
+  library(sp)
   library(raster)  
   library(RANN)  # for nn2()
     # library(SpaDES)  # for adj()
@@ -161,7 +162,7 @@ land.dyn.mdl <- function(scn.name){
       ## 4. FIRE
       if(processes[fire.id] & t %in% temp.fire.schedule){
         pigni <- prob.igni(land, clim, orography, interface)
-        burnt.cells.wind <- fire.regime(land, orography, pigni, swc=1, t, burnt.cells)
+        burnt.cells.wind <- fire.regime(land, orography, pigni, coord, swc=1, t, burnt.cells)
         temp.fire.schedule <- temp.fire.schedule[-1] 
       }
       

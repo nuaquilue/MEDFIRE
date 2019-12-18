@@ -140,6 +140,8 @@ for(i in 1:nrow(coeff)){
 write.table(thresh, "rscripts/outs/SDMth.txt", quote=F, sep="\t", row.names = F)
 
 
+SDM24 <- raster("inputlyrs/asc/SDM_24.asc")
+
 
 ######################################## Build IN-OUT SDMs ########################################
 rm(list=ls()); gc()
@@ -182,7 +184,7 @@ rm(list=ls()); gc()
 species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
              "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
 thresh <- read.table("rscripts/outs/SDMth.txt", header=T)
-for(scn in c("rcp45", "rcp85")){
+for(scn.clim in c("rcp45", "rcp85")){
   load("inputlyrs/rdata/land.rdata")
   load(paste0("inputlyrs/SDMcont_", scn, "_100m.rdata"))
   names(sdm)[3:11] <- paste0("Decade", seq(10,90,10))

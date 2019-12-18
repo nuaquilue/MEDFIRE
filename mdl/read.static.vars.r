@@ -54,9 +54,13 @@ read.static.vars <- function(){
   mdl.path <- "C:/WORK/MEDMOD/SpatialModels/MEDFIRE.v8"
   IGNI.WIND <- raster(paste0(mdl.path, "/inputlyrs/asc/IgniWind_100m.asc"))
   IGNI.TOPO <- raster(paste0(mdl.path, "/inputlyrs/asc/IgniTopo_100m.asc"))
-  igni.fst <- data.frame(igni.wind=IGNI.WIND[], igni.topo=IGNI.TOPO[])
-  igni.fst <- igni.fst[!is.na(MASK[]),]
-  save(igni.fst, file="inputlyrs/rdata/igni.fst.rdata")
-  
-  
+  PWIND.N <- raster(paste0(mdl.path, "/inputlyrs/asc/ProbN_100m.asc"))
+  PWIND.NW <- raster(paste0(mdl.path, "/inputlyrs/asc/ProbNW_100m.asc"))
+  PWIND.W <- raster(paste0(mdl.path, "/inputlyrs/asc/ProbW_100m.asc"))
+  pfst.pwind <- data.frame(pfst.wind=IGNI.WIND[], pfst.topo=IGNI.TOPO[],
+                           pwind.n=PWIND.N[], pwind.nw=PWIND.NW[], pwind.w=PWIND.W[])
+  pfst.pwind <- pfst.pwind[!is.na(MASK[]),]
+  save(pfst.pwind, file="inputlyrs/rdata/pfst.pwind.rdata")
 }
+
+
