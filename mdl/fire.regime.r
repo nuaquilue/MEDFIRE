@@ -1,9 +1,14 @@
+
+
+
 ######################################################################################
 ###  fire.regime()
 ###
 ######################################################################################
 
 fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
+
+  `%notin%` <- Negate(`%in%`)
   
   ## Read and load input data
   load("inputlyrs/rdata/pfst.pwind.rdata")
@@ -14,13 +19,16 @@ fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
   fire.supp <- read.table(paste0("inputfiles/", file.fire.suppression, ".txt"), header=T)
   clim.severity <- read.table(paste0("inputfiles/", file.clim.severity, ".txt"), header=T)
   pctg.hot.days <- read.table(paste0("inputfiles/", file.pctg.hot.days, ".txt"), header=T)
-  spp.sprd.rate <- read.table("inputfiles/SppSpreadRate.txt", header=T)
+  spp.flammability <- read.table("inputfiles/SppSpreadRate.txt", header=T)
+  fst.sprd.weight <- read.table("inputfiles/SprdRateWeights.txt", header=T)
   
   ## Basics
   mask <- data.frame(cell.id=1:ncell(MASK), x=MASK[])
   default.dist <- c(rep(c(sqrt(2*100^2),100),2),  rep(c(100,sqrt(2*100^2)),2))
     ## From SELES: 45-SW, 90-W, 135-NW, 180-N, 225-NE, 270-E, 315-SE, 360-S 
-  default.windir <- c(135,180,225,90,270,45,360,315) # neighbors are sorted in this order: NW, N, NE, W, E, SW, S, SE
+  # neighbors are sorted in this order: NW, N, NE, W, E, SW, S, SE  
+  default.windir <- data.frame(x=c(0,-1,1,2900,-2900,2899,-2901,2901,-2899),
+                               windir=c(0,90,270,360,180,45,135,315,225))
   
   ## Decide climatic severity and generate annual target area
   if(sum(clim.severity[clim.severity$year==t,2:4])>0){  # fixed annual burnt area
@@ -41,8 +49,8 @@ fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
     else # mild
       clima <- 0
     area.target <- round(min(200000, max(10, 
-                                         rlnorm(1, aba.dist$meanlog[aba.dist$clim==clima & aba.dist$swc==swc],
-                                                aba.dist$sdlog[aba.dist$clim==clima & aba.dist$swc==swc]))))
+                         rlnorm(1, aba.dist$meanlog[aba.dist$clim==clima & aba.dist$swc==swc],
+                                   aba.dist$sdlog[aba.dist$clim==clima & aba.dist$swc==swc]))))
   }
   
   
@@ -56,9 +64,6 @@ fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
   ## to compute probability of being a convective fire
   old.forest.coord <- filter(land, spp<=3 & age>=30) %>% select(cell.id) %>% left_join(coord, by = "cell.id")
 
-  
-
-  
   
   ## Start burning until annual area target is not reached
   while(area.target>0){
@@ -79,6 +84,11 @@ fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
       1/(1+exp(-z))
       fire.spread.type <- ifelse(runif(1,0,1)<=1/(1+exp(-z)),2,3)
     }
+    wwind <- fst.sprd.weight[1,fire.spread.type+1]
+    wslope <- fst.sprd.weight[2,fire.spread.type+1]
+    wfuel <- fst.sprd.weight[3,fire.spread.type+1]
+    wflam <- fst.sprd.weight[4,fire.spread.type+1]
+    waspc <- fst.sprd.weight[5,fire.spread.type+1]
   
     ## Assign the fire suppression levels
     sprd.th <- filter(fire.supp, clim==clima, fst==fire.spread.type)$sprd.th
@@ -88,26 +98,27 @@ fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
     ## Wind directions inherit from SELES (to be reviewed)
     ## 45-SW, 90-W, 135-NW, 180-N, 225-NE, 270-E, 315-SE, 360-S 
     if(fire.spread.type==1)
-      wind.dir <- sample(c(180,90,135), 1, replace=F, p=filter(pfst.pwind,cell.id==igni.id)[3:5])
+      fire.wind <- sample(c(180,90,135), 1, replace=F, p=filter(pfst.pwind,cell.id==igni.id)[3:5])
     if(fire.spread.type==2)  
-      wind.dir <- sample(c(360,45,315), 1, replace=F, p=c(80,10,10))
+      fire.wind <- sample(c(360,45,315), 1, replace=F, p=c(80,10,10))
     if(fire.spread.type==3)  
-      wind.dir <- sample(seq(45,360,45), 1, replace=F)
+      fire.wind <- sample(seq(45,360,45), 1, replace=F)
     
     ## Derive target fire size from a power-law according to clima and fire.spread.type 
+    ## Bound fire.size.target to not exceed remaining area.target
     log.size <- seq(1.7, 5, 0.01)
     log.num <- filter(fs.dist, clim==clima, fst==fire.spread.type)$intercept +
                filter(fs.dist, clim==clima, fst==fire.spread.type)$slope * log.size
     fire.size.target <- sample(round(10^log.size), 1, replace=F, prob=10^log.num)
-    fire.size.target
-    
-    ## Bound fire.size.target to not exceed remaining area.target
     if(fire.size.target>area.target)
       fire.size.target <- area.target
-      
+    fire.size.target  
+    
     ## Initialize tracking variables
     burnt.cells <- igni.id
     fire.front <- igni.id
+    is.burnt <- vector("integer", nrow(land))
+    is.burnt[which(coord$cell.id==burnt.cells)] <- T
     aburnt.lowintens <- 0
     aburnt.highintens <- 1  # ignition always burnt, and it does in high intensity
     asupp.sprd <- 0
@@ -119,29 +130,47 @@ fire.regime <- function(land, orography, pigni, coord, swc, t, burnt.cells){
       
       ## Find burnable neighbours of the cells in the fire.front that haven't burnt yet
       neighs <- nn2(coord[,-1], filter(coord, cell.id %in% fire.front)[,-1], searchtype="priority", k=9)
-       
-          # fire.front
-      neigh.id <- coord$cell.id[t(neighs$nn.idx[,-1])]  # remove source cells
       
+      ## Get the cell.id of all the cells in the fire.front, and remove those cells already burnt
+      ## May be duplicates if spreading from front cells that are actual neighbours
+      neigh.id <- data.frame(cell.id=coord$cell.id[neighs$nn.idx],
+                             source.id=rep(fire.front, 9),
+                             dist=as.numeric(neighs$nn.dists))
+      neigh.id <- mutate(neigh.id, x=cell.id-source.id) %>% left_join(default.windir, by="x") %>% select(-x) 
+      neigh.id <- filter(neigh.id, cell.id %notin% burnt.cells)
+      neigh.id
       
-       
-       
-       filter(mask, cell.id %in% neigh.id) %>% mutate(source.id=rep(sort(fire.front),each=8)) %>%
-         left_join(select(orography, cell.id, elev), by="cell.id") %>%
-          left_join(select(orography, cell.id, elev), by=c("source.id"="cell.id")) %>% 
-         mutate(dif.elev=elev.x-elev.y, dist=rep(default.dist, length(fire.front)), 
-                fire.slope=pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, #kk=cell.id-source.id,
-                windir=rep(default.windir, length(fire.front)),
-                a =ifelse(abs(windir-wind.dir)>180, 360-abs(windir-wind.dir), abs(windir-wind.dir)),
-                fire.wind=(180-a)/180) %>% filter(!is.na(x)) 
-       
-       
-      flam <- filter(land, cell.id %in% neigh.id) %>% left_join(spp.sprd.rate[,c(1,fire.spread.type+1)], by="spp") 
-      flam <- as.vector(flam[,ncol(flam)])  
+      ## Filter 'orography' for source and neigbour cells
+      neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>% select(cell.id, elev, aspect)
       
-      aspc <- filter(orography, cell.id %in% as.numeric(neigh.id)) %>% select(aspect)
-      aspc <- ifelse(unlist(aspc)==1, 0.1, ifelse(unlist(aspc)==3, 0.9, ifelse(unlist(aspc)==4, 0.4, 0.3)))
-      
+      ## Compute spread rate, probability of burning and actual burning state (T or F)
+      flam <- filter(land, cell.id %in% neigh.id$cell.id) %>% select(cell.id, spp) %>%
+              left_join(spp.flammability[,c(1,fire.spread.type+1)], by="spp") 
+      flam$y <- wflam * flam[,ncol(flam)]
+      aspc <- filter(neigh.orography, cell.id %in% neigh.id$cell.id) %>% select(cell.id, aspect) %>%
+              mutate(z=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
+       
+      sprd.rate <-  left_join(neigh.id, select(neigh.orography, cell.id, elev), by="cell.id") %>%
+                    left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>% 
+                    mutate(dif.elev=elev.x-elev.y, 
+                           front.slope=wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
+                           front.wind=wwind * (180-ifelse(abs(windir-fire.wind)>180, 
+                                                   360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
+                    left_join(select(flam, cell.id, y), by="cell.id") %>% 
+                    left_join(select(aspc, cell.id, z), by="cell.id") %>%
+                    mutate(sr.noacc=front.slope+front.wind+y+z,
+                           sr=(front.slope+front.wind+y+z)*fire.strength,
+                           pb=(1-exp(-sr.noacc))^rpb) %>%
+                    group_by(cell.id) %>% summarize(pb=max(pb))
+      sprd.rate$burning=runif(nrow(sprd.rate),0,1) < sprd.rate$pb
+      sprd.rate
+        
+      ## Mark the cells burnt
+      is.burnt[which(coord$cell.id %in% sprd.rate$cell.id[sprd.rate$burning])] <- T
+      burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burning])
+      fire.front <- sprd.rate$cell.id[sprd.rate$burning]
+      aburnt.highintens = aburnt.highintens + sum(sprd.rate$burning)
+      burnt.cells; fire.front; aburnt.highintens
     }
     
   }  #while

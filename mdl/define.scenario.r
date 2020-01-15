@@ -14,9 +14,7 @@
 ######################################################################################
 
 define.scenario <- function(scn.name){
-  
-  library(raster)
-  
+
   print("Initializing parameters")
 
   ## Output directory (do not never change that, please!)
@@ -73,6 +71,12 @@ define.scenario <- function(scn.name){
   file.pctg.hot.days <- "PctgHotDays_rcp45"
   file.fire.suppression <- "FireSuppression_CurrExtrem"
     
+  ## Spread rate and burn probability parameters
+  fire.strength <- 1
+  rpb <- 0.6
+  stochastic.spread = 0.75
+  pb.th = 1	
+  
   ## " Save all the variables in .r file to be further loaded by landscape.dyn.r"
   if(!file.exists(out.path))
     dir.create(file.path(getwd(), out.path), showWarnings = T) 

@@ -4,6 +4,8 @@
 
 
 update.clim <- function(land, orography, MASK, species, decade, clim.scn, psdm){
+  
+  library(tidyverse)
 
   ## Tracking
   print("Updating climatic variables")
