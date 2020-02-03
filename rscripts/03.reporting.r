@@ -5,7 +5,7 @@ play <- function(){
   
   source("rscripts/03.reporting.r")
   
-  scn.name <- "Test03_rcp85_5p"
+  scn.name <- "Test03_rcp85_1p"
   plot.abundance(scn.name)
   plot.drought(scn.name)
   plot.cohort(scn.name)
@@ -17,6 +17,8 @@ species.name.color <- function(){
   species <- data.frame(spp=1:14, name=c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster",
                                          "puncinata", "aalba", "qilex", "qsuber", "qfaginea", "qhumilis",
                                          "fsylvatica", "other", "shrub"),
+                        name.sort=c("aalba","fsylvatica","other","phalepensis","pnigra","ppinaster","ppinea",
+                                    "psylvestris", "puncinata", "qfaginea", "qhumilis", "qilex", "qsuber", "shrub"),
                         color=c("chartreuse3", "darkolivegreen1", "darkseagreen", "forestgreen",
                                 "olivedrab4", "darkslategrey", "blue4", "gold", "saddlebrown",
                                 "sienna2", "palegoldenrod", "red3", "purple3", "grey70"),
@@ -69,13 +71,14 @@ plot.drought <- function(scn.name){
   dta.accum$name <- rep(species$name[-14],1)
     
   ## PLOT Area killed by decade (km2) 
+  idx <- which(species$name.sort %in% sort(unique(dta.drought$name)))
   p1 <- ggplot(data=dta.drought, aes(x=as.factor(decade), y=ha/100, fill=name)) + geom_bar(stat="identity") +
-        scale_fill_manual("Species", values=as.character(species$color.sort)) + 
+        scale_fill_manual("Species", values=as.character(species$color.sort[idx])) + 
         ggtitle("Area killed by drought per decade") + ylab("km2") + xlab("period") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   ## PLOT Pctg killed over existence by decade (%) 
   p2 <- ggplot(data=dta.drought, aes(x=as.factor(decade), y=pctg.kill, fill=name)) + geom_bar(stat="identity") +
-        scale_fill_manual("Species", values=as.character(species$color.sort)) + 
+        scale_fill_manual("Species", values=as.character(species$color.sort[idx])) + 
         ggtitle("Pctg of actual area killed by drought per decade") + ylab("%") + xlab("period") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   ## PLOT Accumulated area killed by decade (km2) 

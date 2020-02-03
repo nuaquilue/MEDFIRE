@@ -28,15 +28,6 @@ land.dyn.mdl <- function(scn.name){
     source(paste0("outputs/", scn.name, "/scn.custom.def.r"))
   
   
-  ## Set the directory for writing spatial outputs (create if it does not exist yet) 
-  if(write.sp.outputs){      
-    if(!file.exists(paste0(out.path, "/asc")))
-      dir.create(file.path(getwd(), out.path, "/asc"), showWarnings = F) 
-    if(!file.exists(paste0(out.path, "/rdata")))
-      dir.create(file.path(getwd(), out.path, "/rdata"), showWarnings = F) 
-  }
-
-  
   ## Load:
   ## 1. Mask of the study area (raster)
   ## 2. Data frame with cell.id and coordinates x, y
@@ -49,18 +40,33 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/interface.rdata")
   
   
+  ## Set the directory for writing spatial outputs (create it, if it does not exist yet) 
+  if(write.sp.outputs){      
+    if(!file.exists(paste0(out.path, "/asc")))
+      dir.create(file.path(getwd(), out.path, "/asc"), showWarnings = F) 
+    if(!file.exists(paste0(out.path, "/rdata")))
+      dir.create(file.path(getwd(), out.path, "/rdata"), showWarnings = F) 
+    BURNT <- MASK
+  }
+
+  
   ## List the name of the forest species
   species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
                "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
                   
   
-  ## Global constants
+  ## Translation equations from Basal Area to Volum, Volum with bark and Carbon
   eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
   eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
   eq.ba.carbon <- read.table("inputfiles/EqBasalAreaCarbon.txt", header=T)
   
+  
+  ## Climatic severity and pctg hot days tabes
+  clim.severity <- read.table(paste0("inputfiles/", file.clim.severity, ".txt"), header=T)
+  
+  
   ## Build the baseline time sequence and the time sequence of the processes (shared for all runs). 
-  ## 1. Climate change, 2. Interfaces, 3. Forest management
+  ## 1. Climate change, 2. Land-cover changes, 3. Forest management
   ## 4. Wildfires, 5. Prescribed burns, 6. Drought, 7. Post-fire regeneration,
   ## 8. Cohort establihsment, 9. Afforestation, 10. Growth
   time.seq <- seq(1, time.horizon, 1)
@@ -68,10 +74,7 @@ land.dyn.mdl <- function(scn.name){
     clim.schedule <- 1
   else
     clim.schedule <- seq(1, time.horizon-1, clim.step)
-  if(interface.step==0)
-    interface.schedule <- 0
-  else
-    interface.schedule <- seq(1, time.horizon, interface.step)
+  lchg.schedule <- seq(1, time.horizon, lchg.step)
   fmgmt.schedule <- seq(1, time.horizon, fmgmt.step)
   fire.schedule <- seq(1, time.horizon, fire.step)
   pb.schedule <- seq(1, time.horizon, pb.step)
@@ -83,19 +86,17 @@ land.dyn.mdl <- function(scn.name){
   
   
   ## Give identificators to processes of the model
-  clim.id <- 1;   interface.id <- 2;   fmgmt.id <- 3;   fire.id <- 4;   pb.id <- 5
+  clim.id <- 1;   lchg.id <- 2;   fmgmt.id <- 3;   fire.id <- 4;   pb.id <- 5
   drought.id <- 6;   post.fire.id <- 7; cohort.id <- 8;  afforest.id <- 9;   growth.id <- 10
   
-  
-  ## Initialize model global parameters (equal for all scn)
-  ## It's faster to initialize them in land.dyn.mdl() function than throught define.scenario()
-  ## Anyways, they should be in define.scenario.r
-  spp.distrib.rad <- 20 	# neighborhood radius to determine which species belong to that region (in pixels)
-  shrub.colon.rad <- 5 		#
 
-  
   ## Tracking data.frames
   track.fmgmt <- data.frame(run=NA, year=NA, spp=NA, sylvi=NA, sawlog=NA, wood=NA)
+  track.fire <-  data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fire.spread.type=NA, 
+                            fire.wind=NA, fire.size.target=NA, aburnt.highintens=NA, 
+                            aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
+  track.pb <-  data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
+                            fire.wind=NA, fire.size.target=NA, aburnt=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
   track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
@@ -108,7 +109,7 @@ land.dyn.mdl <- function(scn.name){
     
     ## Copy the schedulings in auxiliar vectors (only for those processes included in the current version)
     temp.clim.schedule <- clim.schedule
-    temp.interface.schedule <- interface.schedule
+    temp.lchg.schedule <- lchg.schedule
     temp.fmgmt.schedule <- fmgmt.schedule
     temp.fire.schedule <- fire.schedule
     temp.pb.schedule <- pb.schedule
@@ -139,10 +140,13 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      ## 2. INTERFACE
-      if(processes[interface.id] & t %in% temp.interface.schedule){
+      ## 2. LAND-COVER CHANGE
+      if(processes[lchg.id] & t %in% temp.lchg.schedule){
+        # do land-cover change
+          #
+        # update interface values
         interface <- update.interface(land)
-        temp.interface.schedule <- temp.interface.schedule[-1] 
+        temp.lchg.schedule <- temp.lchg.schedule[-1] 
       }
       
       
@@ -158,18 +162,56 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      burnt.cells <- integer()
       ## 4. FIRE
       if(processes[fire.id] & t %in% temp.fire.schedule){
         pigni <- prob.igni(land, clim, orography, interface)
-        burnt.cells.wind <- fire.regime(land, orography, pigni, coord, swc=1, t, burnt.cells)
+        burnt.cells <- integer()
+        burnt.intens <- integer()
+        # Decide climatic severity of the year (default is mild)
+        clim.sever <- 0
+        if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
+          clim.sever <- 1
+        # swc = wind
+        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=1, clim.sever, t, burnt.cells, burnt.intens,
+                                pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA)
+        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
+        if(nrow(fire.out[[3]])>0)
+          track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+        # swc = heat
+        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=2, clim.sever, t, burnt.cells, burnt.intens,
+                                pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA)
+        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
+        if(nrow(fire.out[[3]])>0)
+          track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+        # swc = regular
+        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=3, clim.sever, t, burnt.cells, burnt.intens,
+                                pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA)
+        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
+        if(nrow(fire.out[[3]])>0)
+          track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+        # done with fires!
+        land$tsdist[land$cell.id %in% burnt.cells] <- 0
+        land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
+        land$distype[land$cell.id %in% burnt.cells[as.logical(burnt.intens)]] <- hfire
+        land$distype[land$cell.id %in% burnt.cells[!as.logical(burnt.intens)]] <- lfire
+          # print(table(land$tsdist)); print(table(land$distype)); print(track.fire)
         temp.fire.schedule <- temp.fire.schedule[-1] 
+        rm(fire.out)
       }
       
       
       ## 5. PRESCRIBED BURNS
       if(processes[pb.id] & t %in% temp.pb.schedule){
+        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=4, clim.sever, t, burnt.cells, burnt.intens,
+                                pb.target.area, pb.convenient.area, pb.mean, pb.sd, pb.fage.th)
+        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
+        track.pb <- rbind(track.pb, data.frame(run=irun, fire.out[[3]][,c(1,2,4,5,7,8,9)]))
+        # done with prescribed burns!
+        land$tsdist[land$cell.id %in% burnt.cells] <- 0
+        land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
+        land$distype[land$cell.id %in% burnt.cells] <- pb
         temp.pb.schedule <- temp.pb.schedule[-1] 
+        rm(fire.out)
       }
       
       
@@ -238,12 +280,30 @@ land.dyn.mdl <- function(scn.name){
         temp.growth.schedule <- temp.growth.schedule[-1] 
       }
       
+      ## Print maps every time step
+          # if(write.sp.outputs){
+          #   BURNT[!is.na(MASK[])] <- land$distype
+          #   writeRaster(BURNT, paste0(out.path, "/asc/DistType_r", irun, "t", t, ".asc"), 
+          #               format="ascii", NAflag=-1, overwrite=T)
+          # }
+        
     } # time
   
+    ## Print maps at the end of the simulation period per each run
+    if(write.sp.outputs){
+      BURNT[!is.na(MASK[])] <- land$tburnt
+      # writeRaster(BURNT, paste0(out.path, "/asc/TimesBurnt_r", irun, ".asc"), 
+      #             format="ascii", NAflag=-1, overwrite=T)
+      writeRaster(BURNT, paste0(out.path, "/asc/TimesBurnt_r", irun, ".tif"), 
+                  format="GTiff", NAflag=-1, overwrite=T)
+    }
+    
   } # run
   
   print("Writing outputs")
   write.table(track.fmgmt[-1,], paste0(out.path, "/Management.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
   names(track.cohort)[4:5] <- c("spp.in", "ha")
   write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")

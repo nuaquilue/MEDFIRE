@@ -178,7 +178,7 @@ for(clim.scn in c("rcp45", "rcp85")){
 
 
 
-################### Plot SDM distribution for each scn and decade  ##################
+################### Plot my own SDM distribution for each scn and decade  ##################
 ################### with current SPP distribution ####################################
 rm(list=ls()); gc()
 species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
@@ -207,8 +207,54 @@ for(scn.clim in c("rcp45", "rcp85")){
 }
 
 
+################### Plot Quim's SDM distribution for each scn and decade  ##################
+################### with current SPP distribution ####################################
+rm(list=ls()); gc()
+# species <- c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster", "puncinata",
+#              "aalba", "qilex", "qsuber", "qfaginea", "qhumilis", "fsylvatica", "other")
+load("rscripts/ins/species.rdata")  
+for(scn.clim in c("rcp45", "rcp85")){
+  for(th in c(1, 5)){
+    load("inputlyrs/rdata/land.rdata")
+    land <- filter(land, spp<=13)  
+    for(d in seq(10,90,10)){
+      load(paste0("inputlyrs/rdata/sdm_", th, "p_", scn.clim, "_", d, ".rdata"))
+      sdm <- filter(sdm, cell.id %in% land$cell.id)
+      land$sdm <- ifelse(land$spp==1, sdm$sdm.phalepensis, 
+                    ifelse(land$spp==2, sdm$sdm.pnigra,
+                      ifelse(land$spp==3, sdm$sdm.ppinea,
+                        ifelse(land$spp==4, sdm$sdm.psylvestris,
+                          ifelse(land$spp==5, sdm$sdm.ppinaster,
+                            ifelse(land$spp==6, sdm$sdm.puncinata,
+                              ifelse(land$spp==7, sdm$sdm.aalba,
+                                ifelse(land$spp==8, sdm$sdm.qilex,
+                                  ifelse(land$spp==9, sdm$sdm.qsuber,
+                                    ifelse(land$spp==10, sdm$sdm.qfaginea,
+                                      ifelse(land$spp==11, sdm$sdm.qhumilis,
+                                        ifelse(land$spp==12, sdm$sdm.fsylvatica, sdm$sdm.other))))))))))))
+      aux <- filter(land, sdm==0) %>% group_by(spp) %>% summarize(ha=length(sdm)) %>%
+              mutate(decade=d+2000)
+      if(d==10)
+        landout <- aux
+      else
+        landout <- rbind(landout, aux)
+    }
+    idx <- which(species$name.sort %in% sort(unique(landout$spp)))
+    p <- ggplot(data=landout, aes(x=as.factor(decade), y=ha/100, fill=as.factor(spp))) + geom_bar(stat="identity") +
+          scale_fill_manual("Species", values=as.character(species$color.sort[unique(landout$spp)])) + 
+          ggtitle("Area killed by drought per decade") + ylab("km2") + xlab("period") +
+          ggtitle(paste(scn.clim, "-", th, "%")) +
+          theme_bw() + theme(axis.text.x = element_text(angle = 90),
+                             plot.title = element_text(face="bold", size=14) )
+    tiff(paste0("rscripts/outs/sdm.current.dist_", scn.clim, "_", th, "p.tiff"), width=500, height=500)
+    p
+    dev.off()
+    
+    group_by(landout, decade) %>% summarize(km2=sum(ha/100))
+  }
+}
 
-
+  
 
 # ## SPP overlapped to SDM ... hard to see anything
 # SPP <- MASK; SPP[!is.na(SPP[])] <- land$spp

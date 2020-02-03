@@ -5,9 +5,6 @@
 
 read.state.vars <- function(){
   
-  
-  
-  
   library(raster)
   
   print("Reading initial state variables")
@@ -26,6 +23,7 @@ read.state.vars <- function(){
   land <- data.frame(cell.id=1:ncell(LCF), spp=LCF[], biom=BIOMASS[], age=AGE[], tsdist=TSDIST[])
   land <- land[!is.na(land$spp),]
   land$distype <- NA; land$distype[land$spp<=17] <- 0
+  land$tburnt <- land$distype
   
   save(land, file="inputlyrs/rdata/land.rdata")
    

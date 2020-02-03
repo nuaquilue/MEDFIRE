@@ -1,5 +1,3 @@
-
-
 update.interface <- function(land){
   
   ## Traking
@@ -61,8 +59,9 @@ update.interface <- function(land){
   interface$x <- apply(interface[,-1] * matrix(1:7, nrow=nrow(interface), ncol=7, byrow=T), 1, sum )
   
   ## Join to the final data.frame
-  land.utm <- left_join(land.utm, select(interface, utm, x), by="utm") %>% select(cell.id, x)
-  # save(interface, file=paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
-  return(land.utm) 
-  
+  land.utm <- left_join(land.utm, select(interface, utm, x), by="utm") %>% select(x)
+    # interface <- land.utm
+    # save(interface, file="inputlyrs/rdata/interface.rdata")
+  return(land.utm)
+    
 }
