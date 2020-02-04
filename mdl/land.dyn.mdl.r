@@ -20,6 +20,8 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/afforestation.r")
   source("mdl/forest.mgmt.r")
   source("mdl/fire.regime.r")
+  source("mdl/post.fire.r")
+  source("mdl/auxiliars.r")
   
   ## Load scenario definition (global variables and scenario parameters)
   ## and customized scenario parameters
@@ -44,8 +46,8 @@ land.dyn.mdl <- function(scn.name){
   if(write.sp.outputs){      
     if(!file.exists(paste0(out.path, "/asc")))
       dir.create(file.path(getwd(), out.path, "/asc"), showWarnings = F) 
-    if(!file.exists(paste0(out.path, "/rdata")))
-      dir.create(file.path(getwd(), out.path, "/rdata"), showWarnings = F) 
+    # if(!file.exists(paste0(out.path, "/rdata")))
+      # dir.create(file.path(getwd(), out.path, "/rdata"), showWarnings = F) 
     BURNT <- MASK
   }
 
@@ -96,9 +98,10 @@ land.dyn.mdl <- function(scn.name){
                             fire.wind=NA, fire.size.target=NA, aburnt.highintens=NA, 
                             aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
   track.pb <-  data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
-                            fire.wind=NA, fire.size.target=NA, aburnt=NA)
+                          fire.wind=NA, fire.size.target=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
   track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
+  track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   
@@ -129,12 +132,12 @@ land.dyn.mdl <- function(scn.name){
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
-      print(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon))
-    
+      cat(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon), "\n")
+      
       
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
-        clim <- update.clim(land, orography, MASK, species, decade=(1+floor(t/10))*10, clim.scn, psdm)
+        clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn, psdm)
         load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", (1+floor(t/10))*10, ".rdata"))
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
@@ -152,7 +155,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 3. FOREST MANAGEMENT
       if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
-        aux <- forest.mgmt(land, clim, harvest, coord, t)
+        aux <- forest.mgmt(land, coord, clim, harvest, t)
         land$tsdist[land$cell.id %in% aux$cell.id] <- 0
         land$distype[land$cell.id %in% aux$cell.id] <- fmgmt.id*10+aux$sylvi
         track.fmgmt <- rbind(track.fmgmt, 
@@ -163,38 +166,43 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 4. FIRE
+      ## Tracking variables to be re-initialized each time step
+      ## Out of the "if(fires)" in case only prescribed burns are applied
+      burnt.cells <- integer()
+      burnt.intens <- integer()
+      annual.burnt <- 0
       if(processes[fire.id] & t %in% temp.fire.schedule){
-        pigni <- prob.igni(land, clim, orography, interface)
-        burnt.cells <- integer()
-        burnt.intens <- integer()
+        pigni <- prob.igni(land, orography, clim, interface)
         # Decide climatic severity of the year (default is mild)
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
           clim.sever <- 1
         # swc = wind
-        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=1, clim.sever, t, burnt.cells, burnt.intens,
-                                pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA)
+        fire.out <- fire.regime(MASK, land, coord, orography, pigni, swc=1, clim.sever, t, 
+                                burnt.cells, burnt.intens, annual.burnt)
         burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
         if(nrow(fire.out[[3]])>0)
           track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+        annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
         # swc = heat
-        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=2, clim.sever, t, burnt.cells, burnt.intens,
-                                pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA)
+        fire.out <- fire.regime(MASK, land, coord, orography, pigni, swc=2, clim.sever, t, 
+                                burnt.cells, burnt.intens, annual.burnt)
         burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
         if(nrow(fire.out[[3]])>0)
           track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+        annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
         # swc = regular
-        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=3, clim.sever, t, burnt.cells, burnt.intens,
-                                pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA)
+        fire.out <- fire.regime(MASK, land, coord, orography, pigni, swc=3, clim.sever, t, 
+                                burnt.cells, burnt.intens, annual.burnt)
         burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
         if(nrow(fire.out[[3]])>0)
           track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+        annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
         # done with fires!
         land$tsdist[land$cell.id %in% burnt.cells] <- 0
         land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
         land$distype[land$cell.id %in% burnt.cells[as.logical(burnt.intens)]] <- hfire
         land$distype[land$cell.id %in% burnt.cells[!as.logical(burnt.intens)]] <- lfire
-          # print(table(land$tsdist)); print(table(land$distype)); print(track.fire)
         temp.fire.schedule <- temp.fire.schedule[-1] 
         rm(fire.out)
       }
@@ -202,14 +210,16 @@ land.dyn.mdl <- function(scn.name){
       
       ## 5. PRESCRIBED BURNS
       if(processes[pb.id] & t %in% temp.pb.schedule){
-        fire.out <- fire.regime(MASK, land, orography, pigni, coord, swc=4, clim.sever, t, burnt.cells, burnt.intens,
-                                pb.target.area, pb.convenient.area, pb.mean, pb.sd, pb.fage.th)
-        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
-        track.pb <- rbind(track.pb, data.frame(run=irun, fire.out[[3]][,c(1,2,4,5,7,8,9)]))
+        fire.out <- fire.regime(MASK, land, coord, orography, pigni, swc=4, clim.sever, t, 
+                                burnt.cells, burnt.intens, annual.burnt)
+        pb.cells <- fire.out[[1]]
+        if(nrow(fire.out[[3]])>0)
+          track.pb <- rbind(track.pb, data.frame(run=irun, fire.out[[3]][,c(1,3,4,6,7,9)]))
         # done with prescribed burns!
-        land$tsdist[land$cell.id %in% burnt.cells] <- 0
-        land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
-        land$distype[land$cell.id %in% burnt.cells] <- pb
+        pb.cells <- pb.cells[!(pb.cells %in% burnt.cells)]
+        land$tsdist[land$cell.id %in% pb.cells] <- 0
+        land$tburnt[land$cell.id %in% pb.cells] <- land$tburnt[land$cell.id %in% pb.cells] + 1
+        land$distype[land$cell.id %in% pb.cells] <- pb
         temp.pb.schedule <- temp.pb.schedule[-1] 
         rm(fire.out)
       }
@@ -220,7 +230,7 @@ land.dyn.mdl <- function(scn.name){
       if(processes[drought.id] & t %in% temp.drought.schedule){
         kill.cells <- drought(land, clim, t)
         land$tsdist[land$cell.id %in% kill.cells] <- 0
-        land$distype[land$cell.id %in% kill.cells] <- drought.id
+        land$distype[land$cell.id %in% kill.cells] <- drght
         track.drougth <- rbind(track.drougth,
                               data.frame(run=irun, year=t, 
                                          filter(land, cell.id %in% kill.cells) %>% group_by(spp) %>% summarize(ha=length(spp))) )
@@ -230,13 +240,24 @@ land.dyn.mdl <- function(scn.name){
       
       ## 7. POST-FIRE REGENERATION
       if(processes[post.fire.id] & t %in% temp.post.fire.schedule){
+        aux  <- post.fire(land, coord, orography, clim, sdm)
+        if(nrow(aux)>0){
+          spp.out <- land$spp[land$cell.id %in% aux$cell.id]
+          land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
+          land$biom[land$cell.id %in% aux$cell.id] <- growth.10y(aux, aux)
+          clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
+          clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
+          clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
+          track.post.fire <- rbind(track.post.fire, data.frame(run=irun, year=t, table(spp.out, aux$spp)))  
+        }
+        rm(aux); rm(burnt.cells); rm(pb.cells)
         temp.post.fire.schedule <- temp.post.fire.schedule[-1] 
       }
       
       
       ## 8. COHORT ESTABLISHMENT
       if(processes[cohort.id] & t %in% temp.cohort.schedule & length(kill.cells)>0){
-        aux  <- cohort.establish(land, clim, orography, sdm, coord, spp.distrib.rad, drought.id)
+        aux  <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% kill.cells]
         land$spp[land$cell.id %in% kill.cells] <- aux$spp
         land$biom[land$cell.id %in% kill.cells] <- growth.10y(aux, aux)
@@ -251,7 +272,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 9. AFFORESTATION
       if(processes[afforest.id] & t %in% temp.afforest.schedule){
-        aux  <- afforestation(land, clim, orography, sdm, coord, shrub.colon.rad)
+        aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- growth.10y(aux, aux)
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
@@ -286,7 +307,11 @@ land.dyn.mdl <- function(scn.name){
           #   writeRaster(BURNT, paste0(out.path, "/asc/DistType_r", irun, "t", t, ".asc"), 
           #               format="ascii", NAflag=-1, overwrite=T)
           # }
-        
+      
+      ## Deallocate memory
+      gc()  
+      cat("\n")
+      
     } # time
   
     ## Print maps at the end of the simulation period per each run
@@ -300,11 +325,13 @@ land.dyn.mdl <- function(scn.name){
     
   } # run
   
-  print("Writing outputs")
+  cat("... writing outputs", "\n")
   write.table(track.fmgmt[-1,], paste0(out.path, "/Management.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
+  names(track.post.fire)[4:5] <- c("spp.in", "ha")
+  write.table(track.post.fire[-1,], paste0(out.path, "/PostFire.txt"), quote=F, row.names=F, sep="\t")
   names(track.cohort)[4:5] <- c("spp.in", "ha")
   write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
   names(track.afforest)[3:4] <- c("spp", "ha")

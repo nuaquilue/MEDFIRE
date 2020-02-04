@@ -7,7 +7,7 @@ read.state.vars <- function(){
   
   library(raster)
   
-  print("Reading initial state variables")
+  cat("Reading initial state variables", "\n")
   
   ## To not copy all .asc layers in the inputlyrs folder of MEDFIRE in SpatialModelsR, I read them
   ## directly form the MEDFIRE_II folder in SpatialModels

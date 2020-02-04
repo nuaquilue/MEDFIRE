@@ -7,7 +7,7 @@ read.static.vars <- function(){
   library(raster)
   library(tidyverse)
   
-  print("Reading orographyic, utm, harvest-restriction variables")
+  cat("Reading orographyic, utm, harvest-restriction variables", "\n")
   
   ## To not copy all .asc layers in the inputlyrs folder of MEDFIRE in SpatialModelsR, I read them
   ## directly form the MEDFIRE_II folder in SpatialModels

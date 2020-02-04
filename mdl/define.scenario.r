@@ -15,7 +15,7 @@
 
 define.scenario <- function(scn.name){
 
-  print("Initializing parameters")
+  cat("Initializing parameters", "\n")
 
   ## Output directory (do not never change that, please!)
   out.path <- paste0("outputs/", scn.name)
@@ -31,27 +31,34 @@ define.scenario <- function(scn.name){
   hfire <- 4
   lfire <- 5
   pb <- 6
-  drought <- 7
+  drght <- 7
   afforest <- 8
     
-  ## Processes of the model included (IN our OUT) and recurrence (in years) of each process
-  ## 1. Climate change, 2. Land-cover changes, 3. Forest management
-  ## 4. Wildfires, 5. Prescribed burns, 6. Drought, 7. Post-fire regeneration,
-  ## 8. Cohort establihsment, 9. Afforestation, 10. Growth
-  processes <- c(TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, TRUE)
-  clim.step <- 10
-  lchg.step <- 5
-  fmgmt.step <- 1
-  fire.step <- 1
-  pb.step <- 1
-  drought.step <- 1
-  post.fire.step <- 1
-  cohort.step <- 1
-  afforest.step <- 1
-  growth.step <- 1
+  ## Processes of the model included (TRUE-IN our FALSE-OUT),
+  ## process ID, and frequency (in years) of each process
+  processes <- c(TRUE,   # 1. Climate change
+                 FALSE,  # 2. Land-cover changes
+                 FALSE,  # 3. Forest management
+                 TRUE,   # 4. Wildfires
+                 TRUE,   # 5. Prescribed burns
+                 TRUE,  # 6. Drought
+                 TRUE,   # 7. Post-fire regeneration
+                 TRUE,  # 8. Cohort establihsment
+                 TRUE,  # 9. Afforestation
+                 TRUE)   # 10. Growth
+  clim.id <- 1; clim.step <- 10
+  lcgh.id <- 2; lchg.step <- 5
+  fmgmt.id <- 3; fmgmt.step <- 1
+  fire.id <- 4; fire.step <- 1
+  pb.id <- 5; pb.step <- 1
+  drought.id <- 6; drought.step <- 1
+  post.fire.id <- 7; post.fire.step <- 1
+  cohort.id <- 8; cohort.step <- 1
+  afforest.id <- 9; afforest.step <- 1
+  growth.id <- 10; growth.step <- 1
   
   ## Time lenght (in years) of a model simulation, from 2010 to 2100
-  time.horizon <-  6
+  time.horizon <-  1
   
   ## Number of runs (i.e. replicas)
   nrun <- 1
@@ -64,21 +71,23 @@ define.scenario <- function(scn.name){
   clim.scn <- "rcp85"
   psdm <- 5
   file.dmnd.harvest <- "DemandHarvest_Bioenergy"
-  file.clim.severity <- "ClimaticSeverity_fixABA"
+  file.clim.severity <- "ClimaticSeverity_test"
   file.pctg.hot.days <- "PctgHotDays_rcp45"
   file.fire.suppression <- "FireSuppression_CurrExtrem"
     
   ## Spread rate, burn probability parameters, prescribed burns
   fire.strength <- 1
-  rpb <- 0.6
-  stochastic.spread <- 0.75
-  pb.th <- 1	
+  rpb <- 2
+  stochastic.spread <- 1
+  pb.th <- 0.9	
   fire.intens.th <- 0.35  # high vs. low intensity fire, SR_noAcc <= fire.intens.th
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
-  pb.convenient.area <- 15000
+  pb.convenient.area <- 400 ## should be 15.000 ha
+  accum.burnt.area <- rep(pb.convenient.area,7)
   pb.mean <- 1.974
   pb.sd <- 0.683
   pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
+  
   
   ## Save all the variables in .r file to be further loaded by landscape.dyn.r
   if(!file.exists(out.path))

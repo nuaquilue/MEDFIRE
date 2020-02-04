@@ -1,4 +1,4 @@
-Spp	FireTrait
+spp	trait
 1	100
 2	0
 3	0

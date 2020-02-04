@@ -1,4 +1,4 @@
-Spp	MatureAge	RegenerationAge	MaxAge
+spp	mature	regener	max
 1	30	15	150
 2	30	15	400
 3	30	15	150

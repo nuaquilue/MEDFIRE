@@ -3,15 +3,14 @@
 ###
 ######################################################################################
 
-fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t, burnt.cells, burnt.intens,
-                        pb.target.area=NA, pb.convenient.area=NA, pb.mean=NA, pb.sd=NA, pb.fage.th=NA){
+fire.regime <- function(MASK, land, coord, orography, pigni, swc, clim.sever, t, 
+                        burnt.cells, burnt.intens, annual.burnt=0){
+                        
+  cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 
+                               ifelse(swc==3, "Regular.", "Prescribed.")))))
 
-  print(paste("Fires in SWC:", ifelse(swc==1, "Wind", ifelse(swc==2, "Heat", 
-                               ifelse(swc==3, "Regular", "Prescribed")))))
-  
   ## Function to select items not in a vector
   `%notin%` <- Negate(`%in%`)
-  
   
   ## Read and load input data
   load("inputlyrs/rdata/pfst.pwind.rdata")
@@ -40,31 +39,39 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
                                windir=c(-1,270,90,180,0,225,45,135,315))
   
   
-  ## Decide climatic severity and find annual target area for wildfires
-  if(sum(clim.severity[clim.severity$year==t,2:4])>0){  # fixed annual burnt area
-    is.aba.fix <- T
-    area.target <- clim.severity[clim.severity$year==t, swc+1]
-  }
-  else{ # stochastic annual burnt area
-    is.aba.fix <- F
-    if(clim.sever==1 & swc<=2){  # decide if climatic severity is extrem for 'wind' or 'heat' swc
-      pctg <- pctg.hot.days[pctg.hot.days$year==t, swc+1]
-      prob.extrem <- 1/(1+exp(-(prob.hot$inter[swc] + prob.hot$slope[swc]*pctg)))
-      if(runif(1,0,100) <= prob.extrem) # extreme
-          clim.sever <- 2
+  ## Find either fixed or stochastic annual target area for wildfires
+  if(swc<4){ 
+    ## Fixed
+    if(sum(clim.severity[clim.severity$year==t,2:4])>0){  #
+      is.aba.fix <- T
+      area.target <- clim.severity[clim.severity$year==t, swc+1]
     }
-    area.target <- round(min(200000, max(10, 
-                         rlnorm(1, aba.dist$meanlog[aba.dist$clim==clim.sever & aba.dist$swc==swc],
-                                   aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc]))))
+    ## Find stochastic annual burnt area
+    else{ 
+      is.aba.fix <- F
+      if(clim.sever==1 & swc<=2){  # decide if climatic severity is extrem for 'wind' or 'heat' swc
+        pctg <- pctg.hot.days[pctg.hot.days$year==t, swc+1]
+        prob.extrem <- 1/(1+exp(-(prob.hot$inter[swc] + prob.hot$slope[swc]*pctg)))
+        if(runif(1,0,100) <= prob.extrem) # extreme
+            clim.sever <- 2
+      }
+      area.target <- round(min(200000, max(10, 
+                           rlnorm(1, aba.dist$meanlog[aba.dist$clim==clim.sever & aba.dist$swc==swc],
+                                    aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc])))) 
+    }  
   }
   ## Find annual target area for prescribed burns
-  if(swc==4 & !is.na(pb.target.area))
-    area.target <- pb.target.area
-  if(swc==4 & is.na(pb.target.area)){
-    # sum
-    area.target <- pb.convenient.area*7
-  }
-  print(paste("  annual target area:", area.target))
+  else{
+    if(!is.na(pb.target.area))
+      area.target <- pb.target.area
+    else{
+      accum.burnt.area[2:7] <- accum.burnt.area[1:6]
+      accum.burnt.area[1] <- annual.burnt
+      area.target <- pmax(0,pb.convenient.area*7-sum(accum.burnt.area))
+    }
+  }  
+  cat(paste(" Annual target area:", area.target), "\n")
+  
   
   ## Update prob.igni according to swc
   pigni <- data.frame(cell.id=land$cell.id, p=pigni*pfst.pwind[,ifelse(swc==1,1,2)])
@@ -82,6 +89,7 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
   fire.id <- 0
   while(area.target>0){
     
+    ## ID for each fire event
     fire.id <- fire.id+1
     
     ## Select an ignition point, to then decide the fire spread type, the fire suppression level,
@@ -107,7 +115,8 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
     wfuel <- fst.sprd.weight[3,fire.spread.type+1]
     wflam <- fst.sprd.weight[4,fire.spread.type+1]
     waspc <- fst.sprd.weight[5,fire.spread.type+1]
-  
+    wwind+wslope+wfuel+wflam+waspc
+    
     ## Assign the fire suppression levels
     sprd.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$sprd.th
     fuel.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$fuel.th
@@ -134,12 +143,11 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
     ## Bound fire.size.target to not exceed remaining area.target
     if(fire.size.target>area.target)
       fire.size.target <- area.target
-    print(paste("  fire.id:", fire.id, "- fire size target:", fire.size.target))
     
     ## Initialize tracking variables
     fire.front <- igni.id
-    is.burnt <- vector("integer", nrow(land))
-    is.burnt[which(coord$cell.id==igni.id)] <- T
+    # is.burnt <- vector("integer", nrow(land))
+    # is.burnt[which(coord$cell.id==igni.id)] <- T
     aburnt.lowintens <- 0
     aburnt.highintens <- 1  # ignition always burnt, and it does in high intensity
     if(swc==4){
@@ -148,6 +156,7 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
     asupp.sprd <- 0
     asupp.fuel <- 0
     burnt.cells <- c(burnt.cells, igni.id)
+    visit.cells <- igni.id
     burnt.intens <- c(burnt.intens, ifelse(swc<4,T,F))
     
     ## Start speading from active cells (i.e. the fire front)
@@ -163,7 +172,7 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
                              source.id=rep(fire.front, 9),
                              dist=as.numeric(neighs$nn.dists))
       neigh.id <- mutate(neigh.id, x=cell.id-source.id) %>% left_join(default.windir, by="x") %>% select(-x) 
-      neigh.id <- filter(neigh.id, cell.id %notin% burnt.cells)
+      neigh.id <- filter(neigh.id, cell.id %notin% visit.cells)  #
       neigh.id
       
       ## Filter 'orography' for source and neigbour cells
@@ -179,27 +188,38 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
       ## Compute spread rate, probability of burning and actual burning state (T or F)
       sprd.rate <-  left_join(neigh.id, select(neigh.orography, cell.id, elev), by="cell.id") %>%
                     left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>% 
-                    mutate(dif.elev=elev.x-elev.y, 
-                           front.slope=wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
-                           front.wind=wwind * (180-ifelse(abs(windir-fire.wind)>180, 
-                                                   360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
+                    mutate(dif.elev = elev.x-elev.y, 
+                           front.slope = wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
+                           front.wind = wwind * (ifelse(abs(windir-fire.wind)>180, 
+                                                    360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>%
                     left_join(select(flam, cell.id, y), by="cell.id") %>% 
                     left_join(select(aspc, cell.id, z), by="cell.id") %>%
                     mutate(sr.noacc=front.slope+front.wind+y+z,
-                           sr=(front.slope+front.wind+y+z)*fire.strength,
-                           pb=(1-exp(-sr.noacc))^rpb) %>%
+                           # sr=(front.slope+front.wind+y+z)*fire.strength,
+                           # pb1=(1-exp(-sr.noacc))^rpb,
+                           # pb2=1-exp(-sr.noacc^rpb),
+                           pb=sr.noacc^rpb ) %>%
                     group_by(cell.id) %>% summarize(sr.noacc=max(sr.noacc), pb=max(pb))
-      sprd.rate$burning=runif(nrow(sprd.rate),0,1) < sprd.rate$pb
+      sprd.rate$rand=runif(nrow(sprd.rate),0,pb.th) * runif(nrow(sprd.rate),stochastic.spread,1) 
+      sprd.rate$burning <- sprd.rate$rand <= sprd.rate$pb #* runif(nrow(sprd.rate),stochastic.spread,1)
       sprd.rate
         
-      ## Mark the cells burnt
-      is.burnt[which(coord$cell.id %in% sprd.rate$cell.id[sprd.rate$burning])] <- T
+      ## Mark the cells burnt and visit
+      # is.burnt[which(coord$cell.id %in% sprd.rate$cell.id[sprd.rate$burning])] <- T
       burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burning])
+      visit.cells <- c(visit.cells, sprd.rate$cell.id)
       burnt.intens <- c(burnt.intens, sprd.rate$sr.noacc[sprd.rate$burning]>ifelse(swc<4,fire.intens.th,100))
       fire.front <- sprd.rate$cell.id[sprd.rate$burning]
       aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$sr.noacc<=ifelse(swc<4,fire.intens.th,100))
       aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$sr.noacc>ifelse(swc<4,fire.intens.th,100))
-        # print(paste("fire.id:", fire.id, " - aburnt:", aburnt.highintens+aburnt.lowintens))
+      # cat(paste("fire.id", fire.id, "- fire.size", fire.size.target, "-", aburnt.lowintens + aburnt.highintens + asupp.fuel + asupp.sprd), "\n")
+      
+      ## Some times it crashes? When? This break is equal to add the conditions in the while.
+      if(is.na(aburnt.lowintens + aburnt.highintens + asupp.fuel + asupp.sprd)){
+        cat(aburnt.lowintens, "\n"); cat(aburnt.highintens, "\n")
+        cat(asupp.fuel, "\n"); cat(asupp.sprd, "\n")
+      }
+      
     } # while 'fire'
     
     ## escriu algo sobre aquest incendi
@@ -209,6 +229,7 @@ fire.regime <- function(MASK, land, orography, pigni, coord, swc, clim.sever, t,
     
     ## Update annual burnt area
     area.target <- area.target - (aburnt.lowintens+aburnt.highintens)
+    cat(paste("annual area target", area.target), "\n")
     
   }  #while 'year'
   

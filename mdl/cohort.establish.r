@@ -2,10 +2,10 @@
 ##
 ######################################################################################
 
-cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad, drought.id){
+cohort.establish <- function(land, coord, orography, clim, sdm){
   
   ## Tracking
-  print("Cohort establishment")
+  cat("Cohort establishment", "\n")
   
   ## Read matrix of secondary species according to species - sqi
   secondary.spp <- read.table("inputfiles/SecondarySpp.txt", header=T)
@@ -22,8 +22,8 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
   nneigh <- seq(3,41,2) + cumsum(seq(1,40,2)*2)
 
   ## Coordinates of killed cells and their closest neighbours (do not count for the cell itself)
-  killed.coord <- filter(land, tsdist==0, distype==drought.id) %>% select(cell.id) %>% left_join(coord, by = "cell.id")
-  neigh.id <- nn2(coord[,-1], killed.coord[,-1],  searchtype="priority", k=nneigh[spp.distrib.rad])
+  killed.cells <- filter(land, tsdist==0, distype==drght) %>% left_join(coord, by = "cell.id")
+  neigh.id <- nn2(coord[,-1], select(killed.cells,x,y),  searchtype="priority", k=nneigh[spp.distrib.rad])
   neigh.id <- neigh.id$nn.idx
   neigh.spp <- data.frame(cell.id=coord$cell.id[neigh.id[,1]],
                matrix(land$spp[neigh.id[,-1]], nrow=nrow(neigh.id), ncol=ncol(neigh.id)-1) )
@@ -36,14 +36,15 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
   ## Look up cells killed by drought, add sqi data, then add the sencondary species
   ## (according to dominant spp and sqi), then add sdm of all tree species and finally
   ## add the number of forest spp in the neighbourhood
-  killed <- filter(land, tsdist==0, distype==drought.id) %>% left_join(select(clim, cell.id, sqi), by = "cell.id") %>%
-            left_join(secondary.spp, by = c("spp", "sqi")) %>% left_join(sdm, by = "cell.id") %>% 
-            left_join(neigh.spp, by = "cell.id")
+  killed.cells <- left_join(killed.cells, select(clim, cell.id, sqi), by = "cell.id") %>%
+                  left_join(secondary.spp, by = c("spp", "sqi")) %>% left_join(sdm, by = "cell.id") %>% 
+                  left_join(neigh.spp, by = "cell.id")
     
   ## Select spp among available
-  new.cohort <- data.frame(cell.id=killed$cell.id,
-                           spp=apply(select(killed, phalepensis:shrub) * 
-                                       select(killed, sdm.phalepensis:sdm.shrub) * select(killed, X1:X14), 1, select.cohort), 
+  new.cohort <- data.frame(cell.id=killed.cells$cell.id,
+                           spp=apply(select(killed.cells, phalepensis:shrub) * 
+                                       select(killed.cells, sdm.phalepensis:sdm.shrub) * 
+                                         select(killed.cells, X1:X14), 1, select.cohort), 
                            biom=0, sdm=1, age=1 )
   
   ## Join climatic and orographic variables to compute sq and then sqi
@@ -66,13 +67,3 @@ cohort.establish <- function(land, clim, orography, sdm, coord, spp.distrib.rad,
   return(select(new.cohort, -temp, -precip))
 }
 
-
-count.spp <- function(x){
-  return(c(sum(x==1), sum(x==2), sum(x==3), sum(x==4), sum(x==5), sum(x==6), sum(x==7),
-           sum(x==8), sum(x==9), sum(x==10), sum(x==11), sum(x==12), sum(x==13)))
-}
-
-
-select.cohort <- function(x){
-  return(sample(1:14, 1, replace=F, prob=x))
-}

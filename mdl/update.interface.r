@@ -1,7 +1,7 @@
 update.interface <- function(land){
   
   ## Traking
-  print("Update interfaces")
+  cat("Update interfaces", "\n")
   
   ## UTM df
   load("inputlyrs/rdata/utm.rdata")

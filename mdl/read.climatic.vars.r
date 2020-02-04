@@ -26,7 +26,7 @@ read.climatic.vars <- function(){
   for(clim.scn in c("rcp45", "rcp85")){
     for(decade in seq(10,90,10)){
       
-      print(paste("Building: scenario", clim.scn, "- decade", decade))
+      cat(paste("Building: scenario", clim.scn, "- decade", decade), "\n")
       
       ## Update annual minimum temp and annual precip
       ## Change resolution and extend to match the default
@@ -46,7 +46,7 @@ read.climatic.vars <- function(){
       
       for(p in c(1)){
         
-        print(paste("Threshold", p))
+        cat(paste("Threshold", p), "\n")
         
         ## Update list of SDMs
         ## Change resolution and extend to match the default

@@ -1,8 +1,8 @@
 
-prob.igni <- function(land, clim, orography, interface){
+prob.igni <- function(land, orography, clim, interface){
   
   ## Tracking
-  print("Prob. ignition")
+  # print("Prob. ignition")
   
   ## Read ignition probability model
   pigni.mdl <- unlist(read.table("inputfiles/ProbIgniMdl.txt", header=T))

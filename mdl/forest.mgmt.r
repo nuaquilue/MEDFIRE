@@ -2,10 +2,10 @@
 ##
 ######################################################################################
 
-forest.mgmt <- function(land, clim, orography, coord, t){
+forest.mgmt <- function(land, coord, clim, orography, t){
   
   ## Tracking
-  print("Forest Management")
+  cat("Forest Management")
   
   ## Read management rules
   mgmt.rules <- read.table("inputfiles/MgmtRules.txt", header=T)

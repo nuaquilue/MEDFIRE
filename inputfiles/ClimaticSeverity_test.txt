@@ -1,5 +1,5 @@
 year	aba.wind	aba.heat	aba.regu	prob.sevr
-1	296	0	0	0
+1	600	0	0	0
 2	445	0	0	0
 3	1355	0	0	100
 4	299	0	0	0

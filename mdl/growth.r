@@ -5,7 +5,7 @@
 growth <- function(land, clim){
  
   ## Tracking
-  print("Species growth")
+  cat("Species growth", "\n")
 
   ## Read coefficients
   growth.coeff <- read.table("inputfiles/GrowthSpp.txt", header=T)
@@ -39,7 +39,7 @@ growth <- function(land, clim){
 growth.10y <- function(land, clim){
   
   ## Tracking
-  print("Species growth")
+  cat("Species growth", "\n")
   
   ## Read coefficients
   growth.coeff <- read.table("inputfiles/GrowthSpp.txt", header=T)

@@ -3,12 +3,12 @@
 ######################################################################################
 
 
-update.clim <- function(land, orography, MASK, species, decade, clim.scn, psdm){
+update.clim <- function(MASK, land, orography, decade, clim.scn, psdm){
   
   library(tidyverse)
 
   ## Tracking
-  print("Updating climatic variables")
+  cat("Updating climatic variables", "\n")
 
   ## Read coefficients of site quality
   site.quality.spp <- read.table("inputfiles/SiteQualitySpp.txt", header=T)
