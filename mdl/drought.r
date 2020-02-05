@@ -12,11 +12,11 @@ drought <- function(land, clim, t){
   nkill <- round(table(to.kill$spp) /(10 - (t-(t %/% 10)*10) + 1))
   
   ## Kill randomly as many cells per spp
-  kill.cells <- integer()
+  killed.cells <- integer()
   for(i in names(nkill)){
     if(nkill[i]>0)
       kill.cells <- c(kill.cells, sample(to.kill$cell.id[to.kill$spp==i], nkill[i], replace=F))
   }
   
-  return(kill.cells)
+  return(killed.cells)
 }

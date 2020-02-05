@@ -40,14 +40,14 @@ define.scenario <- function(scn.name){
                  FALSE,  # 2. Land-cover changes
                  FALSE,  # 3. Forest management
                  TRUE,   # 4. Wildfires
-                 TRUE,   # 5. Prescribed burns
-                 TRUE,  # 6. Drought
-                 TRUE,   # 7. Post-fire regeneration
-                 TRUE,  # 8. Cohort establihsment
-                 TRUE,  # 9. Afforestation
+                 FALSE,   # 5. Prescribed burns
+                 FALSE,  # 6. Drought
+                 FALSE,   # 7. Post-fire regeneration
+                 FALSE,  # 8. Cohort establihsment
+                 FALSE,  # 9. Afforestation
                  TRUE)   # 10. Growth
   clim.id <- 1; clim.step <- 10
-  lcgh.id <- 2; lchg.step <- 5
+  lchg.id <- 2; lchg.step <- 5
   fmgmt.id <- 3; fmgmt.step <- 1
   fire.id <- 4; fire.step <- 1
   pb.id <- 5; pb.step <- 1
@@ -58,7 +58,7 @@ define.scenario <- function(scn.name){
   growth.id <- 10; growth.step <- 1
   
   ## Time lenght (in years) of a model simulation, from 2010 to 2100
-  time.horizon <-  1
+  time.horizon <-  3
   
   ## Number of runs (i.e. replicas)
   nrun <- 1
@@ -76,10 +76,10 @@ define.scenario <- function(scn.name){
   file.fire.suppression <- "FireSuppression_CurrExtrem"
     
   ## Spread rate, burn probability parameters, prescribed burns
-  fire.strength <- 1
-  rpb <- 2
+  rpb <- 1.7
   stochastic.spread <- 1
-  pb.th <- 0.9	
+  pb.upper.th <- 0.8	
+  pb.lower.th <- 0.1
   fire.intens.th <- 0.35  # high vs. low intensity fire, SR_noAcc <= fire.intens.th
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
   pb.convenient.area <- 400 ## should be 15.000 ha
