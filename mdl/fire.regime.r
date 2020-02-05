@@ -172,7 +172,7 @@ fire.regime <- function(MASK, land, coord, orography, pigni, swc, clim.sever, t,
                              source.id=rep(fire.front, 9),
                              dist=as.numeric(neighs$nn.dists))
       neigh.id <- mutate(neigh.id, x=cell.id-source.id) %>% left_join(default.windir, by="x") %>% select(-x) 
-      neigh.id <- filter(neigh.id, cell.id %notin% visit.cells)  #
+      neigh.id <- filter(neigh.id, cell.id %notin% visit.cells)  #before it was burnt.cells
       neigh.id
       
       ## Filter 'orography' for source and neigbour cells
