@@ -36,12 +36,15 @@ read.climatic.vars <- function(){
       PRECIP <- raster(paste0("inputlyrs/asc/", clim.scn, "/", decade, "/plan.asc"))
       PRECIP <- disaggregate(PRECIP, fact=c(10,10))
       PRECIP <- extend(PRECIP, extCat)
+      RAD <- raster(paste0("inputlyrs/asc/", clim.scn, "/", decade, "/Radan.asc"))
+      RAD <- disaggregate(RAD, fact=c(10,10))
+      RAD <- extend(RAD, extCat)
       
-      ## Build a data frame with MASK, TEMP, and PRECIP 
+      ## Build a data frame with MASK, TEMP, PRECIP and RAD
       ## And keep only cells from CAT
-      clim <- data.frame(cell.id=1:ncell(MASK), mask=MASK[], temp=TEMP[], precip=PRECIP[])
+      clim <- data.frame(cell.id=1:ncell(MASK), mask=MASK[], temp=TEMP[], precip=PRECIP[], rad=RAD[])
       clim  <-  clim[!is.na(clim$mask),]
-      clim <- select(clim, cell.id, temp, precip)
+      clim <- select(clim, cell.id, temp, precip, rad)
       save(clim, file=paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
       
       for(p in c(1)){

@@ -27,10 +27,8 @@ read.static.vars <- function(){
   ELEVATION <- raster(paste0(mdl.path, "/inputlyrs/asc/DEM_100m.asc"))
   ASPECT <- raster(paste0(mdl.path, "/inputlyrs/asc/Aspect_100m.asc"))
   SLOPE <- raster(paste0(mdl.path, "/inputlyrs/asc/SlopeDegree_100m.asc"))
-  SOLAR <- raster(paste0(mdl.path, "/inputlyrs/asc/SolarRad_100m.asc"))
   ROAD <- raster(paste0(mdl.path, "/inputlyrs/asc/DensRoad_100m.asc"))
-  orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], 
-                          solar=SOLAR[], road=ROAD[])
+  orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], road=ROAD[])
   orography <- orography[!is.na(MASK[]),]
   save(orography, file="inputlyrs/rdata/orography.rdata")
   

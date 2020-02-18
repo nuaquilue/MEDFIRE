@@ -40,7 +40,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
   
   ## Apply the afforestation model
   oldneigh <- apply(neigh.spp, 1, count.forest)
-  z = afforest.mdl[1] + afforest.mdl[2]*orography$solar[neigh.id[,1]] + afforest.mdl[3]*(orography$solar[neigh.id[,1]])^2 +
+  z = afforest.mdl[1] + afforest.mdl[2]*clim$rad[neigh.id[,1]] + afforest.mdl[3]*(clim$rad[neigh.id[,1]])^2 +
       afforest.mdl[4]*20 + afforest.mdl[5]*(20^2) +  afforest.mdl[6]*(orography$slope[neigh.id[,1]]/10) + 
       afforest.mdl[7]*((orography$slope[neigh.id[,1]]/10)^2) + afforest.mdl[8]*(oldneigh/(ncol(neigh.id)-1)) +
       afforest.mdl[9]*((oldneigh/(ncol(neigh.id)-1))^2)
