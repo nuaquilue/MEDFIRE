@@ -69,7 +69,6 @@ define.scenario <- function(scn.name){
   
   ## Characteristics specific of this scenario
   clim.scn <- "rcp85"
-  psdm <- 5
   file.dmnd.harvest <- "DemandHarvest_Bioenergy"
   file.clim.severity <- "ClimaticSeverity_test"
   file.pctg.hot.days <- "PctgHotDays_rcp45"

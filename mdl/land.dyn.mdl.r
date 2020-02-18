@@ -9,7 +9,6 @@ land.dyn.mdl <- function(scn.name){
   library(sp)
   library(raster)  
   library(RANN)  # for nn2()
-    # library(SpaDES)  # for adj()
   library(tidyverse)
   source("mdl/update.clim.r")
   source("mdl/update.interface.r")
@@ -60,7 +59,7 @@ land.dyn.mdl <- function(scn.name){
   eq.ba.carbon <- read.table("inputfiles/EqBasalAreaCarbon.txt", header=T)
   
   
-  ## Climatic severity and pctg hot days tabes
+  ## Climatic severity and pctg hot days tables
   clim.severity <- read.table(paste0("inputfiles/", file.clim.severity, ".txt"), header=T)
   
   
@@ -131,8 +130,8 @@ land.dyn.mdl <- function(scn.name){
       
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
-        clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn, psdm)
-        load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", (1+floor(t/10))*10, ".rdata"))
+        ## Update temp, precip, solar radiation and site quality index
+        clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn)
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
       
