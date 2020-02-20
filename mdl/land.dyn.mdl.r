@@ -9,7 +9,6 @@ land.dyn.mdl <- function(scn.name){
   library(sp)
   library(raster)  
   library(RANN)  # for nn2()
-    # library(SpaDES)  # for adj()
   library(tidyverse)
   source("mdl/update.clim.r")
   source("mdl/update.interface.r")
@@ -269,6 +268,9 @@ land.dyn.mdl <- function(scn.name){
         aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- growth.10y(aux, aux)
+        land$age[land$cell.id %in% aux$cell.id] <- 1
+        land$tsdist[land$cell.id %in% aux$cell.id] <- 1
+        land$distype[land$cell.id %in% aux$cell.id] <- 8
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi

@@ -47,32 +47,32 @@ read.climatic.vars <- function(){
       clim <- select(clim, cell.id, temp, precip, rad)
       save(clim, file=paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
       
-      for(p in c(1)){
-        
-        cat(paste("Threshold", p), "\n")
-        
-        ## Update list of SDMs
-        ## Change resolution and extend to match the default
-        ## Build a data frame with MASK and SDMs per spp
-        load(paste0("inputlyrs/asc/SDM_", p, "p_", clim.scn, "_", decade, "_1km.rdata"))
-        sdm  <- data.frame(cell.id=1:ncell(MASK), mask=MASK[])
-        for(i in order.spp.sdm){
-           sdm.proj[[i]] <- disaggregate(sdm.proj[[i]], fact=c(10,10))
-           sdm.proj[[i]] <- extend(sdm.proj[[i]], extCat)
-           sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
-        }
-        names(sdm)[3:15] <- species
-        # for(i in 1:13)
-        #   sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
-        
-        ## Save SDM of all spp in a data.frame, for cells in CAT
-        sdm <- sdm[!is.na(sdm$mask),]
-        sdm <- select(sdm, -mask) 
-        names(sdm)[-1] <- paste0("sdm.", species)
-        sdm$sdm.shrub <- 1
-        save(sdm, file=paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_", decade, ".rdata"))
-      
-      } #p
+      # for(p in c(1)){
+      #   
+      #   cat(paste("Threshold", p), "\n")
+      #   
+      #   ## Update list of SDMs
+      #   ## Change resolution and extend to match the default
+      #   ## Build a data frame with MASK and SDMs per spp
+      #   load(paste0("inputlyrs/asc/SDM_", p, "p_", clim.scn, "_", decade, "_1km.rdata"))
+      #   sdm  <- data.frame(cell.id=1:ncell(MASK), mask=MASK[])
+      #   for(i in order.spp.sdm){
+      #      sdm.proj[[i]] <- disaggregate(sdm.proj[[i]], fact=c(10,10))
+      #      sdm.proj[[i]] <- extend(sdm.proj[[i]], extCat)
+      #      sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
+      #   }
+      #   names(sdm)[3:15] <- species
+      #   # for(i in 1:13)
+      #   #   sdm <- cbind(sdm, data.frame(spp=sdm.proj[[i]][]))
+      #   
+      #   ## Save SDM of all spp in a data.frame, for cells in CAT
+      #   sdm <- sdm[!is.na(sdm$mask),]
+      #   sdm <- select(sdm, -mask) 
+      #   names(sdm)[-1] <- paste0("sdm.", species)
+      #   sdm$sdm.shrub <- 1
+      #   save(sdm, file=paste0("inputlyrs/rdata/sdm_", p, "p_", clim.scn, "_", decade, ".rdata"))
+      # 
+      # } #p
     } # decade
   } # clim.scn
   
