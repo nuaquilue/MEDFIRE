@@ -49,5 +49,3 @@ read.static.vars <- function(work.path){
   pfst.pwind <- pfst.pwind[!is.na(MASK[]),]
   save(pfst.pwind, file="inputlyrs/rdata/pfst.pwind.rdata")
 }
-
-
