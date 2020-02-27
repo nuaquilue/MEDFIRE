@@ -14,6 +14,7 @@ system.time(land.dyn.mdl(scn.name))
 source("mdl/read.static.vars.r")
 source("mdl/read.state.vars.r")
 source("mdl/read.climatic.vars.r")
+work.path <- "C:/WORK/MEDMOD/SpatialModels/MEDFIRE_II"
 work.path <- "C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE"
 
 # Create .Rdata with static variables of the model, only run once for all scenarios!
