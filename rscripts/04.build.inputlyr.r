@@ -32,12 +32,15 @@ for(sh in files.select[-1]){
   BAall <- merge(BAall, aux)
 }
 crs(BAall) <- CRS("+init=epsg:25831")
-BAcat[BAall[]<0] <- 0
+BAall[BAall[]<0] <- 0
+BAall[] <- BAall[]*10
 plot(BAall)
 ## Change resolution from 20m to 100m
 BAcat <- crop(BAall, extCat)
 BA100m <- aggregate(BAcat, fact=5, mean, expand=T)
-writeRaster(BA100m, "inputlyrs/asc/BasalArea_100m_30NETRS89.asc", format="ascii", NAflag=-1, overwrite=T)
+BA100m
+writeRaster(BA100m, "inputlyrs/asc/Biomass2010x10_100m_31N-ETRS89.asc", 
+            format="ascii", NAflag=-1, overwrite=T)
 
 
 ## BIOPHYSIC VARIABLES: HEIGHT
@@ -56,16 +59,22 @@ plot(HMall)
 ## Change resolution from 20m to 100m
 HMcat <- crop(HMall, extCat)
 HM100m <- aggregate(HMcat, fact=5, mean, expand=T)
-writeRaster(HM100m, "inputlyrs/asc/MeanHeight_100m_30NETRS89.asc", format="ascii", NAflag=-1, overwrite=T)
+writeRaster(HM100m, "inputlyrs/asc/MeanHeight2010_100m_30NETRS89.asc", 
+            format="ascii", NAflag=-1, overwrite=T)
+## Height has to be transformed to age!!
 
 
 ## DEM 5x5 --> DEM 100m
 sheets <- list.files("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5", pattern="*.txt")
-DEM <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/", sheets[1]))
-for(sh in sheets[-1]){
+DEM <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/", sheets[11]))
+for(sh in sheets[12:20]){
   DEM5 <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/", sh))
   DEM <- merge(DEM, DEM5)
 }
+writeRaster(DEM, "D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/DEMb.tif", 
+            format="GTiff", overwrite=T)
+
+
 crs(DEM) <- CRS("+init=epsg:25831")
 plot(DEM)
 ## CROP!!!
@@ -79,7 +88,6 @@ writeRaster(DEM100m, "inputlyrs/asc/DEM_100m_30NETRS89.asc", format="ascii", NAf
 SLOPE <- terrain(DEM, opt='slope', unit='degrees', neighbors=8)
 writeRaster(SLOPE, "D:/MEDMOD/DataCLIM/DataSp/SlopeDegree_CAT1K.asc")
 
-
 ## ASPECT: from º to 4 categories
 ASPECT <- terrain(DEM, opt='aspect', unit='degrees', neighbors=8)
 ASPECT[] <- ifelse(ASPECT[]<=45, 1,
@@ -89,15 +97,6 @@ ASPECT[] <- ifelse(ASPECT[]<=45, 1,
 writeRaster(ASPECT, "D:/MEDMOD/DataCLIM/DataSp/AspectDegree_CAT1K.asc")
 
 
-
-## UTM
-UTM <- readOGR("D:/MEDMOD/InputLayers_MEDFIRE_II/Malla1k_Catalunya_ETRS89UTM/Malla1k_CatalunyaReduc_ETRS89UTM.shp")
-crs(UTM) <- CRS("+init=epsg:25831")
-plot(UTM)
-UTMrast <- rasterize(UTM, MASK, field="IDCEL1KM")  ## change by a MASK in 31N-ETRS89
-## crop!!
-writeRaster(UTMrast, "D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/utm.asc", 
-            format="ascii", NAflag=-1, overwrite=T)
 
 
 
