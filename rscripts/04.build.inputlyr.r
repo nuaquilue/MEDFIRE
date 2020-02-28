@@ -12,9 +12,8 @@ rm(list=ls())
 library(rgdal)
 library(raster)
 library(tidyverse)
-# setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
+ setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
 setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
-  # load("inputlyrs/rdata/land.rdata")
 load("inputlyrs/rdata/mask.rdata")
 
 ## Default extent of raster maps of Catalonia  
@@ -64,37 +63,61 @@ writeRaster(HM100m, "inputlyrs/asc/MeanHeight2010_100m_30NETRS89.asc",
 ## Height has to be transformed to age!!
 
 
-## DEM 5x5 --> DEM 100m
-sheets <- list.files("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5", pattern="*.txt")
-DEM <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/", sheets[11]))
-for(sh in sheets[12:20]){
-  DEM5 <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/", sh))
-  DEM <- merge(DEM, DEM5)
+## DEM 15x15 
+sheets <- list.files("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15", pattern="*.txt")
+DEM <- raster(paste0("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/", sheets[1]))
+for(sh in sheets){
+  DEM15 <- raster(paste0("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/", sh))
+  DEM <- merge(DEM, DEM15)
 }
-writeRaster(DEM, "D:/MEDMOD/InputLayers_MEDFIRE_II/DEM5x5/DEMb.tif", 
-            format="GTiff", overwrite=T)
+writeRaster(DEM, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM.tif", 
+            format="GTiff", overwrite=T, NAflag=-100)
 
+## Clean DEM 15x15
+DEM.15m <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM.tif" )
+crs(DEM.15m) <- CRS("+init=epsg:25831")
+DEM.15m[DEM.15m[] < -100] <- NA
+plot(DEM.15m)
 
-crs(DEM) <- CRS("+init=epsg:25831")
-plot(DEM)
-## CROP!!!
+## Resample to a 100m and 1000m DEM
+DEM.100m <- resample(DEM.15m, MASK, method="bilinear", 
+                    filename="c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_100m_31N-ETRS89.asc",
+                    format="ascii", overwrite=T, NAflag=-100)
+crs(DEM.100m) <- CRS("+init=epsg:25831")
+MASK.1km <- aggregate(MASK, fact=10, fun=mean)
+DEM.1km <- resample(DEM.15m, MASK.1km, method="bilinear", 
+                     filename="c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_1km_31N-ETRS89.asc",
+                     format="ascii", overwrite=T, NAflag=-100)
+crs(DEM.1km) <- CRS("+init=epsg:25831")
 
-## Change resolution from 5m to 100m
-DEM100m <- aggregate(DEM, fact=20, mean, expand=T)
-DEM100m <- extend(DEM100m, extCat)
-writeRaster(DEM100m, "inputlyrs/asc/DEM_100m_30NETRS89.asc", format="ascii", NAflag=-1, overwrite=T)
 
 ## SLOPE (º)
-SLOPE <- terrain(DEM, opt='slope', unit='degrees', neighbors=8)
-writeRaster(SLOPE, "D:/MEDMOD/DataCLIM/DataSp/SlopeDegree_CAT1K.asc")
+SLOPE <- terrain(DEM.100m, opt='slope', unit='degrees', neighbors=8)
+writeRaster(SLOPE, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/SlopeDegree_100m_31N-ETRS89.asc",
+            format="ascii", overwrite=T, NAflag=-100)
+SLOPE <- terrain(DEM.1km, opt='slope', unit='degrees', neighbors=8)
+writeRaster(SLOPE, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/SlopeDegree_1km_31N-ETRS89.asc",
+            format="ascii", overwrite=T, NAflag=-100)
+
+
 
 ## ASPECT: from º to 4 categories
-ASPECT <- terrain(DEM, opt='aspect', unit='degrees', neighbors=8)
+ASPECT <- terrain(DEM.100m, opt='aspect', unit='degrees', neighbors=8)
 ASPECT[] <- ifelse(ASPECT[]<=45, 1,
                    ifelse(ASPECT[]<=115, 2,
                           ifelse(ASPECT[]<=225, 3,
                                  ifelse(ASPECT[]<=315, 4, 1))))
-writeRaster(ASPECT, "D:/MEDMOD/DataCLIM/DataSp/AspectDegree_CAT1K.asc")
+writeRaster(ASPECT, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/Aspect_100m_31N-ETRS89.asc",
+            format="ascii", overwrite=T, NAflag=-100)
+ASPECT <- terrain(DEM.1km, opt='aspect', unit='degrees', neighbors=8)
+ASPECT[] <- ifelse(ASPECT[]<=45, 1,
+                   ifelse(ASPECT[]<=115, 2,
+                          ifelse(ASPECT[]<=225, 3,
+                                 ifelse(ASPECT[]<=315, 4, 1))))
+writeRaster(ASPECT, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/Aspect_1km_31N-ETRS89.asc",
+            format="ascii", overwrite=T, NAflag=-100)
+
+
 
 
 
