@@ -6,10 +6,12 @@
 land.dyn.mdl <- function(scn.name){
   
   ## Load required packages and functions 
-  library(sp)
-  library(raster)  
-  library(RANN)  # for nn2()
-  library(tidyverse)
+  suppressPackageStartupMessages({
+    library(sp)
+    library(raster)  
+    library(RANN)  # for nn2()
+    library(tidyverse)
+  })
   source("mdl/update.clim.r")
   source("mdl/update.interface.r")
   source("mdl/prob.igni.r")
@@ -37,7 +39,7 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/mask.rdata")
   load("inputlyrs/rdata/coordinates.rdata")
   load("inputlyrs/rdata/orography.rdata")
-  load("inputlyrs/rdata/harvest.rdata")
+  # load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
   
   

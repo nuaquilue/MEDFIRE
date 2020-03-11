@@ -14,20 +14,24 @@ read.state.vars <- function(work.path){
   cat("Reading initial state variables", "\n")
   
   ## Read initial state vars
-  LCF <- raster(paste0(work.path, "/inputlyrs/asc/LCFM2010_100m_31N-ETRS89.asc"))
-  BIOMASS <- raster(paste0(work.path, "/inputlyrs/asc/Biomass2010x10_100m_31N-ETRS89.asc"))
-  AGE <- raster("inputlyrs/asc/ForestAge2010_31N-ETRS89.asc")
-  TSDIST <- raster(paste0(work.path, "/inputlyrs/asc/TSDisturb10_100m_31N-ETRS89.asc"))
+  LCF <- raster(paste0(work.path, "/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc"))
+  BIOMASS <- raster(paste0(work.path, "/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc"))
+  AGE <- raster("inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc")
+  TSDIST <- raster(paste0(work.path, "/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc"))
   
   ## Build data frame
   land <- data.frame(cell.id=1:ncell(LCF), spp=LCF[], biom=BIOMASS[], age=AGE[], tsdist=TSDIST[])
   land <- land[!is.na(land$spp),]
-  land$distype <- NA; land$distype[land$spp<=17] <- 0
-  land$tburnt <- land$distype
-  ## Mark that cells were previously burnt in the disturbance type layer,
-  ## So, it's in concordance with TSDIST layer
-  land$tsdist[land$tsdist<200] <- hfire
+  ## According to TimeSinceDisturbance (that's actually Time Since Fire), 
+  ## mark those burnt cells in the disturbance type layer:
+  land$distype <- NA 
+  land$distype[land$spp<=17] <- 0
+  land$distype[land$tsdist<400] <- 4 # is hfire
+  ## Initialize times burnt at o
+  land$tburnt <- NA 
+  land$tburnt[land$spp<=17] <- 0
   
+  ## Save it
   save(land, file="inputlyrs/rdata/land.rdata")
    
 }

@@ -12,14 +12,15 @@ system.time(land.dyn.mdl(scn.name))
 
 
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
+work.path <- "D:/MEDMOD/spatialmodelsr/Medfire"
 source("mdl/read.static.vars.r")
-read.static.vars()
+read.static.vars(work.path)
 ## Create .Rdata with initial values of variables of the model, used at each replicate of any scn.
 source("mdl/read.state.vars.r")
-read.state.vars()
+read.state.vars(work.path)
 ## Create 2 data frames per climatic scn and decade: SDMs of all spp, and climatic variables (temp & precip) for CAT
 source("mdl/read.climatic.vars.r")
-read.climatic.vars()
+read.climatic.vars(work.path)
 ## Save interfaces
 source("mdl/update.interface.r")
 load("inputlyrs/rdata/land.rdata")

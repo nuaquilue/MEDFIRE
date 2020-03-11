@@ -14,9 +14,10 @@ read.static.vars <- function(work.path){
   
   cat("Reading orographyic, utm, fire regime variables, harvesting-restrictions", "\n")
   
-    ## MASK of the study area
-  MASK <- raster(paste0(work.path, "/inputlyrs/asc/LCFspp2010_100m_31N-ETRS89.asc"))
+  ## MASK of the study area
+  MASK <- raster(paste0(work.path, "/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc"))
   MASK[!is.na(MASK[])] <- 1
+  crs(MASK) <- CRS("+init=epsg:25831")
   save(MASK, file="inputlyrs/rdata/mask.rdata") 
   
   ## Build a coordinates data frame and then load model static variables in a data.frame format
