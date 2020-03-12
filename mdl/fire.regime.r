@@ -158,7 +158,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     visit.cells <- igni.id
     burnt.intens <- c(burnt.intens, ifelse(swc<4,T,F))
     
-    track.spread <- data.frame(cell.id=igni.id, spp=land$spp[land$cell.id==igni.id],
+    fire.step <- 1
+    track.spread <- data.frame(cell.id=igni.id, step=fire.step, spp=land$spp[land$cell.id==igni.id],
                                front.slope=0.5, front.wind=0.5, flam=0.5, fi=0.5, sr=1, 
                                pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
     
@@ -217,8 +218,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                            pb.sr=1+rpb.sr*log(sr),
                            pb.fi=1+rpb.fi*log(fi)) %>% #select(-front.slope, -front.wind, -y, -z)
                     group_by(cell.id) %>% 
-                    summarize(spp=mean(spp), front.slope=max(front.slope), front.wind=max(front.wind),
-                              flam=max(flam), sr=max(sr), fi=max(fi), pb.sr=max(pb.sr), pb.fi=max(pb.fi))
+                    summarize(spp=mean(spp), step=fire.step, front.slope=max(front.slope), front.wind=max(front.wind),
+                              flam=max(y), sr=max(sr), fi=max(fi), pb.sr=max(pb.sr), pb.fi=max(pb.fi))
                      
       # sprd.rate$rand=runif(nrow(sprd.rate),0,pb.th) * runif(nrow(sprd.rate),stochastic.spread,1) 
       sprd.rate$burning.sr <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.sr & sprd.rate$pb.sr > pb.lower.th #* (runif(nrow(sprd.rate),0,1) <= stochastic.spread (=0.9)
@@ -257,6 +258,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$sr<=ifelse(swc<4,fire.intens.th,100))
       aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$sr>ifelse(swc<4,fire.intens.th,100))
       print(aburnt.lowintens+aburnt.highintens)
+      
+      fire.step <- fire.step+1
       
     } # while 'fire'
     

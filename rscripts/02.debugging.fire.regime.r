@@ -193,8 +193,8 @@ asupp.fuel <- 0
 burnt.cells <- igni.id
 visit.cells <- igni.id
 burnt.intens <- T
-
-track.spread <- data.frame(cell.id=igni.id, spp=land$spp[land$cell.id==igni.id],
+fire.step <- 1
+track.spread <- data.frame(cell.id=igni.id, step=fire.step, spp=land$spp[land$cell.id==igni.id],
                            front.slope=0.5, front.wind=0.5, flam=0.5, fi=0.5, sr=1, 
                            pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
 
