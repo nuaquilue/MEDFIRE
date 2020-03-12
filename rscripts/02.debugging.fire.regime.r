@@ -23,7 +23,7 @@ load("inputlyrs/rdata/coordinates.rdata")
 load("inputlyrs/rdata/orography.rdata")
 load("inputlyrs/rdata/interface.rdata")
 
-clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, "rcp45", 5)
+clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, "rcp45", 1)
 
 pigni <- prob.igni(land, orography, clim, interface)
 ## Climatic severity and pctg hot days tabes
@@ -53,7 +53,8 @@ file.pctg.hot.days <- "PctgHotDays_rcp45"
 file.fire.suppression <- "FireSuppression_CurrExtrem"
 clim.sever <- 0
 ## Spread rate, burn probability parameters, prescribed burns
-rpb <- 1.5
+rpb.sr <- 1.5
+rpb.fi <- 0.5
 stochastic.spread <- 0.9 #0.75, 1-0.75=0.25 creama o no aleatoriament, independentment del spread rate i pb
 pb.upper.th <- 0.75  # 0.9 - wind, 0.8 - convective, 
 pb.lower.th <- 0.05  # 0.25 - wind, 0.1 - convective, 
@@ -192,3 +193,8 @@ asupp.fuel <- 0
 burnt.cells <- igni.id
 visit.cells <- igni.id
 burnt.intens <- T
+
+track.spread <- data.frame(cell.id=igni.id, spp=land$spp[land$cell.id==igni.id],
+                           front.slope=0.5, front.wind=0.5, flam=0.5, fi=0.5, sr=1, 
+                           pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
+

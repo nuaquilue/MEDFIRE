@@ -158,6 +158,10 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     visit.cells <- igni.id
     burnt.intens <- c(burnt.intens, ifelse(swc<4,T,F))
     
+    track.spread <- data.frame(cell.id=igni.id, spp=land$spp[land$cell.id==igni.id],
+                               front.slope=0.5, front.wind=0.5, flam=0.5, fi=0.5, sr=1, 
+                               pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
+    
     ## Start speading from active cells (i.e. the fire front)
     while((aburnt.lowintens+aburnt.highintens+asupp.fuel+asupp.sprd)<fire.size.target){
       
@@ -178,18 +182,26 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                              dist=as.numeric(neighs$nn.dists))
       neigh.id <- filter(neigh.id, dist<=200) %>% mutate(x=cell.id-source.id) %>% 
                   left_join(default.windir, by="x") %>% select(-x) 
-      neigh.id <- filter(neigh.id, cell.id %notin% visit.cells)  #before it was burnt.cells
+      neigh.id <- filter(neigh.id, cell.id %notin% visit.cells) %>%  #before it was burnt.cells
+                  left_join(select(land, cell.id, spp, biom, age), by="cell.id") %>% 
+                  filter(spp<=17 & !is.na(biom) & !is.na(age) )
       neigh.id
       
       ## Filter 'orography' for source and neigbour cells
       neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>% select(cell.id, elev, aspect)
       
-      ## Compute species flammability and aspect factors for spread. rate
+      ## Compute species flammability and aspect factors for spread rate
       flam <- filter(land, cell.id %in% neigh.id$cell.id) %>% select(cell.id, spp) %>%
               left_join(spp.flammability[,c(1,fire.spread.type+1)], by="spp") 
       flam$y <- wflam * flam[,ncol(flam)]
       aspc <- filter(neigh.orography, cell.id %in% neigh.id$cell.id) %>% select(cell.id, aspect) %>%
               mutate(z=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
+      fuel <- filter(land, cell.id %in% neigh.id$cell.id) %>% select(cell.id, spp, biom, age) %>%
+              mutate(x=ifelse(spp %in% c(15,16,17), 0.5,
+                              ifelse(spp==14, 0.01638*biom,
+                                     ifelse(age<=7, 0.2,
+                                            ifelse(biom<200, 0.4,
+                                                   ifelse(biom<480, 0.95, 0.6))))))
       
       ## Compute spread rate, probability of burning and actual burning state (T or F)
       sprd.rate <-  left_join(neigh.id, select(neigh.orography, cell.id, elev), by="cell.id") %>%
@@ -200,29 +212,36 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                                                     360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>%
                     left_join(select(flam, cell.id, y), by="cell.id") %>% 
                     left_join(select(aspc, cell.id, z), by="cell.id") %>%
-                    mutate(sr.noacc=front.slope+front.wind+y+z,
-                           # sr=round(sr.noacc*fire.strength,3),
-                           # pb1=(1-exp(-sr.noacc))^rpb,
-                           # pb2=(1-exp(-sr))^rpb,
-                           # pb3=1-exp(-sr.noacc^rpb),
-                           pb4=sr.noacc^rpb,
-                           pb5=1+rpb*log(sr.noacc)) %>% #select(-front.slope, -front.wind, -y, -z)
-                     group_by(cell.id) %>% summarize(sr.noacc=max(sr.noacc), pb=max(pb5))
+                    left_join(select(fuel, cell.id, x), by="cell.id") %>%
+                    mutate(sr=front.slope+front.wind+y+z, fi=sr*x, #pb=(1-exp(-fi))^rpb,
+                           pb.sr=1+rpb.sr*log(sr),
+                           pb.fi=1+rpb.fi*log(fi)) %>% #select(-front.slope, -front.wind, -y, -z)
+                    group_by(cell.id) %>% 
+                    summarize(spp=mean(spp), front.slope=max(front.slope), front.wind=max(front.wind),
+                              flam=max(flam), sr=max(sr), fi=max(fi), pb.sr=max(pb.sr), pb.fi=max(pb.fi))
+                     
       # sprd.rate$rand=runif(nrow(sprd.rate),0,pb.th) * runif(nrow(sprd.rate),stochastic.spread,1) 
-      sprd.rate$burning <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb & sprd.rate$pb> pb.lower.th #* (runif(nrow(sprd.rate),0,1) <= stochastic.spread (=0.9)
+      sprd.rate$burning.sr <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.sr & sprd.rate$pb.sr > pb.lower.th #* (runif(nrow(sprd.rate),0,1) <= stochastic.spread (=0.9)
+      sprd.rate$burning.fi <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.fi & sprd.rate$pb.fi > pb.lower.th       
+      track.spread <- rbind(track.spread, sprd.rate)
+      # par(mfrow=c(3,2)); hist(sprd.rate$fi); hist(sprd.rate$pb); hist(sprd.rate$sr); 
+      # hist(sprd.rate$pb5); hist(sprd.rate$pb6)
+      sprd.rate$burning <- sprd.rate$burning.fi
       sprd.rate
-        
+      
       ## If at least there's a burning cell, continue, otherwise, stop
       if(!any(sprd.rate$burning))
         break
       
       ## Mark the cells burnt and visit, and select the new fire front
+      ## 'mad' -> median absolute deviation
       burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burning])
       visit.cells <- c(visit.cells, sprd.rate$cell.id)
-      burnt.intens <- c(burnt.intens, sprd.rate$sr.noacc[sprd.rate$burning]>ifelse(swc<4,fire.intens.th,100))
-      exclude.th <- min(max(sprd.rate$sr.noacc)-0.005, 
-                        rnorm(1,mean(sprd.rate$sr.noacc[sprd.rate$burning])-mad(sprd.rate$sr.noacc[sprd.rate$burning])/2,mad(sprd.rate$sr.noacc[sprd.rate$burning])))
-      fire.front <- sprd.rate$cell.id[sprd.rate$burning & sprd.rate$sr.noacc>=exclude.th]
+      burnt.intens <- c(burnt.intens, sprd.rate$sr[sprd.rate$burning]>ifelse(swc<4,fire.intens.th,100))
+      exclude.th <- min(max(sprd.rate$sr)-0.005, 
+                        rnorm(1,mean(sprd.rate$sr[sprd.rate$burning])-mad(sprd.rate$sr[sprd.rate$burning])/2,
+                              mad(sprd.rate$sr[sprd.rate$burning])))
+      fire.front <- sprd.rate$cell.id[sprd.rate$burning & sprd.rate$sr>=exclude.th]
       
       # ## In the case, there are no cells in the fire front, stop trying to burn
       # ## This happens when no cells have burnt in the current spreading step
@@ -235,8 +254,9 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       
       ## Increase area burnt in either high or low intensity
       ## Prescribed burns always burnt in low intensity
-      aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$sr.noacc<=ifelse(swc<4,fire.intens.th,100))
-      aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$sr.noacc>ifelse(swc<4,fire.intens.th,100))
+      aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$sr<=ifelse(swc<4,fire.intens.th,100))
+      aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$sr>ifelse(swc<4,fire.intens.th,100))
+      print(aburnt.lowintens+aburnt.highintens)
       
     } # while 'fire'
     

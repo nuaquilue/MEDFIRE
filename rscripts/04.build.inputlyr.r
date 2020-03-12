@@ -105,7 +105,7 @@ writeRaster(TSF, "D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_
             format="ascii", NAflag=-1, overwrite=T)
 TSF.1k <- aggregate(TSF, fact=10, fun=median, na.rm=T)
 plot(TSF.1k)
-writeRaster(TSF, "D:/MEDMOD/Inputlayers_medfire_ii/tooriol_1km/TSDisturb_1km_31N-ETRS89.asc",
+writeRaster(TSF.1k, "D:/MEDMOD/Inputlayers_medfire_ii/tooriol_1km/TSDisturb_1km_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 
 
@@ -149,17 +149,34 @@ plot(BAall)
 BAcat <- crop(BAall, extCat)
 BA100m <- resample(BAcat, MASK, fun="bilinear", expand=T)
 ## Now, match BA and LCFspp, phagocite in MiraMon
-LCFM <- raster("D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
+LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
 BA <- BA100m
 BA[LCFM[]>13] <- NA
 BA[LCFM[]<=13 & is.na(BA[])] <- 0
 writeRaster(BA, "D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA0_100m_31N-ETRS89.asc")
+
 ## Overlap Biomass of Shurbs: kg (or tones) as function of Time Since Fire
-BA <- raster("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA10_100m_31N-ETRS89.asc")
-# dta <- data.frame(lcfm=LCFM[], ba=BA[])
-# a <- filter(dta, !is.na(lcfm) & lcfm<=13)
-writeRaster(BA, "D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc",
+LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
+TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
+BA <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA10_100m_31N-ETRS89.asc")
+dta <- data.frame(lcfm=LCFM[], ba=BA[], tsf=TSF[]) %>% filter(!is.na(lcfm))
+dta$ba[dta$lcfm==14] <- exp(-2.921+0.984*log(1*pmin(dta$tsf[dta$lcfm==14],20))+
+                              0.863*log(5*pmin(dta$tsf[dta$lcfm==14],20)))  ## tot és boix
+summary(dta$ba[dta$lcfm==14])
+load("inputlyrs/rdata/land.rdata")
+land$biom[land$spp==14] <- dta$ba[dta$lcfm==14]
+save(land, file="c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/land.rdata")
+writeRaster(BA, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
+
+# biomassa boix 20 anys
+hm <- 1
+fcc <- 5
+a0 <- -2.921
+a1 <- 0.984	
+a2 <- 0.863
+x <- 20
+W=exp(a0+a1*log(hm*x)+a2*log(fcc*x));W
 
 
 ############################# BIOPHYSIC VARIABLES: HEIGHT --> AGE ################################
