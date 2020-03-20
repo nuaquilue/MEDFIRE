@@ -58,7 +58,7 @@ define.scenario <- function(scn.name){
   growth.id <- 10; growth.step <- 1
   
   ## Time lenght (in years) of a model simulation, from 2010 to 2100
-  time.horizon <-  3
+  time.horizon <- 1
   
   ## Number of runs (i.e. replicas)
   nrun <- 1
@@ -68,18 +68,19 @@ define.scenario <- function(scn.name){
   shrub.colon.rad <- 5 		#
   
   ## Characteristics specific of this scenario
-  clim.scn <- "rcp85"
-  psdm <- 5
+  clim.scn <- "rcp45"
+  psdm <- 1
   file.dmnd.harvest <- "DemandHarvest_Bioenergy"
   file.clim.severity <- "ClimaticSeverity_test"
   file.pctg.hot.days <- "PctgHotDays_rcp45"
   file.fire.suppression <- "FireSuppression_CurrExtrem"
+  file.sprd.weight <- "SprdRateWeights_E"
     
   ## Spread rate, burn probability parameters, prescribed burns
-  rpb <- 1.7
-  stochastic.spread <- 1
-  pb.upper.th <- 0.8	
-  pb.lower.th <- 0.1
+  rpb.sr <- 1.5
+  rpb.fi <- 0.5
+  pb.upper.th <- 0.75
+  pb.lower.th <- 0.05
   fire.intens.th <- 0.35  # high vs. low intensity fire, SR_noAcc <= fire.intens.th
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
   pb.convenient.area <- 400 ## should be 15.000 ha

@@ -1,0 +1,6 @@
+Factor	WindDriven	Convective	TopoDriven
+wind	0.425	0.15	0
+slope	0.325	0.375	1
+fuel	0	0	0
+flam	0.212	0.475	0
+aspc	0.038	0	0

@@ -10,13 +10,13 @@ source("mdl/prob.igni.r")
 source("mdl/growth.r")
 
 # Name scn and output folder
-scn.name <- "Test"
+scn.name <- "TestWind"
 out.path <- paste0("outputs/", scn.name)
 dir.create(file.path(getwd(), out.path), showWarnings = F) 
 dir.create(file.path(getwd(), out.path, "/lyr"), showWarnings = F) 
 
 ## Input data from land.dyn.mdl.r
-t <- 3
+t <- 1
 load("inputlyrs/rdata/mask.rdata")
 load("inputlyrs/rdata/land.rdata")
 load("inputlyrs/rdata/coordinates.rdata")
@@ -51,6 +51,7 @@ swc <- t
 file.clim.severity <- "ClimaticSeverity_test"
 file.pctg.hot.days <- "PctgHotDays_rcp45"
 file.fire.suppression <- "FireSuppression_CurrExtrem"
+file.sprd.weight <- "SprdRateWeights_E"
 clim.sever <- 0
 ## Spread rate, burn probability parameters, prescribed burns
 rpb.sr <- 1.5
@@ -174,6 +175,7 @@ if(fire.spread.type==2)  # S 80%, SW 10%, SE 10%
   fire.wind <- sample(c(180,225,135), 1, replace=F, p=c(80,10,10))
 if(fire.spread.type==3)  # any at random
   fire.wind <- sample(seq(0,315,45), 1, replace=F)
+cat(paste("Direcció vent", fire.wind))
 
 ## Derive target fire size from a power-law according to clima and fire.spread.type 
 log.size <- seq(1.7, 5, 0.01)

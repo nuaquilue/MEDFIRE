@@ -22,7 +22,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   fs.dist <- read.table("inputfiles/FireSizeDist.txt", header=T)
   fire.supp <- read.table(paste0("inputfiles/", file.fire.suppression, ".txt"), header=T)
   spp.flammability <- read.table("inputfiles/SppSpreadRate.txt", header=T)
-  fst.sprd.weight <- read.table("inputfiles/SprdRateWeights.txt", header=T)
+  fst.sprd.weight <- read.table(paste0("inputfiles/", file.sprd.weight, ".txt"), header=T)
   
   
   ## Restarting Tracking fires data frame each run
@@ -34,7 +34,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   ## Wind direction between neigbours
   ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
   default.windir <- data.frame(x=c(0,-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
-                               windir=c(-1,270,90,180,0,225,45,135,315,270,90,180,0))
+                               windir=c(-1,270,90,180,0,225,315,135,45,270,90,180,0))
   
   
   ## Find either fixed or stochastic annual target area for wildfires
@@ -85,6 +85,9 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   
   ## Start burning until annual area target is not reached
   fire.id <- 0
+  track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA,
+                             front.slope=0, front.wind=0, flam=0, fi=1, sr=1, 
+                             pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
   while(area.target>0){
     
     ## ID for each fire event
@@ -108,8 +111,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       1/(1+exp(-z))
       fire.spread.type <- ifelse(runif(1,0,1)<=1/(1+exp(-z)),2,3)
     }
-    ## ** TESTING **
-    fire.spread.type <- swc
+
+    ## According to the fire spread type, look at the weights of each factor on spread rate
     wwind <- fst.sprd.weight[1,fire.spread.type+1]
     wslope <- fst.sprd.weight[2,fire.spread.type+1]
     wfuel <- fst.sprd.weight[3,fire.spread.type+1]
@@ -128,6 +131,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       fire.wind <- sample(c(180,225,135), 1, replace=F, p=c(80,10,10))
     if(fire.spread.type==3)  # any at random
       fire.wind <- sample(seq(0,315,45), 1, replace=F)
+    
     
     ## Derive target fire size from a power-law according to clima and fire.spread.type 
     ## Or prescribed size from a log-normal
@@ -159,9 +163,10 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     burnt.intens <- c(burnt.intens, ifelse(swc<4,T,F))
     
     fire.step <- 1
-    track.spread <- data.frame(cell.id=igni.id, step=fire.step, spp=land$spp[land$cell.id==igni.id],
-                               front.slope=0.5, front.wind=0.5, flam=0.5, fi=0.5, sr=1, 
-                               pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
+    track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, cell.id=igni.id, step=fire.step, 
+                               spp=land$spp[land$cell.id==igni.id],
+                               front.slope=0, front.wind=0, flam=0, fi=1, sr=1, 
+                               pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1))
     
     ## Start speading from active cells (i.e. the fire front)
     while((aburnt.lowintens+aburnt.highintens+asupp.fuel+asupp.sprd)<fire.size.target){
@@ -224,7 +229,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       # sprd.rate$rand=runif(nrow(sprd.rate),0,pb.th) * runif(nrow(sprd.rate),stochastic.spread,1) 
       sprd.rate$burning.sr <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.sr & sprd.rate$pb.sr > pb.lower.th #* (runif(nrow(sprd.rate),0,1) <= stochastic.spread (=0.9)
       sprd.rate$burning.fi <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.fi & sprd.rate$pb.fi > pb.lower.th       
-      track.spread <- rbind(track.spread, sprd.rate)
+      if(nrow(sprd.rate)>0)
+        track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, sprd.rate))
       # par(mfrow=c(3,2)); hist(sprd.rate$fi); hist(sprd.rate$pb); hist(sprd.rate$sr); 
       # hist(sprd.rate$pb5); hist(sprd.rate$pb6)
       sprd.rate$burning <- sprd.rate$burning.fi
@@ -261,12 +267,15 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       
       fire.step <- fire.step+1
       
+      if(length(fire.front)==0)
+        break
+      
     } # while 'fire'
     
     ## escriu algo sobre aquest incendi
-    track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, wind=fire.wind,
-                                    atarget=fire.size.target, aburnt.highintens, aburnt.lowintens,
-                                    asupp.fuel, asupp.sprd))
+    track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, 
+                                               wind=fire.wind, atarget=fire.size.target, aburnt.highintens, 
+                                               aburnt.lowintens, asupp.fuel, asupp.sprd))
     
     ## Update annual burnt area
     area.target <- area.target - (aburnt.lowintens+aburnt.highintens)
@@ -274,6 +283,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     
   }  #while 'year'
   
-  return(list(burnt.cells=burnt.cells, burnt.intens=burnt.intens, track.fire=track.fire[-1,]))
+  return(list(burnt.cells=burnt.cells, burnt.intens=burnt.intens, 
+              track.fire=track.fire[-1,], track.spread=track.spread[-1,]))
 }
 

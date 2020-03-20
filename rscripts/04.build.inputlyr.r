@@ -12,8 +12,8 @@ rm(list=ls())
 library(rgdal)
 library(raster)
 library(tidyverse)
- # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
-setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+ setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
+# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
 load("inputlyrs/rdata/mask.rdata")
 
@@ -110,26 +110,6 @@ writeRaster(TSF.1k, "D:/MEDMOD/Inputlayers_medfire_ii/tooriol_1km/TSDisturb_1km_
 
 
 
-################################ INITIAL SDM AND SQI ################################
-######### SQI shurb to calculate initial biomass as function of TSF ##################
-source("mdl/update.clim.r")
-load("inputlyrs/rdata/mask.rdata")
-load("inputlyrs/rdata/orography.rdata")
-load("inputlyrs/rdata/land.rdata")
-clim <- update.clim(MASK, land, orography, decade=0, "rcp85", 1)
-SQI <- MASK
-SQI[MASK[]==1] <- clim$sqi
-LAND <- MASK
-LAND[MASK[]==1] <- land$spp
-table(LAND[], SQI[])
-# rcp45
-# 14 149473  71957 250095
-# rcp85
-# 14 149541  67502 254482
-writeRaster(SQI, "inputlyrs/asc/SQI_100m_31N-ETRS89.asc", format="ascii", overwrite=T, NAflag=0)
-# writeRaster(SDM, "inputlyrs/asc/SDM_100m_31N-ETRS89.asc", format="ascii", overwrite=T, NAflag=-1)
-
-
 
 ############################# BIOPHYSIC VARIABLES: BASAL AREA --> BIOMASS ################################
 all.files <- list.files("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData")
@@ -159,9 +139,15 @@ writeRaster(BA, "D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA0_100m_
 LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
 TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
 BA <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA10_100m_31N-ETRS89.asc")
-dta <- data.frame(lcfm=LCFM[], ba=BA[], tsf=TSF[]) %>% filter(!is.na(lcfm))
-dta$ba[dta$lcfm==14] <- exp(-2.921+0.984*log(1*pmin(dta$tsf[dta$lcfm==14],20))+
-                              0.863*log(5*pmin(dta$tsf[dta$lcfm==14],20)))  ## tot és boix
+load("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/sqi.rdata")
+w <- read.table("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputfiles/InitialBiomassShrub.txt", header=T)
+dta <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], ba=BA[], tsf=TSF[]) %>% filter(!is.na(lcfm)) %>%
+        left_join(sqi, by="cell.id") %>% left_join(w, by="x")
+# Shrub Biomassa: W=exp(a0+a1*ln(hm*x)+a2*ln(fcc*x)) where x=TSF and W=Biomassa (Tones/hectarea)
+dta.shrub <- filter(dta, lcfm==14) %>% 
+             mutate(ba.sh=a0+a1*log(hm*pmin(tsf, age_max))+a2*log(fcc*pmin(tsf,age_max)))
+
+
 summary(dta$ba[dta$lcfm==14])
 load("inputlyrs/rdata/land.rdata")
 land$biom[land$spp==14] <- dta$ba[dta$lcfm==14]
@@ -226,7 +212,15 @@ writeRaster(AGE.1k, "D:/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/ForestAge_1km_
 
 
 
-###################################### DEM 15x15 ######################################
+###################################### DEM, SLOPE, ASPECT ######################################
+rm(list=ls())
+library(RANN)
+library(sp)
+library(raster)
+library(tidyverse)
+load("inputlyrs/rdata/mask.rdata")
+
+############### DEM 15 x 15 --> DEM 100m and DEM 1km
 sheets <- list.files("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15", pattern="*.txt")
 DEM <- raster(paste0("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/", sheets[1]))
 for(sh in sheets){
@@ -239,54 +233,282 @@ writeRaster(DEM, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM.tif",
 ## Clean DEM 15x15
 DEM.15m <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM.tif" )
 crs(DEM.15m) <- CRS("+init=epsg:25831")
-DEM.15m[DEM.15m[] < -100] <- NA
-plot(DEM.15m)
+summary(DEM.15m[]); plot(DEM.15m)
 
-## Resample to a 100m and 1000m DEM
+## Resample to a 100m DEM
 DEM.100m <- resample(DEM.15m, MASK, method="bilinear", 
                     filename="c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_100m_31N-ETRS89.asc",
                     format="ascii", overwrite=T, NAflag=-100)
-crs(DEM.100m) <- CRS("+init=epsg:25831")
+## Are there NAs in the DEM within CAT?
+DEM.100m <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_100m_31N-ETRS89.asc")
+dta <- data.frame(cell.id=1:ncell(DEM.100m), m=MASK[], coordinates(DEM.100m), z=DEM.100m[]) %>%
+        filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=9)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var2 <- filter(na.var, is.na(z))
+for(id in na.var2$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=25)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var3 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+DEM <- MASK
+DEM[!is.na(MASK[])] <- dta$z
+writeRaster(DEM, "c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/DEM_100m_31N-ETRS89.asc", 
+            format="ascii", overwrite=T, NAflag=-100)
+
+
+## Resample to a 1000m DEM
 MASK.1km <- aggregate(MASK, fact=10, fun=mean)
-DEM.1km <- resample(DEM.15m, MASK.1km, method="bilinear", 
-                     filename="c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_1km_31N-ETRS89.asc",
-                     format="ascii", overwrite=T, NAflag=-100)
-crs(DEM.1km) <- CRS("+init=epsg:25831")
+DEM.1km <- resample(DEM, MASK.1km, method="bilinear", 
+                    filename="c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_1km_31N-ETRS89.asc",
+                    format="ascii", overwrite=T, NAflag=-100)
+## Are there NAs in the DEM within CAT?
+DEM.1km <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/DEM_1km_31N-ETRS89.asc")
+dta <- data.frame(cell.id=1:ncell(DEM.1km), m=MASK.1km[], coordinates(DEM.1km), z=DEM.1km[]) %>%
+       filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=9)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var2 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+DEM <- MASK.1km
+DEM[!is.na(MASK.1km[])] <- dta$z
+writeRaster(DEM, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/DEM_1km_31N-ETRS89.asc", 
+            format="ascii", overwrite=T, NAflag=-100)
 
 
-## SLOPE (º)
+
+################################## SLOPE (º) at 100m
+DEM.100m <- raster("c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
+crs(DEM.100m) <- CRS("+init=epsg:25831")
 SLOPE <- terrain(DEM.100m, opt='slope', unit='degrees', neighbors=8)
-writeRaster(SLOPE, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/SlopeDegree_100m_31N-ETRS89.asc",
+## Are there NAs in the SLOPE within CAT?
+dta <- data.frame(cell.id=1:ncell(DEM.100m), m=MASK[], coordinates(DEM.100m), z=SLOPE[]) %>%
+        filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=9)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var2 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+SLOPE <- MASK
+SLOPE[!is.na(MASK[])] <- dta$z
+writeRaster(SLOPE, "c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc", 
             format="ascii", overwrite=T, NAflag=-100)
+
+
+
+################################## SLOPE (º) at 1km
+DEM.1km <- raster("c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/DEM_1km_31N-ETRS89.asc")
+crs(DEM.1km) <- CRS("+init=epsg:25831")
 SLOPE <- terrain(DEM.1km, opt='slope', unit='degrees', neighbors=8)
-writeRaster(SLOPE, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/SlopeDegree_1km_31N-ETRS89.asc",
+## Are there NAs in the SLOPE within CAT?
+dta <- data.frame(cell.id=1:ncell(DEM.1km), m=MASK.1km[], coordinates(DEM.1km), z=SLOPE[]) %>%
+       filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=9)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var2 <- filter(na.var, is.na(z))
+for(id in na.var2$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=25)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var3 <- filter(na.var, is.na(z))
+for(id in na.var3$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=49)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var4 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+SLOPE <- MASK.1km
+SLOPE[!is.na(MASK.1km[])] <- dta$z
+writeRaster(SLOPE, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/SlopeDegree_1km_31N-ETRS89.asc",
             format="ascii", overwrite=T, NAflag=-100)
 
 
 
-## ASPECT: from º to 4 categories
+#################################### ASPECT: from º to 4 categories at 100m
+DEM.100m <- raster("c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
+crs(DEM.100m) <- CRS("+init=epsg:25831")
 ASPECT <- terrain(DEM.100m, opt='aspect', unit='degrees', neighbors=8)
-ASPECT[] <- ifelse(ASPECT[]<=45, 1,
-                   ifelse(ASPECT[]<=115, 2,
-                          ifelse(ASPECT[]<=225, 3,
-                                 ifelse(ASPECT[]<=315, 4, 1))))
-writeRaster(ASPECT, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/Aspect_100m_31N-ETRS89.asc",
+## Are there NAs in the ASPECT within CAT?
+dta <- data.frame(cell.id=1:ncell(DEM.100m), m=MASK[], coordinates(DEM.100m), z=ASPECT[]) %>%
+      filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=9)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var2 <- filter(na.var, is.na(z))
+for(id in na.var2$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=25)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var3 <- filter(na.var, is.na(z))
+for(id in na.var3$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=49)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var4 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+dta$category <- ifelse(dta$z<=45, 1,
+                       ifelse(dta$z<=115, 2,
+                              ifelse(dta$z<=225, 3,
+                                     ifelse(dta$z<=315, 4, 1))))
+ASPECT <- MASK
+ASPECT[!is.na(MASK[])] <- dta$category
+writeRaster(ASPECT, "c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/Aspect_100m_31N-ETRS89.asc", 
             format="ascii", overwrite=T, NAflag=-100)
+
+
+
+#################################### ASPECT: from º to 4 categories at 1km
+DEM.1km <- raster("c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/DEM_1km_31N-ETRS89.asc")
+crs(DEM.1km) <- CRS("+init=epsg:25831")
 ASPECT <- terrain(DEM.1km, opt='aspect', unit='degrees', neighbors=8)
-ASPECT[] <- ifelse(ASPECT[]<=45, 1,
-                   ifelse(ASPECT[]<=115, 2,
-                          ifelse(ASPECT[]<=225, 3,
-                                 ifelse(ASPECT[]<=315, 4, 1))))
-writeRaster(ASPECT, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/DEM15x15/Aspect_1km_31N-ETRS89.asc",
-            format="ascii", overwrite=T, NAflag=-100)
+## Are there NAs in the SLOPE within CAT?
+dta <- data.frame(cell.id=1:ncell(DEM.1km), m=MASK.1km[], coordinates(DEM.1km), z=ASPECT[]) %>%
+        filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=9)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var2 <- filter(na.var, is.na(z))
+for(id in na.var2$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=25)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var3 <- filter(na.var, is.na(z))
+for(id in na.var3$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=49)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+}
+na.var4 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+dta$category <- ifelse(dta$z<=45, 1,
+                   ifelse(dta$z<=115, 2,
+                          ifelse(dta$z<=225, 3,
+                                 ifelse(dta$z<=315, 4, 1))))
+ASPECT <- MASK.1km
+ASPECT[!is.na(MASK.1km[])] <- dta$category
+writeRaster(ASPECT, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/Aspect_1km_31N-ETRS89.asc",
+            format="ascii", overwrite=T, NAflag=-1)
+
+
 
 
 ##############################################################################################################
+############################ Test inputlyrs ############################
+
+rm(list=ls())
+library(sp)
+library(raster)
+library(tidyverse)
+
+setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
+
+load("inputlyrs/rdata/mask.rdata")
+LCFM <- raster("inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
+DEM <- raster("inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
+ASPECT <- raster("inputlyrs/asc/Aspect_100m_31N-ETRS89.asc")
+SLOPE <- raster("inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc")
+
+BIOM  <- raster("inputlyrs/asc/Biomass_100m_31N-ETRS89.asc")
+AGE  <- raster("inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc")
+TSDIST <- raster("inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
+dta <- data.frame(m=MASK[], lcf=LCFM[], dem=DEM[], asp=ASPECT[], slope=SLOPE[]) %>% filter(!is.na(m))
+dta <- data.frame(m=MASK[], lcf=LCFM[], biom=BIOM[], age=AGE[], tsd=TSDIST[]) %>% filter(!is.na(m))
+
+# no NA in LCFM --> OK
+any(is.na(dta$lcf))
+
+# NA in DEM
+any(is.na(dta$dem))
+na.var <- filter(dta, is.na(dem))
+table(na.var$lcf)
+
+# NA in ASPECT
+any(is.na(dta$asp))
+na.aspect <- filter(dta, is.na(asp))
+table(na.aspect$lcf)
+
+# NA in SLOPE
+any(is.na(dta$slope))
+na.slope <- filter(dta, is.na(slope))
+table(na.slope$lcf)
+
+
+# only NA in TSD if LCFM is BareLand, Water or Urban --> OK
+na.tsd <- filter(dta, is.na(tsd))
+table(na.tsd$lcf)
+
+# NA in BIOM
+na.biom <- filter(dta, is.na(biom))
+table(na.biom$lcf)
+  # 1     14     15     16     17     18     19     20 
+  # 1 471574  79864 644652 355993  70660  22765 178914 
+
+# NA in AGE
+na.age <- filter(dta, is.na(age))
+table(na.age$lcf)
+      # 1      2      3      4      5      8      9     10     11     12     13     15     16     17     18     19 
+      # 778     23     20     12      8    162      4      3      5      1     14  79864 644652 355993  70660  22765 
+      # 20 
+      # 178914
 
 
 
 
-## Test inputlyrs
+
 ggplot(filter(land, spp<=13, age<=10), aes(x=as.factor(age), y=biom)) +
   geom_violin(width=1.2, color="black", fill="grey") +
   geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
