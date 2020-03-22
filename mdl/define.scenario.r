@@ -71,10 +71,10 @@ define.scenario <- function(scn.name){
   clim.scn <- "rcp45"
   psdm <- 1
   file.dmnd.harvest <- "DemandHarvest_Bioenergy"
-  file.clim.severity <- "ClimaticSeverity_test"
+  file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
   file.pctg.hot.days <- "PctgHotDays_rcp45"
   file.fire.suppression <- "FireSuppression_CurrExtrem"
-  file.sprd.weight <- "SprdRateWeights_E"
+  file.sprd.weight <- "SprdRateWeights"
     
   ## Spread rate, burn probability parameters, prescribed burns
   rpb.sr <- 1.5

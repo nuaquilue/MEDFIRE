@@ -58,8 +58,11 @@ sum(table(LCFM[]))  # = 3.210.899
 DEM <- raster("D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
 LCFM[LCFM[]==15 & DEM[]<1500] <- 14
 
+
 ## Land-cover Forest species map
 table(LCFM[])
+dta <- data.frame(m=MASK[], lcf=LCFM[]) %>% filter(!is.na(m))
+any(is.na(dta$lcf))
 writeRaster(LCFM, "D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc",
             format="ascii", NAflag=255, overwrite=T)
 
@@ -141,31 +144,37 @@ TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100
 BA <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA10_100m_31N-ETRS89.asc")
 load("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/sqi.rdata")
 w <- read.table("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputfiles/InitialBiomassShrub.txt", header=T)
-dta <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], ba=BA[], tsf=TSF[]) %>% filter(!is.na(lcfm)) %>%
-        left_join(sqi, by="cell.id") %>% left_join(w, by="x")
 # Shrub Biomassa: W=exp(a0+a1*ln(hm*x)+a2*ln(fcc*x)) where x=TSF and W=Biomassa (Tones/hectarea)
-dta.shrub <- filter(dta, lcfm==14) %>% 
-             mutate(ba.sh=a0+a1*log(hm*pmin(tsf, age_max))+a2*log(fcc*pmin(tsf,age_max)))
-
-
-summary(dta$ba[dta$lcfm==14])
-load("inputlyrs/rdata/land.rdata")
-land$biom[land$spp==14] <- dta$ba[dta$lcfm==14]
-save(land, file="c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/land.rdata")
+dta.shrub <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], tsf=TSF[]) %>% filter(!is.na(lcfm)) %>%
+              filter(lcfm==14) %>%  left_join(sqi, by="cell.id") %>% left_join(w, by="x")   %>% 
+             mutate(ba=a0+a1*log(hm*pmin(tsf, age_max))+a2*log(fcc*pmin(tsf,age_max)))
+summary(dta.shrub$ba[dta.shrub$lcfm==14])
+BA[LCFM[]==14] <- dta.shrub$ba
+# final test
+dta  <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], ba=BA[]) %>% filter(!is.na(lcfm)) %>%
+        filter(lcfm<=14)
+any(is.na(dta$ba))
+# only 1 phalepensis cell
+dta$ba[is.na(dta$ba)] <- mean(dta$ba[dta$lcfm==1], na.rm=T)
+BA[LCFM[]<=14] <- dta$ba
 writeRaster(BA, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 
-# biomassa boix 20 anys
-hm <- 1
-fcc <- 5
-a0 <- -2.921
-a1 <- 0.984	
-a2 <- 0.863
-x <- 20
-W=exp(a0+a1*log(hm*x)+a2*log(fcc*x));W
+load("inputlyrs/rdata/land.rdata")
+land$biom[land$spp==14] <- dta.shrub$ba
+land[land$spp<=14 & is.na(land$ba), ]
+save(land, file="c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/land.rdata")
+
+# final check
+dta <- data.frame(cell.id=1:ncell(LCFM), lcf=LCFM[], ba=BA[]) %>% filter(lcf<=13)
+any(is.na(dta$ba))
+dta[which(is.na(dta$ba)),]
+dta$ba[which(is.na(dta$ba))] <- mean(dta$ba[dta$lcf==1], na.rm=T)
+
 
 
 ############################# BIOPHYSIC VARIABLES: HEIGHT --> AGE ################################
+source("rscripts/05.forest.age.r")
 all.files <- list.files("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData")
 files.select <- all.files[seq(7,235,8)]
 HM <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", files.select[1]))
@@ -189,25 +198,25 @@ HM[LCFM[]<=13 & is.na(HM[])] <- 0
 writeRaster(HM, "D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight0_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 ## Height has to be transformed to age!!
-HM <- raster("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight10_100m_31N-ETRS89.asc")
-source("D:/MEDMOD/SpatialModelsR/medfire/rscripts/05.forest.age.r")
+HM <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight10_100m_31N-ETRS89.asc")
 AGE <- forest.age(LCFM, HM)
 ## Age of Shrubs is TSF!
-TSF <- raster("D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
+TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
 AGE[LCFM[]==14] <- TSF[LCFM[]==14] 
 AGE[LCFM[]>14] <- NA
-plot(AGE)
-writeRaster(AGE, "D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc",
+# check
+dta <- data.frame(lcf=LCFM[], age=AGE[])
+filter(dta, lcf<=14, is.na(age))
+writeRaster(AGE, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 
 ####### Height --> To Age at 1 km 
-LCFM.1k <- raster("D:/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/LCFspp_1km_31N-ETRS89.asc")
-HM.1k <- raster("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight10_1km_31N-ETRS89.asc")
+LCFM.1k <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/LCFspp_1km_31N-ETRS89.asc")
+HM.1k <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight10_1km_31N-ETRS89.asc")
 dta <- data.frame(lcf=LCFM.1k[], h=HM.1k[]) %>% filter(lcf<=13)
-source("D:/MEDMOD/SpatialModelsR/medfire/rscripts/05.forest.age.r")
 AGE.1k <- forest.age(LCFM.1k, HM.1k)
 plot(AGE.1k)
-writeRaster(AGE.1k, "D:/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/ForestAge_1km_31N-ETRS89.asc",
+writeRaster(AGE.1k, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/ForestAge_1km_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 
 
@@ -294,11 +303,9 @@ writeRaster(DEM, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/DEM_1km_31N-
 
 
 ################################## SLOPE (º) at 100m
-DEM.100m <- raster("c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
-crs(DEM.100m) <- CRS("+init=epsg:25831")
-SLOPE <- terrain(DEM.100m, opt='slope', unit='degrees', neighbors=8)
+SLOPE.100m <- raster("c:/work/MEDMOD/inputlayers_MEDFIRE_II/Orography/SlopeDegree_100m_31N-ETRS89.asc")
 ## Are there NAs in the SLOPE within CAT?
-dta <- data.frame(cell.id=1:ncell(DEM.100m), m=MASK[], coordinates(DEM.100m), z=SLOPE[]) %>%
+dta <- data.frame(cell.id=1:ncell(DEM.100m), m=MASK[], coordinates(DEM.100m), z=SLOPE.100m[]) %>%
         filter(!is.na(m))
 na.var <- filter(dta, is.na(z))
 for(id in na.var$cell.id){
@@ -307,8 +314,18 @@ for(id in na.var$cell.id){
   phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
   if(!is.na(phago))
     na.var$z[na.var$cell.id==id] <- phago
+  print(which(na.var$cell.id==id))
 }
 na.var2 <- filter(na.var, is.na(z))
+for(id in na.var2$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=25)
+  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+  print(which(na.var$cell.id==id))
+}
+na.var3 <- filter(na.var, is.na(z))
 dta$z[is.na(dta$z)] <- na.var$z
 SLOPE <- MASK
 SLOPE[!is.na(MASK[])] <- dta$z
@@ -357,45 +374,32 @@ writeRaster(SLOPE, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/SlopeDegre
 
 
 
-#################################### ASPECT: from º to 4 categories at 100m
-DEM.100m <- raster("c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
-crs(DEM.100m) <- CRS("+init=epsg:25831")
-ASPECT <- terrain(DEM.100m, opt='aspect', unit='degrees', neighbors=8)
+#################################### ASPECT: 4 categories at 100m
+ASPECT.100m <- raster("c:/work/MEDMOD/inputlayers_MEDFIRE_II/Orography/Aspect_100m_31N-ETRS89.asc")
 ## Are there NAs in the ASPECT within CAT?
-dta <- data.frame(cell.id=1:ncell(DEM.100m), m=MASK[], coordinates(DEM.100m), z=ASPECT[]) %>%
+dta <- data.frame(cell.id=1:ncell(ASPECT.100m), m=MASK[], coordinates(ASPECT.100m), z=ASPECT.100m[]) %>%
       filter(!is.na(m))
 na.var <- filter(dta, is.na(z))
 for(id in na.var$cell.id){
   neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
                 searchtype="priority", k=9)
-  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  phago <- median(dta$z[neighs$nn.idx], na.rm=T)
   if(!is.na(phago))
     na.var$z[na.var$cell.id==id] <- phago
+  print(which(na.var$cell.id==id))
 }
 na.var2 <- filter(na.var, is.na(z))
 for(id in na.var2$cell.id){
   neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
                 searchtype="priority", k=25)
-  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+  phago <- median(dta$z[neighs$nn.idx], na.rm=T)
   if(!is.na(phago))
     na.var$z[na.var$cell.id==id] <- phago
 }
 na.var3 <- filter(na.var, is.na(z))
-for(id in na.var3$cell.id){
-  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
-                searchtype="priority", k=49)
-  phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
-  if(!is.na(phago))
-    na.var$z[na.var$cell.id==id] <- phago
-}
-na.var4 <- filter(na.var, is.na(z))
 dta$z[is.na(dta$z)] <- na.var$z
-dta$category <- ifelse(dta$z<=45, 1,
-                       ifelse(dta$z<=115, 2,
-                              ifelse(dta$z<=225, 3,
-                                     ifelse(dta$z<=315, 4, 1))))
 ASPECT <- MASK
-ASPECT[!is.na(MASK[])] <- dta$category
+ASPECT[!is.na(MASK[])] <- dta$z
 writeRaster(ASPECT, "c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/Aspect_100m_31N-ETRS89.asc", 
             format="ascii", overwrite=T, NAflag=-100)
 
@@ -465,7 +469,7 @@ SLOPE <- raster("inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc")
 BIOM  <- raster("inputlyrs/asc/Biomass_100m_31N-ETRS89.asc")
 AGE  <- raster("inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc")
 TSDIST <- raster("inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
-dta <- data.frame(m=MASK[], lcf=LCFM[], dem=DEM[], asp=ASPECT[], slope=SLOPE[]) %>% filter(!is.na(m))
+dta.orogra <- data.frame(m=MASK[], lcf=LCFM[], dem=DEM[], asp=ASPECT[], slope=SLOPE[]) %>% filter(!is.na(m))
 dta <- data.frame(m=MASK[], lcf=LCFM[], biom=BIOM[], age=AGE[], tsd=TSDIST[]) %>% filter(!is.na(m))
 
 # no NA in LCFM --> OK
@@ -490,36 +494,37 @@ table(na.slope$lcf)
 # only NA in TSD if LCFM is BareLand, Water or Urban --> OK
 na.tsd <- filter(dta, is.na(tsd))
 table(na.tsd$lcf)
+    # 18     19     20 
+    # 70660  22765 178914
+
 
 # NA in BIOM
 na.biom <- filter(dta, is.na(biom))
 table(na.biom$lcf)
-  # 1     14     15     16     17     18     19     20 
-  # 1 471574  79864 644652 355993  70660  22765 178914 
+  # 15     16     17     18     19     20 
+  # 79864 644652 355993  70660  22765 178914 
 
 # NA in AGE
 na.age <- filter(dta, is.na(age))
 table(na.age$lcf)
-      # 1      2      3      4      5      8      9     10     11     12     13     15     16     17     18     19 
-      # 778     23     20     12      8    162      4      3      5      1     14  79864 644652 355993  70660  22765 
-      # 20 
-      # 178914
+    # 15     16     17     18     19     20 
+    # 79864 644652 355993  70660  22765 178914 
 
 
-
-
-
-ggplot(filter(land, spp<=13, age<=10), aes(x=as.factor(age), y=biom)) +
-  geom_violin(width=1.2, color="black", fill="grey") +
-  geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
-  facet_wrap(.~as.factor(spp)) +
-  stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square") 
-
-ggplot(filter(land, spp<=13, age>10 & age<=20), aes(x=as.factor(age), y=biom)) +
-  geom_violin(width=1.2, color="black", fill="grey") +
-  geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
-  facet_wrap(.~as.factor(spp)) +
-  stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square") 
-
-
-
+# 
+# 
+# 
+# ggplot(filter(land, spp<=13, age<=10), aes(x=as.factor(age), y=biom)) +
+#   geom_violin(width=1.2, color="black", fill="grey") +
+#   geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
+#   facet_wrap(.~as.factor(spp)) +
+#   stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square") 
+# 
+# ggplot(filter(land, spp<=13, age>10 & age<=20), aes(x=as.factor(age), y=biom)) +
+#   geom_violin(width=1.2, color="black", fill="grey") +
+#   geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
+#   facet_wrap(.~as.factor(spp)) +
+#   stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square") 
+# 
+# 
+# 
