@@ -1,0 +1,175 @@
+---
+title: "MEDFIRE"
+author: "User's guide v.1"
+date: "22 March 2020"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# The MEDFIRE model  
+
+## Model's aim  
+
+MEDFIRE is a landscape dynamic model that integrates the main factors of change in Mediterranean forest landscapes. It allows exploring the spatial and temporal interactions between land-cover changes, fire regime, forest managment, fire management and vegetation dynamics. The main model's aim is to generate spatially explicit scenarios of urban-agro-forest landscape change corresponding to pre-designed scenario storylines.  
+   
+Each model scenario dictates which ecological and anthropogenic processes are active. Though, the chronological order of the processes included in the model is fixed as follows:  
+
+1. Land-cover changes  
+
+2. Forest management  
+
+3. Fires and fire suppression  
+
+4. Prescribed burns  
+
+5. Drought  
+
+6. Post-fire regeneration  
+
+7. Cohort establishment after drought-induced mortality  
+
+8. Afforestation (i.e. colonization of scrublands by tree species)  
+
+9. Forest growth and aging  
+
+If applies, climatic data is updated at the beginning of the time step, before any other process happens. 
+
+
+## Working directory structure  
+
+MEDFIRE is a spatially explicit model implemented in R and structured in the following folders:  
+- **inputfiles** contains the text files with the current version of model's parameters.  
+- **inputlyrs** contains the initial state in raster and Rdata format of the model.  
+- **mld** contains the R-scripts files of the model, sub-modules and reporting functions.  
+- **output** contains one sub-folder for each scenario, and for each scenario *scn.def.r* and *scn.custom.def.r* describe the initialization of model's parameters.  
+- **rscripts** contains auxiliar R-scripts to run the model, build model's inputs and analyze model's outputs.  
+
+
+## Functions of the model  
+
+The current version of the model is implemented thought the following functions (in alphabetic order):    
+
+- **afforestation(...)** simulates the colonization of shrublands by tree forest species according to the age of the shurb, the slope, the percentage of mature forest in a neihbourhood (only if they are within their potential climatic niche).  
+- **auxiliars(...)** contains several simple functions used to count cells fullfiling a certain criteria. These functions are used by main functions of the model.   
+- **cohort.establish(...)** simulates forest regeneration after drought-induced mortality. It depends on a secondary species matrix (accounting for the presence of secondary species as function of dominant species in Mediterranean forest ecosystems) and the percentage of forest species in a neighborhood.   
+- **define.scenario(...)** initializes the scenario parameters and the global variables of the model.  
+- **drought(...)** simulates drought-induced mortality of forest species falling out their potential climatic niche.  
+- **fire.regime(...)** simulates fire events under three synoptic weather conditions. Fires spread as wind-driven, convective or topographic fires.  
+- **forest.management(...)** simulates sylvicultural practices (e.g. thining, clear-cutting) and implements a set of rules based on the forest species, biomass, site quality index and forest age.    
+- **growth(...)** simulates vegetation productivity (increment of biomass) and ageing.    
+- **land.cover.change(...)** simulates land-cover transitions (e.g. urbanization, rural abandonment, agriculture conversion) following a demand allocation approach.    
+- **land.dyn.mdl(...)** is the **MEDFIRE** model. The function loads the spatial state variables, the initialization of model's parameters, creates the scenario output sub-folder and schedules the processes, e.g. land-cover changes, forest managment, wildfires, drought, post-disturbance regeneration and vegetation dynamics.    
+- **post.fire(...)** simulates forest regeneration after fire as function of the secondary species matrix and the percentage of forest species in a neighborhood.    
+- **prob.igni(...)** calculates the probability of fire ignition depending on elevation, slope, precipitation, density of roads, and land interfaces.    
+- **read.climatic.vars(...)** reads climatic raster files at 1 km resolution according to a climatic scenario (`rcp45` or `rcp85`) and a climatic model (`KNMI-RACMO22E_ICHEC-EC-EARTH`, `KNMI-RACMO22E_MOHC-HadGEM2-ES`, `SMHI-RCA4_CNRM-CERFACS-CNRM-CM5`, `SMHI-RCA4_MPI-M-MPI-ESM-LR`, or `SMHI-RCA4_MOHC-HadGEM2-ES`) and builda a data frame with annual minimum temperature and annual total precipitation at 1 ha for each decade, from 2010 to 2100.   
+- **read.sdm(...)** reads species distribution models, that is potential climatic niche according to a climatic scenario and climatic model for each decade, from 2010 to 2100.   
+- **read.state.vars(...)** initialize state dynamic variables: land-cover forest map, vegetation biomass, forest age and time since last disturbance.   
+- **read.static.vars(...)** initiazlie spatially explicit static model variables: cell coordinates, mask, elevation, aspect, slope, density of roads per ha, 1 km UTM grid, mask for topographic-driven fires, mask for wind-driven fires, probability of North wind, probability of North-west wind, and probability of West wind.    
+- **update.clim(...)** updates climatic data according to the selected climatic scenario.    
+- **update.interface(...)** updates land interface layer.    
+
+
+# Running MEDFIRE
+
+## How to run a test scenario
+
+1. Clone or download the Github repository [MEDFIRE](https://github.com/nuaquilue/MEDFIRE) in a local folder, e.g. C:/WORK/MEDFIRE.  
+
+2. In R, clean the working space.
+```{r clean, echo=T, eval=F}
+rm(list = ls())
+```
+
+3. Set the working directory to the previous local folder.
+```{r wd, echo=T, eval=F}
+setwd("C:/WORK/MEDFIRE")
+```
+
+4. Load the model.
+```{r load, echo=T, eval=F}
+source("mdl/landscape.dyn5.r")
+```
+
+5. Run the model.
+```{r call, echo=T, eval=F}
+land.dyn.mdl(scn.name)
+```
+
+
+## How to create and run a new scenario 
+
+1. Do steps 2. to 4. and load the function to set the default scenario's parameters.
+```{r repeat, echo=T, eval=F}
+rm(list = ls())
+setwd("C:/WORK/MEDFIRE")
+source("mdl/land.dyn.mdl.r")
+source("mdl/define.scenario.r") 
+```
+
+2. Give a name to the new scenario, e.g. *"MyTest"*, and call the **define.scenario** fucntion to load model's parameters with the default initialization.
+```{r def.scn, echo=T, eval=F}
+scn.name <- "MyTest"
+define.scenario(scn.name)
+```
+
+3. Customize the initialization of some parameters
+```{r params, echo=T, eval=F}
+file.clim.severity <- "ClimaticSeverity_test"
+file.sprd.weight <- "SprdRateWeights_C"
+nrun <- 3
+```
+
+4. Write the name of all the above updated parameters in the following call of the **dump** function. It copies these R objects into the file **outputs/MyTst/scn.custom.def.r** (do not change the name of this file).
+```{r dump, echo=T, eval=F}
+dump(c("file.clim.severity", "file.sprd.weight", "nrun"), 
+     paste0("outputs/", scn.name, "/scn.custom.def.r"))
+```
+
+5. Run ths scenario calling the **land.dyn.mdl** function. A sub-folder named *"MyTest"* will be created in the folder *outputs*. Model's output files, **scn.def.r** and **scn.custom.def.r** are saved in it.
+```{r ldyn, echo=T, eval=F}
+land.dyn.mdl(scn.name)
+```
+
+
+## How to create and run a series of scenarios
+
+```{r recursive, echo=T, eval=F}
+# Clean the workspace
+rm(list = ls())
+
+# Change the working directoyr
+setwd("C:/WORK/MEDFIRE")
+
+# Load functions
+source("mdl/land.dyn.mdl.r")
+source("mdl/define.scenario.r") 
+
+# Recursive run MEDFIRE with customized parameters
+for(i in LETTERS[1:5]){
+  scn.name <- paste0("TestFire", i)
+  define.scenario(scn.name)
+  file.clim.severity <- "ClimaticSeverity_test"
+  file.sprd.weight <- paste0("SprdRateWeights_", i)
+  nrun <- 3
+  dump(c("file.clim.severity", "file.sprd.weight", "nrun"), 
+       paste0("outputs/", scn.name, "/scn.custom.def.r"))
+  land.dyn.mdl(scn.name)
+}
+
+# Recursive run MEDFIRE with customized parameters
+list.scn <- paste0("TestFire_", c("01", "02", "03"))
+rpb <- c(0.5,1,1.5)
+for(j in 1:3){
+  scn.name <- list.scn[j]
+  define.scenario(scn.name)
+  file.clim.severity <- "ClimaticSeverity_test"
+  rpb.sr <- rpb[j]
+  dump(c("file.clim.severity", "rpb.sr"), 
+       paste0("outputs/", scn.name, "/scn.custom.def.r"))
+  land.dyn.mdl(scn.name)
+}
+```

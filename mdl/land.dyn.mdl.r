@@ -23,6 +23,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/fire.regime.r")
   source("mdl/post.fire.r")
   source("mdl/auxiliars.r")
+  source("rscripts/02.testing.fire.regime.r")
   
   ## Load scenario definition (global variables and scenario parameters)
   ## and customized scenario parameters
@@ -172,27 +173,18 @@ land.dyn.mdl <- function(scn.name){
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
           clim.sever <- 1
-        # swc = wind
-        fire.out <- fire.regime(land, coord, orography, pigni, swc=1, clim.sever, t, 
-                                burnt.cells, burnt.intens, annual.burnt)
-        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
-        if(nrow(fire.out[[3]])>0)
-          track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
-        annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
-        # swc = heat
-        fire.out <- fire.regime(land, coord, orography, pigni, swc=2, clim.sever, t, 
-                                burnt.cells, burnt.intens, annual.burnt)
-        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
-        if(nrow(fire.out[[3]])>0)
-          track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
-        annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
-        # swc = regular
-        fire.out <- fire.regime(land, coord, orography, pigni, swc=3, clim.sever, t, 
-                                burnt.cells, burnt.intens, annual.burnt)
-        burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
-        if(nrow(fire.out[[3]])>0)
-          track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
-        annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
+        # swc = wind, heat and regular
+        for(swc in 1:3){
+          fire.out <- fire.regime(land, coord, orography, pigni, swc, clim.sever, t, 
+                                  burnt.cells, burnt.intens, annual.burnt)
+          burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
+          if(nrow(fire.out[[3]])>0){
+            track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
+            test.fire(scn.name, fire.out[[4]])
+          }
+          annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
+          
+        }
         # done with fires!
         land$tsdist[land$cell.id %in% burnt.cells] <- 0
         land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1

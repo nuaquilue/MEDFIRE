@@ -13,7 +13,7 @@ read.state.vars <- function(work.path){
   
   cat("Reading initial state variables", "\n")
   
-  ## Read initial state vars
+  ## Read initial state varsas
   LCF <- raster(paste0(work.path, "/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc"))
   BIOMASS <- raster(paste0(work.path, "/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc"))
   AGE <- raster("inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc")
