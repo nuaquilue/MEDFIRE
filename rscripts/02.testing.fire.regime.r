@@ -37,5 +37,8 @@ writeRaster(BURN, "D:/MEDMOD/SpatialModelsR/MEDFIRE/rscripts/outs/Burning.asc",
 SLOPE <- MASK; SLOPE[] <- dta$slope
 writeRaster(SLOPE, "D:/MEDMOD/SpatialModelsR/MEDFIRE/rscripts/outs/Slope.asc", 
             format="ascii", overwrite=T, NAflag=-1)
+ELEV <- MASK; ELEV[] <- dta$elev
+writeRaster(ELEV, "D:/MEDMOD/SpatialModelsR/MEDFIRE/rscripts/outs/Elev.asc", 
+            format="ascii", overwrite=T, NAflag=-1)
 
 
