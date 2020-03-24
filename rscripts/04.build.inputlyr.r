@@ -172,6 +172,13 @@ dta[which(is.na(dta$ba)),]
 dta$ba[which(is.na(dta$ba))] <- mean(dta$ba[dta$lcf==1], na.rm=T)
 
 
+####### Biomass, from 100m to 1 km 
+BA <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc")
+BA.1K <- aggregate(BA, fact=10, fun=mean)
+BA.1K
+writeRaster(BA.1K, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/Biomass_1km_31N-ETRS89.asc",
+            format="ascii", NAflag=-1, overwrite=T)
+
 
 ############################# BIOPHYSIC VARIABLES: HEIGHT --> AGE ################################
 source("rscripts/05.forest.age.r")
