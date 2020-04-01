@@ -52,16 +52,20 @@ update.interface <- function(land){
   landtype$max[interface$tot==0] <- pmax(landtype$urb[interface$tot==0], landtype$crp[interface$tot==0], 
                                          landtype$nat[interface$tot==0], landtype$oth[interface$tot==0])
   interface$urb[interface$tot==0] <- ifelse(landtype$urb[interface$tot==0] == landtype$max[interface$tot==0], T, F)
+  interface$tot[interface$tot==0 & interface$urb] <- 1
   interface$crp[interface$tot==0] <- ifelse(landtype$crp[interface$tot==0] == landtype$max[interface$tot==0], T, F)
+  interface$tot[interface$tot==0 & interface$crp] <- 1
   interface$nat[interface$tot==0] <- ifelse(landtype$nat[interface$tot==0] == landtype$max[interface$tot==0], T, F)
+  interface$tot[interface$tot==0 & interface$nat] <- 1
   interface$oth[interface$tot==0] <- ifelse(landtype$oth[interface$tot==0] == landtype$max[interface$tot==0], T, F)
+  interface$tot[interface$tot==0 & interface$oth] <- 1
   
   ## Numeric value
   interface <- interface[,-ncol(interface)]
   interface$x <- apply(interface[,-1] * matrix(1:7, nrow=nrow(interface), ncol=7, byrow=T), 1, sum )
   
   ## Join to the final data.frame
-  land.utm <- left_join(land.utm, select(interface, utm, x), by="utm") %>% select(x)
+  land.utm <- left_join(land.utm, select(interface, utm, x), by="utm") %>% select(cell.id, x)
     # interface <- land.utm
     # save(interface, file="inputlyrs/rdata/interface.rdata")
   return(land.utm)

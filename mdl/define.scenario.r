@@ -25,14 +25,16 @@ define.scenario <- function(scn.name){
   write.tbl.outputs <- TRUE
   
   ## Id for distrubance types
-  lchg <- 1
-  cut <- 2
-  thin <- 3
-  hfire <- 4
-  lfire <- 5
-  pb <- 6
-  drght <- 7
-  afforest <- 8
+  lchg.urb <- 1
+  lchg.crp <- 2
+  lchg.nat <- 3
+  cut <- 4
+  thin <- 5
+  hfire <- 6
+  lfire <- 7
+  pb <- 8
+  drght <- 9
+  afforest <- 10
     
   ## Processes of the model included (TRUE-IN our FALSE-OUT),
   ## process ID, and frequency (in years) of each process
@@ -70,6 +72,8 @@ define.scenario <- function(scn.name){
   ## Characteristics specific of this scenario
   clim.scn <- "rcp45"
   psdm <- 1
+  file.dmnd.lchg <- "DemandLChg"
+  file.pattern.lchg  <- "PatternLChg"
   file.dmnd.harvest <- "DemandHarvest_Bioenergy"
   file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
   file.pctg.hot.days <- "PctgHotDays_rcp45"

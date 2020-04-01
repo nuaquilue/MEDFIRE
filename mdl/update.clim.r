@@ -2,7 +2,7 @@
 ##
 ######################################################################################
 
-update.clim <- function(MASK, land, orography, decade, clim.scn, psdm){
+update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl, psdm){
   
   library(tidyverse)
 
@@ -16,7 +16,7 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, psdm){
   
   ## Update temp and precip
   load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", decade+10, ".rdata"))
-  load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", decade, ".rdata"))
+  load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   
   ## Join land.cover.spp, aspect and slope data
   clim$spp <- land$spp

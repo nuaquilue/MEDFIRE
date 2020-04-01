@@ -7,7 +7,7 @@
 ## Type of last disturbance
 ######################################################################################
 
-read.state.vars <- function(work.path){
+read.state.vars <- function(work.path, hfire=6){
   
   library(raster)
   
@@ -26,7 +26,7 @@ read.state.vars <- function(work.path){
   ## mark those burnt cells in the disturbance type layer:
   land$distype <- NA 
   land$distype[land$spp<=17] <- 0
-  land$distype[land$tsdist<400] <- 4 # is hfire
+  land$distype[land$tsdist<400] <- hfire
   ## Initialize times burnt at o
   land$tburnt <- NA 
   land$tburnt[land$spp<=17] <- 0

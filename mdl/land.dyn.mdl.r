@@ -14,6 +14,7 @@ land.dyn.mdl <- function(scn.name){
   })
   source("mdl/update.clim.r")
   source("mdl/update.interface.r")
+  source("mdl/land.cover.change.r")
   source("mdl/prob.igni.r")
   source("mdl/growth.r")
   source("mdl/drought.r")
@@ -129,7 +130,7 @@ land.dyn.mdl <- function(scn.name){
       cat(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon), "\n")
       
       if(write.sp.outputs)
-        BURNT <- MASK
+        MAP <- MASK
       
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
@@ -140,10 +141,25 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 2. LAND-COVER CHANGE
-      chg.cells <- integer()
       if(processes[lchg.id] & t %in% temp.lchg.schedule){
-        lchg.out <- land.cover.change(land, coord, orography, lc.trans=1, chg.cells)
-        # update interface values
+        # Urbanization
+        chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
+        land$distype[land$cell.id %in% chg.cells] <- lchg.urb
+        land$spp[land$cell.id %in% chg.cells] <- 20 # urban
+        # Agriculture conversion
+        visit.cells <- chg.cells
+        chg.cells <- land.cover.change(land, coord, interface, 2, t, visit.cells)
+        land$distype[land$cell.id %in% chg.cells] <- lchg.crp
+        land$spp[land$cell.id %in% chg.cells] <- 16 # arableland or 17 - permanent crops
+        # Rural abandonment
+        visit.cells <- c(visit.cells, chg.cells)
+        chg.cells <- land.cover.change(land, coord, interface, 3, t, visit.cells)
+        land$distype[land$cell.id %in% chg.cells] <- lchg.nat
+        land$spp[land$cell.id %in% chg.cells] <- 14  # shrub
+        # Track land-cover chg
+        visit.cells <- c(visit.cells, chg.cells)
+        land$tsdist[land$cell.id %in% visit.cells] <- 0
+        # Update interface values
         interface <- update.interface(land)
         temp.lchg.schedule <- temp.lchg.schedule[-1] 
       }
@@ -183,7 +199,6 @@ land.dyn.mdl <- function(scn.name){
             test.fire(scn.name, fire.out[[4]])
           }
           annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
-          
         }
         # done with fires!
         land$tsdist[land$cell.id %in% burnt.cells] <- 0
@@ -298,9 +313,9 @@ land.dyn.mdl <- function(scn.name){
       # Ignitions' cell.id 
       igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)] 
       if(write.sp.outputs){
-        BURNT[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
-        BURNT[igni.id] <- 9
-        writeRaster(BURNT, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
+        MAP[igni.id] <- 9
+        writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
       ## Deallocate memory

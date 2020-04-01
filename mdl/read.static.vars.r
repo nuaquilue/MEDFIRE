@@ -10,6 +10,7 @@
 read.static.vars <- function(work.path){
   
   library(raster)
+  library(RANN)
   library(tidyverse)
   
   cat("Reading orographyic, utm, fire regime variables, harvesting-restrictions", "\n")
@@ -36,6 +37,19 @@ read.static.vars <- function(work.path){
   
   ## UTM layer
   UTM <- raster(paste0(work.path, "/inputlyrs/asc/UTM1k_100m_31N-ETRS89.asc"))
+  ## Are there NAs in the UTM layer within CAT?
+  dta <- data.frame(cell.id=1:ncell(UTM), m=MASK[], coordinates(UTM), z=UTM[]) %>% filter(!is.na(m))
+  na.var <- filter(dta, is.na(z))
+  for(id in na.var$cell.id){
+    neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                  searchtype="priority", k=9)
+    phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+    if(!is.na(phago))
+      na.var$z[na.var$cell.id==id] <- phago
+  }
+  na.var2 <- filter(na.var, is.na(z))
+  dta$z[is.na(dta$z)] <- na.var$z
+  UTM[!is.na(MASK[])] <- dta$z
   utm <- data.frame(cell.id=1:ncell(UTM),  utm=UTM[])
   save(utm, file="inputlyrs/rdata/utm.rdata")
   
