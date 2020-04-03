@@ -20,7 +20,9 @@ source("mdl/read.state.vars.r")
 read.state.vars(work.path)
 ## Create 2 data frames per climatic scn and decade: SDMs of all spp, and climatic variables (temp & precip) for CAT
 source("mdl/read.climatic.vars.r")
+source("mdl/read.sdm.r")
 read.climatic.vars(work.path)
+read.sdm(work.path)
 ## Save interfaces
 source("mdl/update.interface.r")
 load("inputlyrs/rdata/land.rdata")

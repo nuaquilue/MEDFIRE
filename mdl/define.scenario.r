@@ -20,34 +20,29 @@ define.scenario <- function(scn.name){
   ## Output directory (do not never change that, please!)
   out.path <- paste0("outputs/", scn.name)
   
+  ## Time lenght (in years) of a model simulation, from 2010 to 2100
+  time.horizon <- 91
+  
+  ## Number of runs (i.e. replicas)
+  nrun <- 5
+  
   ## Flags to write spatial and tabular output data
   write.sp.outputs <- TRUE
-  write.tbl.outputs <- TRUE
   
-  ## Id for distrubance types
-  lchg.urb <- 1
-  lchg.crp <- 2
-  lchg.nat <- 3
-  cut <- 4
-  thin <- 5
-  hfire <- 6
-  lfire <- 7
-  pb <- 8
-  drght <- 9
-  afforest <- 10
-    
   ## Processes of the model included (TRUE-IN our FALSE-OUT),
-  ## process ID, and frequency (in years) of each process
   processes <- c(TRUE,   # 1. Climate change
                  FALSE,  # 2. Land-cover changes
                  FALSE,  # 3. Forest management
-                 TRUE,   # 4. Wildfires
+                 FALSE,   # 4. Wildfires
                  FALSE,   # 5. Prescribed burns
-                 FALSE,  # 6. Drought
+                 TRUE,  # 6. Drought
                  FALSE,   # 7. Post-fire regeneration
-                 FALSE,  # 8. Cohort establihsment
-                 FALSE,  # 9. Afforestation
+                 TRUE,  # 8. Cohort establihsment
+                 TRUE,  # 9. Afforestation
                  TRUE)   # 10. Growth
+  
+  
+  ## Process ID and frequency (in years) 
   clim.id <- 1; clim.step <- 10
   lchg.id <- 2; lchg.step <- 5
   fmgmt.id <- 3; fmgmt.step <- 1
@@ -59,28 +54,26 @@ define.scenario <- function(scn.name){
   afforest.id <- 9; afforest.step <- 1
   growth.id <- 10; growth.step <- 1
   
-  ## Time lenght (in years) of a model simulation, from 2010 to 2100
-  time.horizon <- 1
   
-  ## Number of runs (i.e. replicas)
-  nrun <- 1
+  ## Distrubance types ID
+  lchg.urb <- 1
+  lchg.crp <- 2
+  lchg.nat <- 3
+  cut <- 4
+  thin <- 5
+  hfire <- 6
+  lfire <- 7
+  pb <- 8
+  drght <- 9
+  afforest <- 10
+    
   
   ## Initialize model global parameters (equal for all scn)
   spp.distrib.rad <- 20 	# neighborhood radius to determine which species belong to that region (in pixels)
   shrub.colon.rad <- 5 		#
+
   
-  ## Characteristics specific of this scenario
-  clim.scn <- "rcp45"
-  psdm <- 1
-  file.dmnd.lchg <- "DemandLChg"
-  file.pattern.lchg  <- "PatternLChg"
-  file.dmnd.harvest <- "DemandHarvest_Bioenergy"
-  file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
-  file.pctg.hot.days <- "PctgHotDays_rcp45"
-  file.fire.suppression <- "FireSuppression_CurrExtrem"
-  file.sprd.weight <- "SprdRateWeights"
-    
-  ## Spread rate, burn probability parameters, prescribed burns
+  ## Fire parameters (should not change to much): Spread rate, burn probability, prescribed burns
   rpb.sr <- 1.5
   rpb.fi <- 0.5
   pb.upper.th <- 0.75
@@ -93,6 +86,17 @@ define.scenario <- function(scn.name){
   pb.sd <- 0.683
   pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
   
+    
+  ## Scenario parameters
+  clim.scn <- "rcp45"
+  file.dmnd.lchg <- "DemandLChg"
+  file.pattern.lchg  <- "PatternLChg"
+  file.dmnd.harvest <- "DemandHarvest_Bioenergy"
+  file.clim.severity <- paste0("ClimaticSeverity_", clim.scn, "_fixABA")
+  file.pctg.hot.days <- paste0("PctgHotDays_", clim.scn)
+  file.fire.suppression <- "FireSuppression_CurrExtrem"
+  file.sprd.weight <- "SprdRateWeights"
+    
   
   ## Save all the variables in .r file to be further loaded by landscape.dyn.r
   if(!file.exists(out.path))

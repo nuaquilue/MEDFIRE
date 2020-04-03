@@ -60,7 +60,7 @@ The current version of the model is implemented thought the following functions 
 - **drought(...)** simulates drought-induced mortality of forest species falling out their potential climatic niche.  
 - **fire.regime(...)** simulates fire events under three synoptic weather conditions. Fires spread as wind-driven, convective or topographic fires.  
 - **forest.management(...)** simulates sylvicultural practices (e.g. thining, clear-cutting) and implements a set of rules based on the forest species, biomass, site quality index and forest age.    
-- **growth(...)** simulates vegetation productivity (increment of biomass) and ageing.    
+- **growth(...)** simulates vegetation productivity (increment of biomass) and ageing.  
 - **land.cover.change(...)** simulates land-cover transitions (e.g. urbanization, rural abandonment, agriculture conversion) following a demand allocation approach.    
 - **land.dyn.mdl(...)** is the **MEDFIRE** model. The function loads the spatial state variables, the initialization of model's parameters, creates the scenario output sub-folder and schedules the processes, e.g. land-cover changes, forest managment, wildfires, drought, post-disturbance regeneration and vegetation dynamics.    
 - **post.fire(...)** simulates forest regeneration after fire as function of the secondary species matrix and the percentage of forest species in a neighborhood.    

@@ -191,7 +191,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       neigh.id <- filter(neigh.id, cell.id %notin% visit.cells) %>%  #before it was burnt.cells
                   left_join(select(land, cell.id, spp, biom, age), by="cell.id") %>% 
                   filter(spp<=17 & !is.na(biom) & !is.na(age) )
-      neigh.id
+          # neigh.id
       
       ## Filter 'orography' for source and neigbour cells
       neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>% select(cell.id, elev, aspect)
