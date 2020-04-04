@@ -254,11 +254,30 @@ for(scn.clim in c("rcp45", "rcp85")){
   }
 }
 
-  
 
-# ## SPP overlapped to SDM ... hard to see anything
+## MAP of SDM in/out per spp at year=2010
+rm(list=ls())
+library(rgdal)
+load("rscripts/ins/species.rdata")  
+load("inputlyrs/rdata/mask.rdata")
+load("inputlyrs/rdata/land.rdata")
+county <- readOGR("inputlyrs/shp/Comarques.shp")
+clim.scn <- "rcp45"
+i <- 1
+for(clim.scn in c("rcp45", "rcp85")){
+  load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_SMHI-RCA4_MOHC-HadGEM2-ES_10.rdata"))
+  for(i in 1:13){
+    SPP <- MASK
+    SPP[!is.na(MASK[])] <- (land$spp==i) * ifelse(sdm[,i+1]==1, 2, 1)
+    tiff(paste0("rscripts/outs/sdm10_", clim.scn, "_", species$name[i], ".tiff"), width = 800, height=800)
+    plot(SPP, col=c("grey", "red", "darkolivegreen1"), main=paste("SDM 2010", clim.scn, species$name[i]))  
+    plot(county, add=T)  
+    dev.off()
+  }  
+}
+
 # SPP <- MASK; SPP[!is.na(SPP[])] <- land$spp
-# tiff("rscripts/outs/sdm.accum_phalepensis.tiff", width = 800, height=800)
+
 # SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.accum$sdm.phalepensis
 # spp <- rasterToPoints(SPP, fun=function(x){x==1}, spatial = T)
 # plot(SDM, col=rainbow(9)[9:1], main="Accumulated SDM P.halepensis")

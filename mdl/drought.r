@@ -15,7 +15,7 @@ drought <- function(land, clim, t){
   killed.cells <- integer()
   for(i in names(nkill)){
     if(nkill[i]>0)
-      kill.cells <- c(kill.cells, sample(to.kill$cell.id[to.kill$spp==i], nkill[i], replace=F))
+      killed.cells <- c(killed.cells, sample(to.kill$cell.id[to.kill$spp==i], nkill[i], replace=F))
   }
   
   return(killed.cells)

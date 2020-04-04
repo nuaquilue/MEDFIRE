@@ -1,10 +1,10 @@
 rm(list=ls())
- setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
-# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+ # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
+ setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
 # set the scenario
 source("mdl/define.scenario.r")
-scn.name <- "TestFireE"
+scn.name <- "TestSDM85"
 define.scenario(scn.name)
 # run the model
 source("mdl/land.dyn.mdl.r")  

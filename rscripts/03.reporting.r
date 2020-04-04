@@ -5,7 +5,7 @@ play <- function(){
   
   source("rscripts/03.reporting.r")
   
-  scn.name <- "Test03_rcp85_1p"
+  scn.name <- "TestSDM85"
   plot.abundance(scn.name)
   plot.drought(scn.name)
   plot.cohort(scn.name)

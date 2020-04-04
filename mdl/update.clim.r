@@ -2,12 +2,12 @@
 ##
 ######################################################################################
 
-update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl, psdm){
+update.clim <- function(MASK, land, decade, clim.scn, clim.mdl){
   
   library(tidyverse)
 
   ## Tracking
-  cat("Updating climatic variables", "\n")
+  cat("Update climate", "\n")
 
   ## Read coefficients of site quality
   site.quality.spp <- read.table("inputfiles/SiteQualitySpp.txt", header=T)
@@ -15,13 +15,11 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl, psdm)
   site.quality.shrub <- read.table("inputfiles/SiteQualityShrub.txt", header=T)
   
   ## Update temp and precip
-  load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", decade+10, ".rdata"))
+  load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   
-  ## Join land.cover.spp, aspect and slope data
+  ## Join land.cover.spp
   clim$spp <- land$spp
-  clim$aspect <- orography$aspect
-  clim$slope <- orography$slope
 
   ## Assign SDM according to current spp distribution 
   clim$sdm <- NA

@@ -27,7 +27,7 @@ define.scenario <- function(scn.name){
   nrun <- 5
   
   ## Flags to write spatial and tabular output data
-  write.sp.outputs <- TRUE
+  write.sp.outputs <- FALSE
   
   ## Processes of the model included (TRUE-IN our FALSE-OUT),
   processes <- c(TRUE,   # 1. Climate change
@@ -88,7 +88,8 @@ define.scenario <- function(scn.name){
   
     
   ## Scenario parameters
-  clim.scn <- "rcp45"
+  clim.scn <- "rcp85"
+  clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
   file.dmnd.lchg <- "DemandLChg"
   file.pattern.lchg  <- "PatternLChg"
   file.dmnd.harvest <- "DemandHarvest_Bioenergy"

@@ -24,7 +24,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/fire.regime.r")
   source("mdl/post.fire.r")
   source("mdl/auxiliars.r")
-  source("rscripts/02.testing.fire.regime.r")
+
   
   ## Load scenario definition (global variables and scenario parameters)
   ## and customized scenario parameters
@@ -134,8 +134,8 @@ land.dyn.mdl <- function(scn.name){
       
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
-        clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn, psdm)
-        load(paste0("inputlyrs/rdata/sdm_", psdm, "p_", clim.scn, "_", (1+floor(t/10))*10, ".rdata"))
+        clim <- update.clim(MASK, land, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
+        load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
       
@@ -307,12 +307,12 @@ land.dyn.mdl <- function(scn.name){
       }
       
       ## Print maps every time step with ignition and low/high intenstiy burnt
-      cat("... writing output layers", "\n")
-      nfire <- sum(track.fire$year==t, na.rm=T)
-      sizes <- filter(track.fire, year==t) %>% group_by(swc, fire.id) %>% summarise(ab=aburnt.highintens+aburnt.lowintens)
-      # Ignitions' cell.id 
-      igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)] 
       if(write.sp.outputs){
+        cat("... writing output layers", "\n")
+        nfire <- sum(track.fire$year==t, na.rm=T)
+        sizes <- filter(track.fire, year==t) %>% group_by(swc, fire.id) %>% summarise(ab=aburnt.highintens+aburnt.lowintens)
+        # Ignitions' cell.id 
+        igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)] 
         MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
         MAP[igni.id] <- 9
         writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
