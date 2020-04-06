@@ -134,7 +134,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
-        clim <- update.clim(MASK, land, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
+        clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
         load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
@@ -196,7 +196,7 @@ land.dyn.mdl <- function(scn.name){
           burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]
           if(nrow(fire.out[[3]])>0){
             track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[3]]))
-            test.fire(scn.name, fire.out[[4]])
+          #test.fire(scn.name, fire.out[[4]])
           }
           annual.burnt <- annual.burnt+sum(fire.out[[3]]$aburnt.highintens + fire.out[[3]]$aburnt.lowintens)
         }

@@ -2,7 +2,7 @@
 ##
 ######################################################################################
 
-update.clim <- function(MASK, land, decade, clim.scn, clim.mdl){
+update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
   
   library(tidyverse)
 
@@ -20,7 +20,9 @@ update.clim <- function(MASK, land, decade, clim.scn, clim.mdl){
   
   ## Join land.cover.spp
   clim$spp <- land$spp
-
+  clim$aspect <- orography$aspect
+  clim$slope <- orography$slope
+  
   ## Assign SDM according to current spp distribution 
   clim$sdm <- NA
   clim$sdm[clim$spp==1] <- sdm$sdm.phalepensis[clim$spp==1]

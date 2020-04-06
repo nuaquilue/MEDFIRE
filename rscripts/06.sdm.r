@@ -265,21 +265,17 @@ county <- readOGR("inputlyrs/shp/Comarques.shp")
 clim.scn <- "rcp45"
 i <- 1
 for(clim.scn in c("rcp45", "rcp85")){
-  load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_SMHI-RCA4_MOHC-HadGEM2-ES_10.rdata"))
+  load(paste0("inputlyrs/rdata/sdm_planfix_", clim.scn, "_SMHI-RCA4_MOHC-HadGEM2-ES_10.rdata"))
   for(i in 1:13){
     SPP <- MASK
     SPP[!is.na(MASK[])] <- (land$spp==i) * ifelse(sdm[,i+1]==1, 2, 1)
-    tiff(paste0("rscripts/outs/sdm10_", clim.scn, "_", species$name[i], ".tiff"), width = 800, height=800)
-    plot(SPP, col=c("grey", "red", "darkolivegreen1"), main=paste("SDM 2010", clim.scn, species$name[i]))  
+    tiff(paste0("rscripts/outs/sdm.planfix_10_", clim.scn, "_", species$name[i], ".tiff"), width = 800, height=800)
+    plot(SPP, col=c("grey", "red", "darkolivegreen1"), main=paste("SDM planfix 2010", clim.scn, species$name[i]))  
     plot(county, add=T)  
     dev.off()
   }  
 }
 
-# SPP <- MASK; SPP[!is.na(SPP[])] <- land$spp
 
-# SDM <- MASK; SDM[!is.na(SDM[])] <- sdm.accum$sdm.phalepensis
-# spp <- rasterToPoints(SPP, fun=function(x){x==1}, spatial = T)
-# plot(SDM, col=rainbow(9)[9:1], main="Accumulated SDM P.halepensis")
-# plot(spp, add=TRUE, col="grey30", pch=19, cex=0.05, alpha=0.8)
-# dev.off()
+
+

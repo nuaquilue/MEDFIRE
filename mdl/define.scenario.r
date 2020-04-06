@@ -33,10 +33,10 @@ define.scenario <- function(scn.name){
   processes <- c(TRUE,   # 1. Climate change
                  FALSE,  # 2. Land-cover changes
                  FALSE,  # 3. Forest management
-                 FALSE,   # 4. Wildfires
+                 TRUE,   # 4. Wildfires
                  FALSE,   # 5. Prescribed burns
                  TRUE,  # 6. Drought
-                 FALSE,   # 7. Post-fire regeneration
+                 TRUE,   # 7. Post-fire regeneration
                  TRUE,  # 8. Cohort establihsment
                  TRUE,  # 9. Afforestation
                  TRUE)   # 10. Growth

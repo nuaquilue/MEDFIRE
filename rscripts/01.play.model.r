@@ -4,7 +4,7 @@ rm(list=ls())
 
 # set the scenario
 source("mdl/define.scenario.r")
-scn.name <- "TestSDM85"
+scn.name <- "TestSDM85fire"
 define.scenario(scn.name)
 # run the model
 source("mdl/land.dyn.mdl.r")  
@@ -12,7 +12,7 @@ system.time(land.dyn.mdl(scn.name))
 
 
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
-work.path <- "c:/work/MEDMOD/spatialmodelsr/Medfire"
+work.path <- "d:/MEDMOD/spatialmodelsr/Medfire"
 source("mdl/read.static.vars.r")
 read.static.vars(work.path)
 ## Create .Rdata with initial values of variables of the model, used at each replicate of any scn.
@@ -22,7 +22,7 @@ read.state.vars(work.path)
 source("mdl/read.climatic.vars.r")
 source("mdl/read.sdm.r")
 read.climatic.vars(work.path)
-read.sdm(work.path)
+read.sdm(work.path, "base")
 ## Save interfaces
 source("mdl/update.interface.r")
 load("inputlyrs/rdata/land.rdata")
