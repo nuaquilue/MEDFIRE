@@ -15,7 +15,7 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
   site.quality.shrub <- read.table("inputfiles/SiteQualityShrub.txt", header=T)
   
   ## Update temp and precip
-  load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
+  load(paste0("inputlyrs/rdata/sdm_planfix_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   
   ## Join land.cover.spp

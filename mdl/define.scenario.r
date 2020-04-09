@@ -33,10 +33,10 @@ define.scenario <- function(scn.name){
   processes <- c(TRUE,   # 1. Climate change
                  FALSE,  # 2. Land-cover changes
                  FALSE,  # 3. Forest management
-                 TRUE,   # 4. Wildfires
+                 FALSE,   # 4. Wildfires
                  FALSE,   # 5. Prescribed burns
                  TRUE,  # 6. Drought
-                 TRUE,   # 7. Post-fire regeneration
+                 FALSE,   # 7. Post-fire regeneration
                  TRUE,  # 8. Cohort establihsment
                  TRUE,  # 9. Afforestation
                  TRUE)   # 10. Growth
@@ -88,7 +88,7 @@ define.scenario <- function(scn.name){
   
     
   ## Scenario parameters
-  clim.scn <- "rcp85"
+  clim.scn <- "rcp45"
   clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
   file.dmnd.lchg <- "DemandLChg"
   file.pattern.lchg  <- "PatternLChg"

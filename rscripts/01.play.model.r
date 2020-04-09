@@ -1,16 +1,23 @@
 rm(list=ls())
  # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
- setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
-# set the scenario
+# Load functions
 source("mdl/define.scenario.r")
-scn.name <- "TestSDM85fire"
-define.scenario(scn.name)
-# run the model
 source("mdl/land.dyn.mdl.r")  
-system.time(land.dyn.mdl(scn.name))
+# Name the new scenario and call the define.scenario function to load default initialization of model’s parameters
+scn.name <- "Test.SDMplanfix.rcp85"
+define.scenario(scn.name)
+# Change target parameters
+clim.scn <- "rcp85"
+# Write the name of the customized parameters in the dump function. 
+# It copies these R objects into the file outputs/test/scn.custom.def.r
+dump(c("clim.scn"), paste0("outputs/", scn.name, "/scn.custom.def.r"))
+# Run the model
+land.dyn.mdl(scn.name)
 
 
+###########################################################################################################
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
 work.path <- "d:/MEDMOD/spatialmodelsr/Medfire"
 source("mdl/read.static.vars.r")
