@@ -3,7 +3,7 @@ update.interface <- function(land){
   library(tidyverse)
   
   ## Traking
-  cat("Update interfaces", "\n")
+  cat("Update interfaces", "\n"); tic("  t")
   
   ## UTM df
   load("inputlyrs/rdata/utm.rdata")
@@ -68,6 +68,8 @@ update.interface <- function(land){
   land.utm <- left_join(land.utm, select(interface, utm, x), by="utm") %>% select(cell.id, x)
     # interface <- land.utm
     # save(interface, file="inputlyrs/rdata/interface.rdata")
+  
+  toc()
   return(land.utm)
     
 }

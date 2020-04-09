@@ -20,15 +20,13 @@ read.state.vars <- function(work.path, hfire=6){
   TSDIST <- raster(paste0(work.path, "/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc"))
   
   ## Build data frame
-  land <- data.frame(cell.id=1:ncell(LCF), spp=LCF[], biom=BIOMASS[], age=AGE[], tsdist=TSDIST[])
+  land <- data.frame(cell.id=1:ncell(LCF), spp=LCF[], biom=BIOMASS[], age=AGE[], 
+                     distype=0, tsdist=TSDIST[], tburnt=NA)
   land <- land[!is.na(land$spp),]
-  ## According to TimeSinceDisturbance (that's actually Time Since Fire), 
-  ## mark those burnt cells in the disturbance type layer:
-  land$distype <- NA 
-  land$distype[land$spp<=17] <- 0
+  ## According to TimeSinceDisturbance layer (that's actually Time Since Fire),
+  ## mark burnt cells in the disturbance type layer:
   land$distype[land$tsdist<400] <- hfire
-  ## Initialize times burnt at o
-  land$tburnt <- NA 
+  ## Initialize times burnt at 0 for burnable covers
   land$tburnt[land$spp<=17] <- 0
   
   ## Save it

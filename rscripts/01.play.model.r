@@ -11,7 +11,7 @@ source("mdl/land.dyn.mdl.r")
 scn.name <- "TestFire"
 define.scenario(scn.name)
 # Change target parameters
-file.clim.severity <- "ClimaticSeverity_test"
+#file.clim.severity <- "ClimaticSeverity_rcptest"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
@@ -22,12 +22,12 @@ processes <- c(TRUE,   # 1. Climate change
                TRUE,  # 8. Cohort establihsment
                TRUE,  # 9. Afforestation
                TRUE)   # 10. Growth
-rpb <- 0.7
+rpb <- 0.4
 nrun <- 1
 time.horizon <- 1
 # Write the name of the customized parameters in the dump function. 
 # It copies these R objects into the file outputs/test/scn.custom.def.r
-dump(c("file.clim.severity", "processes", "rpb", "nrun", "time.horizon"), 
+dump(c( "processes", "rpb", "nrun", "time.horizon"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 # Run the model
 land.dyn.mdl(scn.name)
@@ -35,7 +35,7 @@ land.dyn.mdl(scn.name)
 
 ###########################################################################################################
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
-work.path <- "d:/MEDMOD/spatialmodelsr/Medfire"
+work.path <- getwd()
 source("mdl/read.static.vars.r")
 read.static.vars(work.path)
 ## Create .Rdata with initial values of variables of the model, used at each replicate of any scn.

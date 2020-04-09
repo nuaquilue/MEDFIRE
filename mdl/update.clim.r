@@ -7,7 +7,7 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
   library(tidyverse)
 
   ## Tracking
-  cat("Update climate", "\n")
+  cat("Update climate", "\n"); tic("  t")
 
   ## Read coefficients of site quality
   site.quality.spp <- read.table("inputfiles/SiteQualitySpp.txt", header=T)
@@ -58,5 +58,6 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
                              ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))) )
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
   
+  toc()
   return(clim=clim)
 }

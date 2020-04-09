@@ -5,7 +5,7 @@
 forest.mgmt <- function(land, coord, clim, orography, t){
   
   ## Tracking
-  cat("Forest Management")
+  cat("Forest Management"); tic("  t")
   
   ## Read management rules
   mgmt.rules <- read.table("inputfiles/MgmtRules.txt", header=T)
@@ -128,5 +128,6 @@ forest.mgmt <- function(land, coord, clim, orography, t){
                         select(cell.id, spp, vol.sawlog, vol.wood) %>% mutate(sylvi=4))
   }
   
+  toc()
   return(harvesting)
 }

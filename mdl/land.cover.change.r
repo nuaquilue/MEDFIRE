@@ -43,7 +43,7 @@ land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells
   
   
   ## Retrive target demand and initialize area changed
-  trgt.dmnd <- dmnd.lchg[t, lc.trans]
+  trgt.dmnd <- dmnd.lchg[t, lc.trans+1]
   
   
   ## Idem for parameters driving spatial aggregation of change

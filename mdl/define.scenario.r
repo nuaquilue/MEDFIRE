@@ -27,7 +27,7 @@ define.scenario <- function(scn.name){
   nrun <- 5
   
   ## Flags to write spatial and tabular output data
-  write.sp.outputs <- FALSE
+  write.sp.outputs <- TRUE
   
   ## Processes of the model included (TRUE-IN our FALSE-OUT),
   processes <- c(TRUE,   # 1. Climate change
@@ -68,9 +68,11 @@ define.scenario <- function(scn.name){
   afforest <- 10
     
   
-  ## Initialize model global parameters (equal for all scn)
-  spp.distrib.rad <- 20 	# neighborhood radius to determine which species belong to that region (in pixels)
-  shrub.colon.rad <- 5 		#
+  ## Global model's parametres
+  # Radius of the neighborhood (in pixels) to find out if a species is present in a region
+  spp.distrib.rad <- 20 	# i.e. 2 km
+  # Radius of the neighborhood (in pixels) to look for mature tree species ready to colonize shrubs
+  shrub.colon.rad <- 5 		# i.e. 500 m
 
   
   ## Fire parameters (should not change to much): Spread rate, burn probability, prescribed burns
@@ -91,9 +93,9 @@ define.scenario <- function(scn.name){
   clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
   file.dmnd.lchg <- "DemandLChg"
   file.pattern.lchg  <- "PatternLChg"
-  file.dmnd.harvest <- "DemandHarvest_Bioenergy"
-  file.clim.severity <- paste0("ClimaticSeverity_", clim.scn, "_fixABA")
-  file.pctg.hot.days <- paste0("PctgHotDays_", clim.scn)
+  file.dmnd.harvest <- "DemandHarvest"
+  file.clim.severity <- "ClimaticSeverity"
+  file.pctg.hot.days <- "PctgHotDays_noCC"
   file.fire.suppression <- "FireSuppression_CurrExtrem"
   file.sprd.weight <- "SprdRateWeights"
     

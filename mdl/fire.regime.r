@@ -88,7 +88,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   ## Start burning until annual area target is not reached
   fire.id <- 0
   track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA,
-                             slope=0, wind=0, flam=0, sr=1, pb=1, burning=1)
+                             slope=0, wind=0, flam=0, aspc=0, sr=1, pb=1, burning=1)
   while(area.target>0){
     
     ## ID for each fire event
@@ -116,9 +116,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     ## According to the fire spread type, look at the weights of each factor on spread rate
     wwind <- fst.sprd.weight[1,fire.spread.type+1]
     wslope <- fst.sprd.weight[2,fire.spread.type+1]
-    wfuel <- fst.sprd.weight[3,fire.spread.type+1]
-    wflam <- fst.sprd.weight[4,fire.spread.type+1]
-    waspc <- fst.sprd.weight[5,fire.spread.type+1]
+    wflam <- fst.sprd.weight[3,fire.spread.type+1]
+    waspc <- fst.sprd.weight[4,fire.spread.type+1]
     
     ## Assign the fire suppression levels
     sprd.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$sprd.th
@@ -165,7 +164,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     fire.step <- 1
     track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, cell.id=igni.id, step=fire.step, 
                                spp=land$spp[land$cell.id==igni.id],
-                               slope=0, wind=0, flam=0, sr=1, pb=1, burning=1))
+                               slope=0, wind=0, flam=0, aspc=0, sr=1, pb=1, burning=1))
     
     
     ## Start speading from active cells (i.e. the fire front)
@@ -184,19 +183,17 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       ## For all neighbours, compute fuel and flammability factors
       neigh.land <- filter(land, cell.id %in% neigh.id$cell.id) %>% 
                     mutate(fuel=ifelse(spp %in% c(15,16,17), 0.5,
-                                  ifelse(spp==14, 0.01638*biom,
+                                  ifelse(spp==14, 0.01638*biom,  # or 0.01638???
                                     ifelse(age<=7, 0.2,
                                       ifelse(biom<200, 0.4,
                                         ifelse(biom<480, 0.95, 0.6)))))) %>%
                     left_join(spp.flammability[,c(1,fire.spread.type+1)], by="spp") 
       neigh.land$flam <- wflam*neigh.land[, ncol(neigh.land)]
       
-      
-      ## For all neighbours, compute aspc factor
+      ## For all neighbours, compute aspc factor ()
       ## Also keep fire.front cells as we need their elevation to compute diff.elevation
       neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>%
                          mutate(aspc=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
-      
       
       ## Get spread rate by:
       ## Joining to the neig.id data.frame the neigh.land and keep only burnable neighs 
@@ -213,17 +210,13 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                                             360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
                    mutate(sr=slope+wind+flam+aspc, pb=1+rpb*log(sr*fuel)) %>% 
                    group_by(cell.id) %>% 
-                   summarize(step=fire.step,spp=mean(spp), slope=max(slope), wind=max(wind),
-                              flam=max(flam), sr=max(sr), pb=max(pb))
-        
-                   
+                   summarize(step=fire.step, spp=mean(spp), slope=max(slope), wind=max(wind),
+                              flam=max(flam), aspc=max(aspc), sr=max(sr), pb=max(pb))
+      
       ## Now compute probability of burning and actual burning state (T or F):
       sprd.rate$burning <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb & sprd.rate$pb > pb.lower.th
       if(nrow(sprd.rate)>0)
         track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, sprd.rate))
-      # par(mfrow=c(3,2)); hist(sprd.rate$fi); hist(sprd.rate$pb); hist(sprd.rate$sr); 
-      # hist(sprd.rate$pb5); hist(sprd.rate$pb6)
-      sprd.rate
       
       ## If at least there's a burning cell, continue, otherwise, stop
       if(!any(sprd.rate$burning))
@@ -239,36 +232,28 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                               mad(sprd.rate$sr[sprd.rate$burning])))
       fire.front <- sprd.rate$cell.id[sprd.rate$burning & sprd.rate$sr>=exclude.th]
       
-      # ## In the case, there are no cells in the fire front, stop trying to burn
-      # ## This happens when no cells have burnt in the current spreading step
-      # if(length(fire.front)==0){
-      #   print(sprd.rate)
-      #   print(length(burnt.cells))
-      #   print(aburnt.highintens)
-      #   cat("no cells in the fire front");  break
-      # }
-      
-      ## Increase area burnt in either high or low intensity
-      ## Prescribed burns always burnt in low intensity
+      ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
       aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$sr<=ifelse(swc<4,fire.intens.th,100))
       aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$sr>ifelse(swc<4,fire.intens.th,100))
-      print(aburnt.lowintens+aburnt.highintens)
-      
+    
+      ## Increment fire.step  
       fire.step <- fire.step+1
       
+      ## In the case, there are no cells in the fire front, stop trying to burn.
+      ## This happens when no cells have burnt in the current spreading step
       if(length(fire.front)==0)
         break
       
     } # while 'fire'
     
-    ## escriu algo sobre aquest incendi
+    ## Write info about this fire
     track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, 
                                                wind=fire.wind, atarget=fire.size.target, aburnt.highintens, 
                                                aburnt.lowintens, asupp.fuel, asupp.sprd))
+    cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- aBurnt:", aburnt.lowintens+aburnt.highintens), "\n")
     
     ## Update annual burnt area
     area.target <- area.target - (aburnt.lowintens+aburnt.highintens)
-    # cat(paste("remaining annual area target", area.target), "\n")
     
   }  #while 'year'
   

@@ -5,7 +5,7 @@
 drought <- function(land, clim, t){
   
   ## Tracking
-  cat("Drought", "\n")
+  cat("Drought", "\n"); tic("  t")
   
   ## Count how many ha to kill, totally and this time step
   to.kill <- filter(cbind(land, select(clim, sdm)), spp<=13, sdm==0, distype==0) 
@@ -18,5 +18,6 @@ drought <- function(land, clim, t){
       killed.cells <- c(killed.cells, sample(to.kill$cell.id[to.kill$spp==i], nkill[i], replace=F))
   }
   
+  toc()
   return(killed.cells)
 }

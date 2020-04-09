@@ -147,7 +147,7 @@ w <- read.table("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputfiles/InitialBiomass
 # Shrub Biomassa: W=exp(a0+a1*ln(hm*x)+a2*ln(fcc*x)) where x=TSF and W=Biomassa (Tones/hectarea)
 dta.shrub <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], tsf=TSF[]) %>% filter(!is.na(lcfm)) %>%
               filter(lcfm==14) %>%  left_join(sqi, by="cell.id") %>% left_join(w, by="x")   %>% 
-             mutate(ba=a0+a1*log(hm*pmin(tsf, age_max))+a2*log(fcc*pmin(tsf,age_max)))
+             mutate(ba=exp(a0+a1*log(hm*pmin(tsf, age_max))+a2*log(fcc*pmin(tsf,age_max))))
 summary(dta.shrub$ba[dta.shrub$lcfm==14])
 BA[LCFM[]==14] <- dta.shrub$ba
 # final test
