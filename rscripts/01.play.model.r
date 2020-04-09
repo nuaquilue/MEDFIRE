@@ -1,18 +1,34 @@
 rm(list=ls())
- # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
-setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+ setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
+# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
+
+############################################ RUN A SCN ##################################################
 # Load functions
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Name the new scenario and call the define.scenario function to load default initialization of model’s parameters
-scn.name <- "Test.SDMplanfix.rcp85"
+scn.name <- "TestFire"
 define.scenario(scn.name)
 # Change target parameters
-clim.scn <- "rcp85"
+file.clim.severity <- "ClimaticSeverity_test"
+processes <- c(TRUE,   # 1. Climate change
+               FALSE,  # 2. Land-cover changes
+               FALSE,  # 3. Forest management
+               TRUE,   # 4. Wildfires
+               FALSE,   # 5. Prescribed burns
+               TRUE,  # 6. Drought
+               TRUE,   # 7. Post-fire regeneration
+               TRUE,  # 8. Cohort establihsment
+               TRUE,  # 9. Afforestation
+               TRUE)   # 10. Growth
+rpb <- 0.7
+nrun <- 1
+time.horizon <- 1
 # Write the name of the customized parameters in the dump function. 
 # It copies these R objects into the file outputs/test/scn.custom.def.r
-dump(c("clim.scn"), paste0("outputs/", scn.name, "/scn.custom.def.r"))
+dump(c("file.clim.severity", "processes", "rpb", "nrun", "time.horizon"), 
+     paste0("outputs/", scn.name, "/scn.custom.def.r"))
 # Run the model
 land.dyn.mdl(scn.name)
 
@@ -44,5 +60,4 @@ writeRaster(INTERFACE, "C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/Inte
             format="ascii", NAflag=-1, overwrite=T)
 
 
-work.path <- "c:/work/MEDMOD/spatialmodelsr/Medfire"
-clim.scn <- "SMHI-RCA4_MOHC-HadGEM2-ES"
+

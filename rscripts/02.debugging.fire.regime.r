@@ -16,18 +16,23 @@ dir.create(file.path(getwd(), out.path), showWarnings = F)
 dir.create(file.path(getwd(), out.path, "/lyr"), showWarnings = F) 
 
 ## Input data from land.dyn.mdl.r
-t <- 1
 load("inputlyrs/rdata/mask.rdata")
 load("inputlyrs/rdata/land.rdata")
 load("inputlyrs/rdata/coordinates.rdata")
 load("inputlyrs/rdata/orography.rdata")
 load("inputlyrs/rdata/interface.rdata")
 
-clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, "rcp45", 1)
+## Climate
+clim.scn <- "rcp45"
+clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
+clim <- update.clim(MASK, land, orography, decade=10, clim.scn, clim.mdl)
 
+## Probability of ignition
 pigni <- prob.igni(land, orography, clim, interface)
+
 ## Climatic severity and pctg hot days tabes
 clim.severity <- read.table("inputfiles/ClimaticSeverity_test.txt", header=T)
+
 ## Tracking fire
 track.fire <-  data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
                           wind=NA, atarget=NA, aburnt.highintens=NA, 
@@ -36,17 +41,13 @@ BURNT <- MASK
 processes <- c(TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
 temp.fire.schedule <- seq(1,91,1)
 temp.growth.schedule <- seq(1,91,1)
-fire.id <- 4
-pb.id <- 5
-post.fire.id <- 7
-growth.id <- 10
-
-hfire <- 4
-lfire <- 5
+hfire <- 6
+lfire <- 7
 
 ## Basic arguments
+t <- 1
 irun <- 1
-swc <- t
+swc <- 3
 ## Fire regime characteristics
 file.clim.severity <- "ClimaticSeverity_test"
 file.pctg.hot.days <- "PctgHotDays_rcp45"
@@ -54,8 +55,8 @@ file.fire.suppression <- "FireSuppression_CurrExtrem"
 file.sprd.weight <- "SprdRateWeights_E"
 clim.sever <- 0
 ## Spread rate, burn probability parameters, prescribed burns
-rpb.sr <- 1.5
-rpb.fi <- 0.5
+# rpb.sr <- 1.5
+rpb <- 0.5
 stochastic.spread <- 0.9 #0.75, 1-0.75=0.25 creama o no aleatoriament, independentment del spread rate i pb
 pb.upper.th <- 0.75  # 0.9 - wind, 0.8 - convective, 
 pb.lower.th <- 0.05  # 0.25 - wind, 0.1 - convective, 
@@ -101,9 +102,11 @@ track.fires <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA,
 ## Default Euclidean distance and wind direction between neigbours
 ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
 mask <- data.frame(cell.id=1:ncell(MASK), x=MASK[])
-default.windir <- data.frame(x=c(0,-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
-                             windir=c(-1,270,90,180,0,225,45,135,315,270,90,180,0))
-
+## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NW
+default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
+                            windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
+                            dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
+default.nneigh <- nrow(default.neigh)
 
 ## Find either fixed or stochastic annual target area for wildfires
 if(swc<4){ 
@@ -196,7 +199,8 @@ burnt.cells <- igni.id
 visit.cells <- igni.id
 burnt.intens <- T
 fire.step <- 1
-track.spread <- data.frame(cell.id=igni.id, step=fire.step, spp=land$spp[land$cell.id==igni.id],
-                           front.slope=0.5, front.wind=0.5, flam=0.5, fi=0.5, sr=1, 
-                           pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
-
+track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA,
+                           slope=0, wind=0, flam=0, sr=1, pb=1, burning=1)
+track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, cell.id=igni.id, step=fire.step, 
+                                               spp=land$spp[land$cell.id==igni.id],
+                                               slope=0, wind=0, flam=0, sr=1, pb=1, burning=1))

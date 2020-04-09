@@ -74,8 +74,7 @@ define.scenario <- function(scn.name){
 
   
   ## Fire parameters (should not change to much): Spread rate, burn probability, prescribed burns
-  rpb.sr <- 1.5
-  rpb.fi <- 0.5
+  rpb <- 1
   pb.upper.th <- 0.75
   pb.lower.th <- 0.05
   fire.intens.th <- 0.35  # high vs. low intensity fire, SR_noAcc <= fire.intens.th

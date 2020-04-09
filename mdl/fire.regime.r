@@ -33,8 +33,10 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   
   ## Wind direction between neigbours
   ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
-  default.windir <- data.frame(x=c(0,-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
-                               windir=c(-1,270,90,180,0,225,315,135,45,270,90,180,0))
+  default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
+                              windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
+                              dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
+  default.nneigh <- nrow(default.neigh)
   
   
   ## Find either fixed or stochastic annual target area for wildfires
@@ -86,8 +88,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   ## Start burning until annual area target is not reached
   fire.id <- 0
   track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA,
-                             front.slope=0, front.wind=0, flam=0, fi=1, sr=1, 
-                             pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1)
+                             slope=0, wind=0, flam=0, sr=1, pb=1, burning=1)
   while(area.target>0){
     
     ## ID for each fire event
@@ -146,8 +147,6 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     ## Bound fire.size.target to not exceed remaining area.target
     if(fire.size.target>area.target)
       fire.size.target <- area.target
-    ## ** TESTING **
-    fire.size.target <- area.target
     
     ## Initialize tracking variables
     fire.front <- igni.id
@@ -162,78 +161,68 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     visit.cells <- igni.id
     burnt.intens <- c(burnt.intens, ifelse(swc<4,T,F))
     
+    ## Tracking
     fire.step <- 1
     track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, cell.id=igni.id, step=fire.step, 
                                spp=land$spp[land$cell.id==igni.id],
-                               front.slope=0, front.wind=0, flam=0, fi=1, sr=1, 
-                               pb.sr=1, pb.fi=1, burning.sr=1, burning.fi=1))
+                               slope=0, wind=0, flam=0, sr=1, pb=1, burning=1))
+    
     
     ## Start speading from active cells (i.e. the fire front)
     while((aburnt.lowintens+aburnt.highintens+asupp.fuel+asupp.sprd)<fire.size.target){
       
-      ## Would be it be better to have a coord df with all cells in Catalonia¿?¿?¿?
-      ## Find burnable neighbours of the cells in the fire.front that haven't burnt yet
-      ## priority and standard take similar computing time
-      ## proportionally, it's faster to compute many more neighbours than a few
-      neighs <- nn2(coord[,-1], filter(coord, cell.id %in% fire.front)[,-1], searchtype="priority", k=13)
+      ## Build a data frame with the theoretical 12 (=default.nneigh=) neighbours of cells in fire.front, 
+      ## Add the wind direction and the distance.
+      ## Filter for neighbours that are currenty in Catalonia,
+      ## And have not been visited yet
+      neigh.id <- data.frame(cell.id=rep(fire.front, each=default.nneigh)+rep(default.neigh$x, length(fire.front)),
+                             source.id=rep(fire.front, each=default.nneigh),
+                             dist=rep(default.neigh$dist,length(fire.front)),
+                             windir=rep(default.neigh$windir,length(fire.front)) ) %>%
+                  filter(cell.id %in% land$cell.id) %>% filter(cell.id %notin% visit.cells) 
+      
+      ## For all neighbours, compute fuel and flammability factors
+      neigh.land <- filter(land, cell.id %in% neigh.id$cell.id) %>% 
+                    mutate(fuel=ifelse(spp %in% c(15,16,17), 0.5,
+                                  ifelse(spp==14, 0.01638*biom,
+                                    ifelse(age<=7, 0.2,
+                                      ifelse(biom<200, 0.4,
+                                        ifelse(biom<480, 0.95, 0.6)))))) %>%
+                    left_join(spp.flammability[,c(1,fire.spread.type+1)], by="spp") 
+      neigh.land$flam <- wflam*neigh.land[, ncol(neigh.land)]
       
       
-      ## Get the cell.id of all the cells in the fire.front, and remove those cells already burnt
-      ## May be duplicates if spreading from front cells that are actual neighbours
-      ## Keep only neighbours in the star neighbourhood, distance <=12.
-      ## If a fire.front cell is within Cat, the 13 neighs have coordinates, but if that cell 
-      ## is in the limit of Cat, the 13 neighs returned are farther than 200m.
-      neigh.id <- data.frame(cell.id=coord$cell.id[neighs$nn.idx],
-                             source.id=rep(sort(fire.front), 13),
-                             dist=as.numeric(neighs$nn.dists))
-      neigh.id <- filter(neigh.id, dist<=200) %>% mutate(x=cell.id-source.id) %>% 
-                  left_join(default.windir, by="x") %>% select(-x) 
-      neigh.id <- filter(neigh.id, cell.id %notin% visit.cells) %>%  #before it was burnt.cells
-                  left_join(select(land, cell.id, spp, biom, age), by="cell.id") %>% 
-                  filter(spp<=17 & !is.na(biom) & !is.na(age) )
-          # neigh.id
+      ## For all neighbours, compute aspc factor
+      ## Also keep fire.front cells as we need their elevation to compute diff.elevation
+      neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>%
+                         mutate(aspc=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
       
-      ## Filter 'orography' for source and neigbour cells
-      neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>% select(cell.id, elev, aspect)
       
-      ## Compute species flammability and aspect factors for spread rate
-      flam <- filter(land, cell.id %in% neigh.id$cell.id) %>% select(cell.id, spp) %>%
-              left_join(spp.flammability[,c(1,fire.spread.type+1)], by="spp") 
-      flam$y <- wflam * flam[,ncol(flam)]
-      aspc <- filter(neigh.orography, cell.id %in% neigh.id$cell.id) %>% select(cell.id, aspect) %>%
-              mutate(z=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
-      fuel <- filter(land, cell.id %in% neigh.id$cell.id) %>% select(cell.id, spp, biom, age) %>%
-              mutate(x=ifelse(spp %in% c(15,16,17), 0.5,
-                              ifelse(spp==14, 0.01638*biom,
-                                     ifelse(age<=7, 0.2,
-                                            ifelse(biom<200, 0.4,
-                                                   ifelse(biom<480, 0.95, 0.6))))))
-      
-      ## Compute spread rate, probability of burning and actual burning state (T or F)
-      sprd.rate <-  left_join(neigh.id, select(neigh.orography, cell.id, elev), by="cell.id") %>%
-                    left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>% 
-                    mutate(dif.elev = elev.x-elev.y, 
-                           front.slope = wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
-                           front.wind = wwind * (ifelse(abs(windir-fire.wind)>180, 
-                                                    360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>%
-                    left_join(select(flam, cell.id, y), by="cell.id") %>% 
-                    left_join(select(aspc, cell.id, z), by="cell.id") %>%
-                    left_join(select(fuel, cell.id, x), by="cell.id") %>%
-                    mutate(sr=front.slope+front.wind+y+z, fi=sr*x, #pb=(1-exp(-fi))^rpb,
-                           pb.sr=1+rpb.sr*log(sr),
-                           pb.fi=1+rpb.fi*log(fi)) %>% #select(-front.slope, -front.wind, -y, -z)
-                    group_by(cell.id) %>% 
-                    summarize(spp=mean(spp), step=fire.step, front.slope=max(front.slope), front.wind=max(front.wind),
-                              flam=max(y), sr=max(sr), fi=max(fi), pb.sr=max(pb.sr), pb.fi=max(pb.fi))
-                     
-      # sprd.rate$rand=runif(nrow(sprd.rate),0,pb.th) * runif(nrow(sprd.rate),stochastic.spread,1) 
-      sprd.rate$burning.sr <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.sr & sprd.rate$pb.sr > pb.lower.th #* (runif(nrow(sprd.rate),0,1) <= stochastic.spread (=0.9)
-      sprd.rate$burning.fi <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb.fi & sprd.rate$pb.fi > pb.lower.th       
+      ## Get spread rate by:
+      ## Joining to the neig.id data.frame the neigh.land and keep only burnable neighs 
+      ## Joining to this df, the neigh.orography to get the elevation of the source cells
+      ## Joining to this df, the neigh.orography to get the elevation of the neighbour cells
+      ## Computing slope and wind factors
+      sprd.rate <- left_join(neigh.id, select(neigh.land, cell.id, spp, fuel, flam), by="cell.id") %>%
+                   filter(spp<=17) %>%
+                   left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>%
+                   left_join(select(neigh.orography, cell.id, elev, aspc), by="cell.id") %>% 
+                   mutate(dif.elev = elev.x-elev.y, 
+                          slope = wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
+                          wind = wwind * (ifelse(abs(windir-fire.wind)>180, 
+                                            360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
+                   mutate(sr=slope+wind+flam+aspc, pb=1+rpb*log(sr*fuel)) %>% 
+                   group_by(cell.id) %>% 
+                   summarize(step=fire.step,spp=mean(spp), slope=max(slope), wind=max(wind),
+                              flam=max(flam), sr=max(sr), pb=max(pb))
+        
+                   
+      ## Now compute probability of burning and actual burning state (T or F):
+      sprd.rate$burning <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb & sprd.rate$pb > pb.lower.th
       if(nrow(sprd.rate)>0)
         track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, sprd.rate))
       # par(mfrow=c(3,2)); hist(sprd.rate$fi); hist(sprd.rate$pb); hist(sprd.rate$sr); 
       # hist(sprd.rate$pb5); hist(sprd.rate$pb6)
-      sprd.rate$burning <- sprd.rate$burning.fi
       sprd.rate
       
       ## If at least there's a burning cell, continue, otherwise, stop
