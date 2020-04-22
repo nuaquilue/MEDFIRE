@@ -65,7 +65,6 @@ define.scenario <- function(scn.name){
   lfire <- 7
   pb <- 8
   drght <- 9
-  afforest <- 10
     
   
   ## Global model's parametres

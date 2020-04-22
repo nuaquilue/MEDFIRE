@@ -5,7 +5,7 @@
 afforestation <- function(land, coord, orography, clim, sdm){
   
   ## Tracking
-  cat("Afforestation", "\n"); tic("  t")
+  cat("Afforestation", "\n") #; tic("  t")
   
   ## Read species reproductive age and afforestation model
         # age.spp <- read.table("inputfiles/SppAges.txt", header=T)  --> all spp have mature age 30
@@ -69,7 +69,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
              mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
              select(cell.id, spp, sqi) %>% mutate(biom=0, age=1, sdm=1)
   
-  toc()
+  # toc()
   return(new.spp)
 }
 

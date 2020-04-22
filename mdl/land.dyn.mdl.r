@@ -2,7 +2,6 @@
 ##
 ######################################################################################
 
-
 land.dyn.mdl <- function(scn.name){
   
   ## Load required packages and functions 
@@ -11,6 +10,7 @@ land.dyn.mdl <- function(scn.name){
     library(sp)
     library(raster)  
     library(RANN)  # for nn2()
+    library(Rcpp)
     library(tidyverse)
   })
   source("mdl/update.clim.r")
@@ -25,7 +25,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/fire.regime.r")
   source("mdl/post.fire.r")
   source("mdl/auxiliars.r")
-
+  sourceCpp("mdl/is.in.cpp")
   
   ## Load scenario definition (global variables and scenario parameters)
   ## and customized scenario parameters
@@ -124,7 +124,6 @@ land.dyn.mdl <- function(scn.name){
     
     
     ## Start the discrete time sequence 
-    t=1  # for testing
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
@@ -134,14 +133,14 @@ land.dyn.mdl <- function(scn.name){
       ## 1. CLIMATE CHANGE  
       if(processes[clim.id] & t %in% temp.clim.schedule){
         clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
-        load(paste0("inputlyrs/rdata/sdm_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
+        load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
       
       
       ## 2. LAND-COVER CHANGE
       if(processes[lchg.id] & t %in% temp.lchg.schedule){
-        tic("  t")
+        # tic("  t")
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         land$spp[land$cell.id %in% chg.cells] <- 20 # urban
@@ -169,13 +168,13 @@ land.dyn.mdl <- function(scn.name){
         land$tsdist[land$cell.id %in% visit.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Update interface values
-        toc()
+        # toc()
         interface <- update.interface(land)
         temp.lchg.schedule <- temp.lchg.schedule[-1] 
       }
       
       
-      ## 3. FOREST MANAGEMENT
+      ## 3. FOREST MANAGEMENT (under development)
       if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
         aux <- forest.mgmt(land, coord, clim, harvest, t)
         land$tsdist[land$cell.id %in% aux$cell.id] <- 0
@@ -259,7 +258,7 @@ land.dyn.mdl <- function(scn.name){
         if(nrow(aux)>0){
           spp.out <- land$spp[land$cell.id %in% aux$cell.id]
           land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
-          land$biom[land$cell.id %in% aux$cell.id] <- growth.10y(aux, aux)
+          land$age[land$cell.id %in% aux$cell.id] <- 0
           clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
           clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
           clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
@@ -275,7 +274,7 @@ land.dyn.mdl <- function(scn.name){
         aux  <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
-        land$biom[land$cell.id %in% killed.cells] <- growth.10y(aux, aux)
+        land$age[land$cell.id %in% aux$cell.id] <- 0  ## not sure if 0 or decade - t -1
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
         clim$sqi[clim$cell.id %in% killed.cells] <- aux$sqi
@@ -289,9 +288,8 @@ land.dyn.mdl <- function(scn.name){
       if(processes[afforest.id] & t %in% temp.afforest.schedule){
         aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
-        land$biom[land$cell.id %in% aux$cell.id] <- growth.10y(aux, aux)
-        land$age[land$cell.id %in% aux$cell.id] <- 1
-        land$tsdist[land$cell.id %in% aux$cell.id] <- 1
+        land$age[land$cell.id %in% aux$cell.id] <- 0
+        land$tsdist[land$cell.id %in% aux$cell.id] <- 0
         land$distype[land$cell.id %in% aux$cell.id] <- afforest
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1

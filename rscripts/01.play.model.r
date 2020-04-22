@@ -2,7 +2,6 @@ rm(list=ls())
  setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
 # setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
-
 ############################################ RUN A SCN ##################################################
 # Load functions
 source("mdl/define.scenario.r")

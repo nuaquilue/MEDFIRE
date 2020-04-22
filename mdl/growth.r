@@ -5,7 +5,7 @@
 growth <- function(land, clim){
  
   ## Tracking
-  cat("Species growth", "\n"); tic("  t")
+  cat("Species growth", "\n") 
 
   ## Read coefficients
   growth.coeff <- read.table("inputfiles/GrowthSpp.txt", header=T)
@@ -31,7 +31,6 @@ growth <- function(land, clim){
   all <- rbind(aux.spp.sdmin, aux.spp.sdmout, aux.shrub)
   new.biom <- left_join(land, all, by = "cell.id") %>% mutate(biom=biom+increment*10) %>% select(biom)
   
-  toc()
   return(new.biom$biom)
 }
   
@@ -39,7 +38,7 @@ growth <- function(land, clim){
 growth.10y <- function(land, clim){
   
   ## Tracking
-  cat("Species growth", "\n"); tic("  t")
+  cat("Species growth", "\n")
   
   ## Read coefficients
   growth.coeff <- read.table("inputfiles/GrowthSpp.txt", header=T)
@@ -73,6 +72,5 @@ growth.10y <- function(land, clim){
   all <- rbind(aux.spp.sdmin, aux.spp.sdmin.10y, aux.spp.sdmout, aux.spp.sdmout.10y, aux.shrub)
   new.biom <- select(land, -biom) %>% left_join(all, by = "cell.id")  %>% select(biom)
   
-  toc()
   return(new.biom$biom)
 }

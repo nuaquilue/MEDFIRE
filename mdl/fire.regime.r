@@ -25,7 +25,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   fst.sprd.weight <- read.table(paste0("inputfiles/", file.sprd.weight, ".txt"), header=T)
   
   
-  ## Restarting Tracking fires data frame each run
+  ## Reset TrackFires data frame each run
   track.fire <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
                             wind=NA, atarget=NA, aburnt.highintens=NA, 
                             aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
@@ -174,14 +174,19 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       ## Add the wind direction and the distance.
       ## Filter for neighbours that are currenty in Catalonia,
       ## And have not been visited yet
-      neigh.id <- data.frame(cell.id=rep(fire.front, each=default.nneigh)+rep(default.neigh$x, length(fire.front)),
+      neigh.id <- data.frame(cell.id=as.integer(rep(fire.front, each=default.nneigh)+rep(default.neigh$x, length(fire.front))),
                              source.id=rep(fire.front, each=default.nneigh),
                              dist=rep(default.neigh$dist,length(fire.front)),
                              windir=rep(default.neigh$windir,length(fire.front)) ) %>%
-                  filter(cell.id %in% land$cell.id) %>% filter(cell.id %notin% visit.cells) 
+                  filter(cell.id %notin% visit.cells) 
+      neigh.in.land <- is_inCpp(neigh.id$cell.id, land$cell.id)
+      neig.id <- neigh.id[which(neigh.in.land!=-1),]             ##only neigh that are in land
+      i.land.in.neigh <- neigh.in.land[which(neigh.in.land!=-1)] ##neigh.cellid indexes in land
+      i.land.in.neigh <- unique(i.land.in.neigh)
+      
       
       ## For all neighbours, compute fuel and flammability factors
-      neigh.land <- filter(land, cell.id %in% neigh.id$cell.id) %>% 
+      neigh.land <- land[i.land.in.neigh,] %>%
                     mutate(fuel=ifelse(spp %in% c(15,16,17), 0.5,
                                   ifelse(spp==14, 0.01638*biom,  # or 0.01638???
                                     ifelse(age<=7, 0.2,
@@ -192,7 +197,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       
       ## For all neighbours, compute aspc factor ()
       ## Also keep fire.front cells as we need their elevation to compute diff.elevation
-      neigh.orography <- filter(orography, cell.id %in% c(fire.front, neigh.id$cell.id)) %>%
+      i.orography.in.neigh.ff <- c(i.land.in.neigh, is_inCpp(fire.front, orography$cell.id)) ##neigh.cellid and fire front indexes in land
+      neigh.orography <- orography[i.orography.in.neigh.ff,] %>%
                          mutate(aspc=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
       
       ## Get spread rate by:
@@ -204,7 +210,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                    filter(spp<=17) %>%
                    left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>%
                    left_join(select(neigh.orography, cell.id, elev, aspc), by="cell.id") %>% 
-                   mutate(dif.elev = elev.x-elev.y, 
+                     mutate(dif.elev = elev.y-elev.x, 
                           slope = wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
                           wind = wwind * (ifelse(abs(windir-fire.wind)>180, 
                                             360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
@@ -250,7 +256,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, 
                                                wind=fire.wind, atarget=fire.size.target, aburnt.highintens, 
                                                aburnt.lowintens, asupp.fuel, asupp.sprd))
-    cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- aBurnt:", aburnt.lowintens+aburnt.highintens), "\n")
+    # cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- aBurnt:", aburnt.lowintens+aburnt.highintens), "\n")
     
     ## Update annual burnt area
     area.target <- area.target - (aburnt.lowintens+aburnt.highintens)

@@ -5,7 +5,7 @@
 cohort.establish <- function(land, coord, orography, clim, sdm){
   
   ## Tracking
-  cat("Cohort establishment", "\n"); tic("  t")
+  cat("Cohort establishment", "\n") #; tic("  t")
   
   ## Read matrix of secondary species according to species - sqi
   secondary.spp <- read.table("inputfiles/SecondarySpp.txt", header=T)
@@ -71,7 +71,7 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
                              ifelse(sq.boix>=sq.brolla & sq.boix>=sq.maquia, 3, 0))) )
   new.cohort$sqi[new.cohort$spp==14] <- sqi.shrub$sqi
   
-  toc()
+  # toc()
   return(select(new.cohort, -temp, -precip))
 }
 

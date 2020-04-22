@@ -7,7 +7,7 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
   library(tidyverse)
 
   ## Tracking
-  cat("Update climate", "\n"); tic("  t")
+  cat("Update climate", "\n") #; tic("  t")
 
   ## Read coefficients of site quality
   site.quality.spp <- read.table("inputfiles/SiteQualitySpp.txt", header=T)
@@ -15,7 +15,7 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
   site.quality.shrub <- read.table("inputfiles/SiteQualityShrub.txt", header=T)
   
   ## Update temp and precip
-  load(paste0("inputlyrs/rdata/sdm_planfix_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
+  load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   
   ## Join land.cover.spp
@@ -58,6 +58,6 @@ update.clim <- function(MASK, land, orography, decade, clim.scn, clim.mdl){
                              ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))) )
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
   
-  toc()
+  # toc()
   return(clim=clim)
 }
