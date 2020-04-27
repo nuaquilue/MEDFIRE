@@ -33,10 +33,10 @@ define.scenario <- function(scn.name){
   processes <- c(TRUE,   # 1. Climate change
                  FALSE,  # 2. Land-cover changes
                  FALSE,  # 3. Forest management
-                 FALSE,   # 4. Wildfires
+                 TRUE,   # 4. Wildfires
                  FALSE,   # 5. Prescribed burns
                  TRUE,  # 6. Drought
-                 FALSE,   # 7. Post-fire regeneration
+                 TRUE,   # 7. Post-fire regeneration
                  TRUE,  # 8. Cohort establihsment
                  TRUE,  # 9. Afforestation
                  TRUE)   # 10. Growth
@@ -65,7 +65,7 @@ define.scenario <- function(scn.name){
   lfire <- 7
   pb <- 8
   drght <- 9
-    
+  afforest <- 10  
   
   ## Global model's parametres
   # Radius of the neighborhood (in pixels) to find out if a species is present in a region
@@ -78,7 +78,7 @@ define.scenario <- function(scn.name){
   rpb <- 1
   pb.upper.th <- 0.75
   pb.lower.th <- 0.05
-  fire.intens.th <- 0.35  # high vs. low intensity fire, SR_noAcc <= fire.intens.th
+  fire.intens.th <- 0.35  # high vs. low intensity fire, sr <= fire.intens.th
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
   pb.convenient.area <- 400 ## should be 15.000 ha
   accum.burnt.area <- rep(pb.convenient.area,7)

@@ -7,29 +7,30 @@ rm(list=ls())
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Name the new scenario and call the define.scenario function to load default initialization of model’s parameters
-scn.name <- "TestFire"
+scn.name <- "TestPerformanceFire"
 define.scenario(scn.name)
 # Change target parameters
-#file.clim.severity <- "ClimaticSeverity_rcptest"
+file.clim.severity <- "ClimaticSeverity_test"
+rpb <- 0.4
+nrun <- 2
+write.sp.outputs <- F
+time.horizon <- 1
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
                TRUE,   # 4. Wildfires
                FALSE,   # 5. Prescribed burns
-               TRUE,  # 6. Drought
+               F,  # 6. Drought
                TRUE,   # 7. Post-fire regeneration
-               TRUE,  # 8. Cohort establihsment
-               TRUE,  # 9. Afforestation
+               F,  # 8. Cohort establihsment
+               F,  # 9. Afforestation
                TRUE)   # 10. Growth
-rpb <- 0.4
-nrun <- 1
-time.horizon <- 1
 # Write the name of the customized parameters in the dump function. 
 # It copies these R objects into the file outputs/test/scn.custom.def.r
-dump(c( "processes", "rpb", "nrun", "time.horizon"), 
+dump(c( "file.clim.severity", "rpb", "nrun", "write.sp.outputs", "time.horizon", "processes"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 # Run the model
-land.dyn.mdl(scn.name)
+system.time(land.dyn.mdl(scn.name))
 
 
 ###########################################################################################################

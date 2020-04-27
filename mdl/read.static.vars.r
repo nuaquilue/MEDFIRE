@@ -31,6 +31,7 @@ read.static.vars <- function(work.path){
   ASPECT <- raster(paste0(work.path, "/inputlyrs/asc/Aspect_100m_31N-ETRS89.asc"))
   SLOPE <- raster(paste0(work.path, "/inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc"))
   ROAD <- raster(paste0(work.path, "/inputlyrs/asc/DensRoad_100m_31N-ETRS89.asc"))
+  ROAD[is.na(ROAD[])] <- 0  ## why there are so many NA is ROAD layer?
   orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], road=ROAD[])
   orography <- orography[!is.na(MASK[]),]
   save(orography, file="inputlyrs/rdata/orography.rdata")
@@ -70,7 +71,7 @@ read.static.vars <- function(work.path){
   PWIND.N <- raster(paste0(work.path, "/inputlyrs/asc/ProbN_100m_31N-ETRS89.asc"))
   PWIND.NW <- raster(paste0(work.path, "/inputlyrs/asc/ProbNW_100m_31N-ETRS89.asc"))
   PWIND.W <- raster(paste0(work.path, "/inputlyrs/asc/ProbW_100m_31N-ETRS89.asc"))
-  pfst.pwind <- data.frame(pfst.wind=IGNI.WIND[], pfst.topo=IGNI.TOPO[],
+  pfst.pwind <- data.frame(cell.id=1:ncell(MASK), pfst.wind=IGNI.WIND[], pfst.topo=IGNI.TOPO[],
                            pwind.n=PWIND.N[], pwind.nw=PWIND.NW[], pwind.w=PWIND.W[])
   pfst.pwind <- pfst.pwind[!is.na(MASK[]),]
   save(pfst.pwind, file="inputlyrs/rdata/pfst.pwind.rdata")

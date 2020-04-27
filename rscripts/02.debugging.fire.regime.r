@@ -3,11 +3,15 @@ rm(list=ls())
 library(sp)
 library(raster)  
 library(RANN)  # for nn2()
+library(Rcpp)
 library(tidyverse)
 source("mdl/fire.regime.r")
 source("mdl/update.clim.r")
 source("mdl/prob.igni.r")
 source("mdl/growth.r")
+source("mdl/post.fire.r")
+source("mdl/auxiliars.r")
+sourceCpp("mdl/is.in.cpp")
 
 # Name scn and output folder
 scn.name <- "TestWind"
@@ -26,6 +30,7 @@ load("inputlyrs/rdata/interface.rdata")
 clim.scn <- "rcp45"
 clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
 clim <- update.clim(MASK, land, orography, decade=10, clim.scn, clim.mdl)
+load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", 10, ".rdata"))
 
 ## Probability of ignition
 pigni <- prob.igni(land, orography, clim, interface)
@@ -37,17 +42,20 @@ clim.severity <- read.table("inputfiles/ClimaticSeverity_test.txt", header=T)
 track.fire <-  data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
                           wind=NA, atarget=NA, aburnt.highintens=NA, 
                           aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
-BURNT <- MASK
 processes <- c(TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
 temp.fire.schedule <- seq(1,91,1)
 temp.growth.schedule <- seq(1,91,1)
 hfire <- 6
 lfire <- 7
 
+## Neigh radius
+spp.distrib.rad <- 20 	# i.e. 2 km
+shrub.colon.rad <- 5 		# i.e. 500 m
+
 ## Basic arguments
 t <- 1
 irun <- 1
-swc <- 3
+swc <- 1
 ## Fire regime characteristics
 file.clim.severity <- "ClimaticSeverity_test"
 file.pctg.hot.days <- "PctgHotDays_rcp45"
@@ -70,6 +78,7 @@ pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
 ## Tracking vars
 burnt.cells <- integer()
 burnt.intens <- integer()
+fintensity <- integer()
 annual.burnt <- 0
 
 
@@ -132,21 +141,22 @@ if(swc<4){
 ## Find annual target area for prescribed burns
 cat(paste(" Annual target area:", area.target), "\n")
 
-
 ## Update prob.igni according to swc
 pigni <- data.frame(cell.id=land$cell.id, p=pigni*pfst.pwind[,ifelse(swc==1,1,2)])
 pigni <- filter(pigni, !is.na(p) & p>0)
 pfst.pwind$cell.id <- land$cell.id
 
-
 ## Pre-select the coordinates of old Mediterranean vegetation, i.e.
 ## Pinus halepensis, Pinus nigra, and Pinus pinea of age >=30 years.
 ## to compute probability of being a convective fire
 old.forest.coord <- filter(land, spp<=3 & age>=30) %>% select(cell.id) %>% left_join(coord, by = "cell.id")
-
+## Also pre-select the cell.id of burnable land-covers
+burnable <- land$cell.id[land$spp<=17]
 
 ## Start burning until annual area target is not reached
 fire.id <- 0
+track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA, biom=NA, age=NA, fuel=NA,
+                           slope=NA, wind=NA, flam=NA, aspc=NA, sr=NA, pb=NA, burning=NA)
 
 
 
@@ -185,9 +195,7 @@ log.size <- seq(1.7, 5, 0.01)
 log.num <- filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$intercept +
            filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$slope * log.size
 fire.size.target <- sample(round(10^log.size), 1, replace=F, prob=10^log.num)
-## Bound fire.size.target to not exceed remaining area.target
-# if(fire.size.target>area.target)
-  fire.size.target <- area.target
+fire.size.target <- area.target; fire.size.target
 
 ## Initialize tracking variables
 fire.front <- igni.id
@@ -199,8 +207,6 @@ burnt.cells <- igni.id
 visit.cells <- igni.id
 burnt.intens <- T
 fire.step <- 1
-track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA,
-                           slope=0, wind=0, flam=0, sr=1, pb=1, burning=1)
 track.spread <- rbind(track.spread, data.frame(fire.id=fire.id, cell.id=igni.id, step=fire.step, 
-                                               spp=land$spp[land$cell.id==igni.id],
-                                               slope=0, wind=0, flam=0, sr=1, pb=1, burning=1))
+                spp=land$spp[land$cell.id==igni.id], biom=1, age=1, fuel=1,
+                slope=0, wind=0, flam=0, aspc=0, sr=1, pb=1, burning=1))
