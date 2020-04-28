@@ -93,7 +93,7 @@ land.dyn.mdl <- function(scn.name){
   track.fmgmt <- data.frame(run=NA, year=NA, spp=NA, sylvi=NA, sawlog=NA, wood=NA)
   track.fire <-  data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
                             aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
-  track.fire.spp <-  data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA)
+  track.fire.spp <-  data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
   track.pb <-  data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
                           wind=NA, atarget=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
@@ -191,7 +191,6 @@ land.dyn.mdl <- function(scn.name){
       ## Tracking variables to be re-initialized each time step
       ## Out of the "if(fires)" in case only prescribed burns are applied
       burnt.cells <- integer()
-      burnt.intens <- integer()
       fintensity <- integer()
       fire.ids <- integer()
       id.fire <- annual.burnt <- 0
@@ -201,33 +200,35 @@ land.dyn.mdl <- function(scn.name){
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
           clim.sever <- 1
-        # swc = wind, heat and regular. annual.burnt need to compute PB target area 
+        # swc = wind, heat and regular. annual.burnt needed to compute PB target area 
         for(swc in 1:3){
           fire.out <- fire.regime(land, coord, orography, pigni, swc, clim.sever, t, 
-                                  burnt.cells, burnt.intens, fintensity, fire.ids, id.fire, annual.burnt)
-          burnt.cells <- fire.out[[1]]; burnt.intens <- fire.out[[2]]; fintensity <- fire.out[[3]]; 
-          fire.ids <- fire.out[[4]]; id.fire <- id.fire+nrow(fire.out[[5]])
+                                  burnt.cells, fintensity, fire.ids, id.fire, annual.burnt)
+          burnt.cells <- fire.out[[1]]; fintensity <- fire.out[[2]]; 
+          fire.ids <- fire.out[[3]]; id.fire <- id.fire+nrow(fire.out[[4]])
           # track fire events and total annual burnt area
-          if(nrow(fire.out[[5]])>0)
-            track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[5]]))
-          annual.burnt <- annual.burnt+sum(fire.out[[5]]$aburnt.highintens + fire.out[[5]]$aburnt.lowintens)
+          if(nrow(fire.out[[4]])>0)
+            track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[4]]))
+          annual.burnt <- annual.burnt+sum(fire.out[[4]]$aburnt.highintens + fire.out[[4]]$aburnt.lowintens)
         }
-        # track spp burnt
-        aux <- data.frame(cell.id=burnt.cells, fire.id=fire.ids) %>% 
-               left_join(select(land, cell.id, spp), by="cell.id") %>%
-               group_by(fire.id, spp) %>% summarize(aburnt=length(spp))
+        # track spp and biomass burnt
+        aux <- data.frame(cell.id=burnt.cells, fire.id=fire.ids, fintensity) %>% 
+               left_join(select(land, cell.id, spp, biom), by="cell.id") %>%
+               mutate(bburnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) %>%
+               group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
         if(nrow(aux)>0)
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
         # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
         # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
+        burnt.intens <- fintensity>fire.intens.th
         land$tsdist[land$cell.id %in% burnt.cells] <- 0
         land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
-        land$distype[land$cell.id %in% burnt.cells[as.logical(burnt.intens)]] <- hfire
-        land$distype[land$cell.id %in% burnt.cells[!as.logical(burnt.intens)]] <- lfire
-        land$age[land$cell.id %in% burnt.cells[as.logical(burnt.intens)]] <- 0
-        land$biom[land$cell.id %in% burnt.cells[as.logical(burnt.intens)]] <- 0
-        land$biom[land$cell.id %in% burnt.cells[!as.logical(burnt.intens)]] <- 
-          land$biom[land$cell.id %in% burnt.cells[!as.logical(burnt.intens)]]*(1-fintensity[!as.logical(burnt.intens)])
+        land$distype[land$cell.id %in% burnt.cells[burnt.intens]] <- hfire
+        land$distype[land$cell.id %in% burnt.cells[!burnt.intens]] <- lfire
+        land$age[land$cell.id %in% burnt.cells[burnt.intens]] <- 0
+        land$biom[land$cell.id %in% burnt.cells[burnt.intens]] <- 0
+        land$biom[land$cell.id %in% burnt.cells[!burnt.intens]] <- 
+          land$biom[land$cell.id %in% burnt.cells[!burnt.intens]]*(1-fintensity[!burnt.intens])
         temp.fire.schedule <- temp.fire.schedule[-1] 
         rm(fire.out)
       }

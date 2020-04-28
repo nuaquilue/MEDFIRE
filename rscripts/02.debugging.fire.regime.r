@@ -79,8 +79,8 @@ pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
 burnt.cells <- integer()
 burnt.intens <- integer()
 fintensity <- integer()
-annual.burnt <- 0
-
+fire.ids <- integer()
+id.fire <- annual.burnt <- 0
 
 ######################## FIRST PART OF FIRE.REGIME.R, LINES 9 TO 89 ########################
 cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 

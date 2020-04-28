@@ -4,7 +4,7 @@
 ######################################################################################
 
 fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, 
-                        burnt.cells, burnt.intens, fintensity, fire.ids, fire.id=0, annual.burnt=0){
+                        burnt.cells, fintensity, fire.ids, fire.id=0, annual.burnt=0){
                         
   options(warn=-1)
   cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 
@@ -166,7 +166,6 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     asupp.fuel <- 0
     burnt.cells <- c(burnt.cells, igni.id)
     visit.cells <- c(burnt.cells, igni.id) # to account for visit (and burnt) cells in previous SWC
-    burnt.intens <- c(burnt.intens, ifelse(swc<4,1,0))
     fintensity <- c(fintensity, 1)
     fire.ids <- c(fire.ids, fire.id)
       
@@ -191,7 +190,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       ## For all neighbours, compute fire intenstiy and flammability factors
       ## fire intenstiy and flam will be NA for non burnable covers
       neigh.land <- subland[i.land.in.neigh,] %>%
-                    mutate(fintens=ifelse(spp %in% c(15,16,17), 0.5,
+                    mutate(fuel=ifelse(spp %in% c(15,16,17), 0.5,
                                    ifelse(spp==14, 0.01638*biom,  # or 0.01638???
                                      ifelse(age<=7, 0.2,
                                        ifelse(biom<200, 0.4,
@@ -219,12 +218,12 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                           slope = wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
                           wind = wwind * (ifelse(abs(windir-fire.wind)>180, 
                                             360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
-                   mutate(sr=slope+wind+flam+aspc, pb=1+rpb*log(sr*fintens)) %>%
+                   mutate(sr=slope+wind+flam+aspc, pb=1+rpb*log(sr*fuel)) %>%
                    group_by(cell.id) %>% 
                    # summarize(step=fire.step, spp=mean(spp), biom=max(biom), age=max(age),
                    #           fintens=max(fintens), slope=max(slope), wind=max(wind),
                    #           flam=max(flam), aspc=max(aspc), sr=max(sr), pb=max(pb))
-                   summarize(fire.id=fire.id, spp=mean(spp), fintens=max(fintens), sr=max(sr), pb=max(pb))
+                   summarize(fire.id=fire.id, spp=mean(spp), sr=max(sr), fintens=max(sr*fuel), pb=max(pb))
       
       ## Now compute probability of burning and actual burning state (T or F):
       sprd.rate$burning <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb & sprd.rate$pb > pb.lower.th
@@ -238,8 +237,6 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       
       ## Mark the burnt cells burnt and the burnt intensity 
       burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burning])
-      sprd.rate$intens <- ifelse(sprd.rate$sr>=ifelse(swc<4,fire.intens.th,100),1,0)  
-      burnt.intens <- c(burnt.intens, sprd.rate$intens[sprd.rate$burning])
       fintensity <- c(fintensity, sprd.rate$fintens[sprd.rate$burning])
       fire.ids <- c(fire.ids, sprd.rate$fire.id[sprd.rate$burning])
       
@@ -250,8 +247,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       fire.front <- sprd.rate$cell.id[sprd.rate$burning & sprd.rate$sr>=exclude.th]
       
       ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
-      aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$sr<=ifelse(swc<4,fire.intens.th,100))
-      aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$sr>ifelse(swc<4,fire.intens.th,100))
+      aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burning & sprd.rate$fintens<=ifelse(swc<4,fire.intens.th,100))
+      aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burning & sprd.rate$fintens>ifelse(swc<4,fire.intens.th,100))
       
       ## In the case, there are no cells in the fire front, stop trying to burn.
       ## This happens when no cells have burnt in the current spreading step
@@ -271,7 +268,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     
   }  #while 'year'
   
-  return(list(burnt.cells=burnt.cells, burnt.intens=burnt.intens, fintensity=fintensity,
+  return(list(burnt.cells=burnt.cells, fintensity=fintensity,
               fire.ids=fire.ids, track.fire=track.fire[-1,]))
 }
 
