@@ -14,7 +14,7 @@ source("mdl/auxiliars.r")
 sourceCpp("mdl/is.in.cpp")
 
 # Name scn and output folder
-scn.name <- "TestWind"
+scn.name <- "TestPerformanceFire"
 out.path <- paste0("outputs/", scn.name)
 dir.create(file.path(getwd(), out.path), showWarnings = F) 
 dir.create(file.path(getwd(), out.path, "/lyr"), showWarnings = F) 
@@ -42,11 +42,17 @@ clim.severity <- read.table("inputfiles/ClimaticSeverity_test.txt", header=T)
 track.fire <-  data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
                           wind=NA, atarget=NA, aburnt.highintens=NA, 
                           aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
-processes <- c(TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE)
+track.fire.spp <-  data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
+track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
+processes <- c(TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, TRUE)
 temp.fire.schedule <- seq(1,91,1)
 temp.growth.schedule <- seq(1,91,1)
+temp.post.fire.schedule <- seq(1,91,1)
 hfire <- 6
 lfire <- 7
+fire.id <- 4
+post.fire.id <- 7
+growth.id <- 10
 
 ## Neigh radius
 spp.distrib.rad <- 20 	# i.e. 2 km
@@ -56,6 +62,7 @@ shrub.colon.rad <- 5 		# i.e. 500 m
 t <- 1
 irun <- 1
 swc <- 1
+
 ## Fire regime characteristics
 file.clim.severity <- "ClimaticSeverity_test"
 file.pctg.hot.days <- "PctgHotDays_rcp45"
@@ -81,6 +88,7 @@ burnt.intens <- integer()
 fintensity <- integer()
 fire.ids <- integer()
 id.fire <- annual.burnt <- 0
+
 
 ######################## FIRST PART OF FIRE.REGIME.R, LINES 9 TO 89 ########################
 cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 

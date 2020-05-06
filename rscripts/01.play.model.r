@@ -13,8 +13,8 @@ define.scenario(scn.name)
 file.clim.severity <- "ClimaticSeverity_test"
 rpb <- 0.4
 nrun <- 1
-write.sp.outputs <- F
-time.horizon <- 2
+write.sp.outputs <- T
+time.horizon <- 10
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management

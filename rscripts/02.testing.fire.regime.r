@@ -73,3 +73,18 @@ self.extinguishing <- function(list.scn){
   ggplot(data=filter(fires, rem>0), aes(fires$rem[fires$rem>0])) + geom_histogram()
   
 }
+
+
+rm(list=ls())
+suppressPackageStartupMessages({
+  library(sp)
+  library(raster)  
+  library(tidyverse)
+})
+
+# Name scn and output folder
+scn.name <- "TestPerformanceFire"
+fires <- read.table(paste0("outputs/", scn.name, "/Fires.txt"), header=T)
+a <- group_by(fires, year) %>% summarize(ah=sum(aburnt.highintens), al=sum(aburnt.lowintens), a=sum(ah+al),
+                                   ph=ah/a*100, pl=al/a*100)
+mean(a$ph)

@@ -141,7 +141,6 @@ land.dyn.mdl <- function(scn.name){
       
       ## 2. LAND-COVER CHANGE
       if(processes[lchg.id] & t %in% temp.lchg.schedule){
-        # tic("  t")
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         land$spp[land$cell.id %in% chg.cells] <- 20 # urban
@@ -169,9 +168,9 @@ land.dyn.mdl <- function(scn.name){
         land$tsdist[land$cell.id %in% visit.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Update interface values
-        # toc()
         interface <- update.interface(land)
         temp.lchg.schedule <- temp.lchg.schedule[-1] 
+        rm(chg.cells); rm(visit.cells)
       }
       
       
@@ -184,6 +183,7 @@ land.dyn.mdl <- function(scn.name){
                              data.frame(run=irun, year=t, 
                                         group_by(aux, spp, sylvi) %>% summarize(sawlog=sum(vol.sawlog), wood=sum(vol.wood))))
         temp.fmgmt.schedule <- temp.fmgmt.schedule[-1] 
+        rm(aux)
       }
       
       
@@ -225,12 +225,11 @@ land.dyn.mdl <- function(scn.name){
         land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
         land$distype[land$cell.id %in% burnt.cells[burnt.intens]] <- hfire
         land$distype[land$cell.id %in% burnt.cells[!burnt.intens]] <- lfire
-        land$age[land$cell.id %in% burnt.cells[burnt.intens]] <- 0
         land$biom[land$cell.id %in% burnt.cells[burnt.intens]] <- 0
         land$biom[land$cell.id %in% burnt.cells[!burnt.intens]] <- 
           land$biom[land$cell.id %in% burnt.cells[!burnt.intens]]*(1-fintensity[!burnt.intens])
         temp.fire.schedule <- temp.fire.schedule[-1] 
-        rm(fire.out)
+        rm(fire.out); rm(aux)
       }
       
       
@@ -278,8 +277,10 @@ land.dyn.mdl <- function(scn.name){
           clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
           track.post.fire <- rbind(track.post.fire, data.frame(run=irun, year=t, table(spp.out, aux$spp)))  
         }
-        rm(aux) 
+        # Reset age of cells burnt in high intensity
+        land$age[land$cell.id %in% burnt.cells[burnt.intens] & !is.na(land$spp) & land$spp<=14] <- 0
         temp.post.fire.schedule <- temp.post.fire.schedule[-1] 
+        rm(aux); rm(spp.out)
       }
       
       
@@ -293,8 +294,8 @@ land.dyn.mdl <- function(scn.name){
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
         clim$sqi[clim$cell.id %in% killed.cells] <- aux$sqi
         track.cohort <- rbind(track.cohort, data.frame(run=irun, year=t, table(spp.out, aux$spp)))
-        rm(aux); rm(killed.cells); gc()
         temp.cohort.schedule <- temp.cohort.schedule[-1] 
+        rm(aux); rm(spp.out); rm(killed.cells)
       }
       
       
@@ -310,6 +311,7 @@ land.dyn.mdl <- function(scn.name){
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
         track.afforest <- rbind(track.afforest, data.frame(run=irun, year=t, table(aux$spp)))
         temp.afforest.schedule <- temp.afforest.schedule[-1] 
+        rm(aux)
       }
       
       
@@ -329,6 +331,7 @@ land.dyn.mdl <- function(scn.name){
                      summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux), data.frame(run=irun, year=t, aux.shrub))
         temp.growth.schedule <- temp.growth.schedule[-1] 
+        rm(aux); rm(aux.shrub)
       }
       
       
@@ -346,7 +349,7 @@ land.dyn.mdl <- function(scn.name){
       }
       
       ## Deallocate memory
-      gc()  
+      gc(verbose=F)  
       cat("\n")
       
     } # time

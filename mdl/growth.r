@@ -48,16 +48,16 @@ growth.10y <- function(land, clim){
   ## Growth of species when SDM in, species when SDM out, and shrub
   aux.spp <- filter(land, spp<=13) %>% select(cell.id, spp, biom, age) %>% 
              left_join(select(clim, cell.id, sdm, sqi), by = "cell.id") 
-  aux.spp.sdmin <- filter(aux.spp, sdm==1 & age>10) %>% left_join(growth.coeff, by = c("spp", "sqi")) %>% 
+  aux.spp.sdmin <- filter(aux.spp, sdm==1 & age>=10) %>% left_join(growth.coeff, by = c("spp", "sqi")) %>% 
                    mutate(increment = c+x*biom/10 + x2*(biom/10)^2)  %>% 
                    mutate(biom=biom+increment*10) %>% select(cell.id, biom)
-  aux.spp.sdmin.10y <- filter(aux.spp, sdm==1 & age<=10) %>% left_join(ba.ini, by = c("spp", "sqi", "age")) %>% 
+  aux.spp.sdmin.10y <- filter(aux.spp, sdm==1 & age<10) %>% left_join(ba.ini, by = c("spp", "sqi", "age")) %>% 
                        mutate(biom=biom.fix) %>% select(cell.id, biom)
-  aux.spp.sdmout <- filter(aux.spp, sdm==0 & age>10) %>% 
+  aux.spp.sdmout <- filter(aux.spp, sdm==0 & age>=10) %>% 
                     left_join(filter(growth.coeff, sqi==1) %>% select(-sqi), by = "spp") %>% 
                     mutate(increment = c+x*biom/10 + x2*(biom/10)^2 ) %>%
                     mutate(biom=biom+increment*10) %>% select(cell.id, biom)
-  aux.spp.sdmout.10y <- filter(aux.spp, sdm==0 & age<=10) %>% 
+  aux.spp.sdmout.10y <- filter(aux.spp, sdm==0 & age<10) %>% 
                         left_join(filter(ba.ini, sqi==1) %>% select(-sqi), by = c("spp", "age")) %>% 
                         mutate(biom=biom.fix) %>% select(cell.id, biom)
   aux.shrub <- filter(land, spp==14) %>% select(cell.id, spp, biom) %>%

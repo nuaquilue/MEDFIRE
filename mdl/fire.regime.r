@@ -156,14 +156,11 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       fire.size.target <- area.target
     
     ## Initialize tracking variables
+    ## Ignition always burnt, and it does in high intensity when no-PB
     fire.front <- igni.id
-    aburnt.lowintens <- 0
-    aburnt.highintens <- 1  # ignition always burnt, and it does in high intensity
-    if(swc==4){
-      aburnt.lowintens <- 1
-      aburnt.highintens <- 0} 
-    asupp.sprd <- 0
-    asupp.fuel <- 0
+    aburnt.lowintens <- ifelse(swc==4, 1, 0)
+    aburnt.highintens <- ifelse(swc==4, 0, 1)
+    asupp.sprd <- asupp.fuel <- 0
     burnt.cells <- c(burnt.cells, igni.id)
     visit.cells <- c(burnt.cells, igni.id) # to account for visit (and burnt) cells in previous SWC
     fintensity <- c(fintensity, 1)
@@ -220,13 +217,12 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                                             360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
                    mutate(sr=slope+wind+flam+aspc, pb=1+rpb*log(sr*fuel)) %>%
                    group_by(cell.id) %>% 
-                   # summarize(step=fire.step, spp=mean(spp), biom=max(biom), age=max(age),
-                   #           fintens=max(fintens), slope=max(slope), wind=max(wind),
-                   #           flam=max(flam), aspc=max(aspc), sr=max(sr), pb=max(pb))
-                   summarize(fire.id=fire.id, spp=mean(spp), sr=max(sr), fintens=max(sr*fuel), pb=max(pb))
+                   summarize(fire.id=fire.id, spp=mean(spp), sr=max(sr), fintens=max(sr*fuel), pb=max(pb)) %>%
+                   mutate(suppress=(fintens<=fire.intens.th))
       
-      ## Now compute probability of burning and actual burning state (T or F):
-      sprd.rate$burning <- runif(nrow(sprd.rate), 0, pb.upper.th) <= sprd.rate$pb & sprd.rate$pb > pb.lower.th
+      ## Now compute actual burning state (T or F) according to pb and suppress:
+      sprd.rate$burning <- #sprd.rate$suppress &
+                           (runif(nrow(sprd.rate),0,pb.upper.th)<=sprd.rate$pb & sprd.rate$pb>pb.lower.th)
       
       ## Mark that all these neighs have been visited (before breaking in case no burning)
       visit.cells <- c(visit.cells, sprd.rate$cell.id)
@@ -235,7 +231,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       if(!any(sprd.rate$burning))
         break
       
-      ## Mark the burnt cells burnt and the burnt intensity 
+      ## Mark the burnt cells and the fire intensity 
       burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burning])
       fintensity <- c(fintensity, sprd.rate$fintens[sprd.rate$burning])
       fire.ids <- c(fire.ids, sprd.rate$fire.id[sprd.rate$burning])
