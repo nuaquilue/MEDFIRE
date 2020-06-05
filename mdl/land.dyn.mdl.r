@@ -6,10 +6,8 @@ land.dyn.mdl <- function(scn.name){
   
   ## Load required packages and functions 
   suppressPackageStartupMessages({
-    library(tictoc)
-    library(sp)
     library(raster)  
-    library(RANN)  # for nn2()
+    library(RANN)  
     library(Rcpp)
     library(tidyverse)
   })
@@ -104,7 +102,6 @@ land.dyn.mdl <- function(scn.name){
   
   
   ## Start the simulations   
-  irun=1   # for testing
   for(irun in 1:nrun){
     
     ## Copy the schedulings in auxiliar vectors (only for those processes included in the current version)
@@ -188,8 +185,6 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 4. FIRE
-      ## Tracking variables to be re-initialized each time step
-      ## Out of the "if(fires)" in case only prescribed burns are applied
       burnt.cells <- integer()
       fintensity <- integer()
       fire.ids <- integer()
@@ -336,21 +331,20 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## Print maps every time step with ignition and low/high intenstiy burnt
-      if(write.sp.outputs){
-        MAP <- MASK
-        cat("... writing output layers", "\n")
-        nfire <- sum(track.fire$year==t, na.rm=T)
-        sizes <- filter(track.fire, year==t) %>% group_by(swc, fire.id) %>% summarise(ab=aburnt.highintens+aburnt.lowintens)
-        # Ignitions' cell.id 
-        igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)] 
-        MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
-        MAP[igni.id] <- 9
-        writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-      }
+      # if(write.sp.outputs){
+      #   MAP <- MASK
+      #   cat("... writing output layers", "\n")
+      #   nfire <- sum(track.fire$year==t, na.rm=T)
+      #   sizes <- filter(track.fire, year==t) %>% group_by(swc, fire.id) %>% summarise(ab=aburnt.highintens+aburnt.lowintens)
+      #   # Ignitions' cell.id 
+      #   igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)] 
+      #   MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
+      #   MAP[igni.id] <- 9
+      #   writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+      # }
       
       ## Deallocate memory
-      gc(verbose=F)  
-      cat("\n")
+      gc(verbose=F); cat("\n")
       
     } # time
   
@@ -365,7 +359,8 @@ land.dyn.mdl <- function(scn.name){
   
   cat("... writing outputs", "\n")
   write.table(track.fmgmt[-1,], paste0(out.path, "/Management.txt"), quote=F, row.names=F, sep="\t")
-  track.fire$rem <- pmax(0,track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens)
+  track.fire$rem <- pmax(0,track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
+                           track.fire$asupp.fuel - track.fire$asupp.sprd)
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.fire.spp[-1,], paste0(out.path, "/FiresSpp.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")

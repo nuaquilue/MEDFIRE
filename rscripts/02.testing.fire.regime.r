@@ -83,8 +83,10 @@ suppressPackageStartupMessages({
 })
 
 # Name scn and output folder
-scn.name <- "TestPerformanceFire"
-fires <- read.table(paste0("outputs/", scn.name, "/Fires.txt"), header=T)
-a <- group_by(fires, year) %>% summarize(ah=sum(aburnt.highintens), al=sum(aburnt.lowintens), a=sum(ah+al),
-                                   ph=ah/a*100, pl=al/a*100)
-mean(a$ph)
+scn.name <- "TestFF"
+fires <- read.table(paste0("outputs/", scn.name, "/Fires.txt"), header=T) %>%
+  mutate(aburnt=aburnt.highintens+aburnt.lowintens, asupp=asupp.fuel+asupp.sprd)
+a <- group_by(fires, year) %>% summarize(at=sum(atarget), ab=sum(aburnt), as=sum(asupp), rem=sum(rem),
+                                         pb=round(ab/at*100,1), ps=round(as/at*100,1), pr=round(rem/at*100,1))
+a
+mean(a$pb); mean(a$ps); mean(a$pr)

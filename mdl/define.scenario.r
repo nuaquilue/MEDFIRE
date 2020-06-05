@@ -75,10 +75,10 @@ define.scenario <- function(scn.name){
 
   
   ## Fire parameters (should not change to much): Spread rate, burn probability, prescribed burns
-  rpb <- 1
   pb.upper.th <- 0.75
   pb.lower.th <- 0.05
   fire.intens.th <- 0.35  # high vs. low intensity fire, sr <= fire.intens.th
+  accum.supp <- 3 # minimum number of ha suppressed before to acivate fire-level suppression. it applies for both types of suppression
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
   pb.convenient.area <- 400 ## should be 15.000 ha
   accum.burnt.area <- rep(pb.convenient.area,7)
@@ -96,7 +96,7 @@ define.scenario <- function(scn.name){
   file.clim.severity <- "ClimaticSeverity"
   file.pctg.hot.days <- "PctgHotDays_noCC"
   file.fire.suppression <- "FireSuppression_CurrExtrem"
-  file.sprd.weight <- "SprdRateWeights"
+  file.sprd.weight <- "WeightSprdFactors"
     
   
   ## Save all the variables in .r file to be further loaded by landscape.dyn.r

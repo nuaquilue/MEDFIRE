@@ -5,6 +5,7 @@ library(raster)
 library(RANN)  # for nn2()
 library(Rcpp)
 library(tidyverse)
+select <- dplyr::select
 source("mdl/fire.regime.r")
 source("mdl/update.clim.r")
 source("mdl/prob.igni.r")
@@ -107,23 +108,29 @@ aba.dist <- read.table("inputfiles/AnnualBurntAreaDist.txt", header=T)
 fs.dist <- read.table("inputfiles/FireSizeDist.txt", header=T)
 fire.supp <- read.table(paste0("inputfiles/", file.fire.suppression, ".txt"), header=T)
 spp.flammability <- read.table("inputfiles/SppSpreadRate.txt", header=T)
-fst.sprd.weight <- read.table("inputfiles/SprdRateWeights.txt", header=T)
+fst.sprd.weight <- read.table(paste0("inputfiles/", file.sprd.weight, ".txt"), header=T)
 
 
-## Restarting Tracking fires data frame each run
-track.fires <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
-                          wind=NA, atarget=NA, aburnt.highintens=NA, 
-                          aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
+## To be sure that non-burnable covers do not burn (water, rock, urban), nor agriculture land
+## under prescribed burns
+i <- land$spp<=17        # 2.938.560
+subland <- land[i,]   
+suborography <- orography[i,]
 
 
-## Default Euclidean distance and wind direction between neigbours
+## Reset TrackFires data frame each run and swc
+track.fire <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
+                         wind=NA, atarget=NA, aburnt.highintens=NA, 
+                         aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
+
+
+## Wind direction between 12 neigbours
 ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
-mask <- data.frame(cell.id=1:ncell(MASK), x=MASK[])
-## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NW
 default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
                             windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
                             dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
 default.nneigh <- nrow(default.neigh)
+
 
 ## Find either fixed or stochastic annual target area for wildfires
 if(swc<4){ 
@@ -146,20 +153,20 @@ if(swc<4){
                                                 aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc])))) 
   }  
 }
-## Find annual target area for prescribed burns
 cat(paste(" Annual target area:", area.target), "\n")
 
+
 ## Update prob.igni according to swc
-pigni <- data.frame(cell.id=land$cell.id, p=pigni*pfst.pwind[,ifelse(swc==1,1,2)])
-pigni <- filter(pigni, !is.na(p) & p>0)
-pfst.pwind$cell.id <- land$cell.id
+pigni <- mutate(pigni, psft=p*pfst.pwind[,ifelse(swc==1,1,2)+1]) %>%
+  filter(cell.id %in% subland$cell.id)
+
 
 ## Pre-select the coordinates of old Mediterranean vegetation, i.e.
 ## Pinus halepensis, Pinus nigra, and Pinus pinea of age >=30 years.
 ## to compute probability of being a convective fire
-old.forest.coord <- filter(land, spp<=3 & age>=30) %>% select(cell.id) %>% left_join(coord, by = "cell.id")
-## Also pre-select the cell.id of burnable land-covers
-burnable <- land$cell.id[land$spp<=17]
+old.forest.coord <- filter(subland, spp<=3 & age>=30) %>% select(cell.id) %>% left_join(coord, by = "cell.id")
+
+
 
 ## Start burning until annual area target is not reached
 fire.id <- 0
@@ -168,7 +175,7 @@ track.spread <- data.frame(fire.id=fire.id, cell.id=NA, step=NA, spp=NA, biom=NA
 
 
 
-######################## SECOND PART OF FIRE.REGIME.R, LINES 92 TO 157 ########################
+######################## SECOND PART OF FIRE.REGIME.R, LINES 102 TO 167 ########################
 ## ID for each fire event
 fire.id <- fire.id+1
 
@@ -180,9 +187,8 @@ igni.id <- sample(pigni$cell.id, 1, replace=F, pigni$p)
 fire.spread.type <- swc
 wwind <- fst.sprd.weight[1,fire.spread.type+1]
 wslope <- fst.sprd.weight[2,fire.spread.type+1]
-wfuel <- fst.sprd.weight[3,fire.spread.type+1]
-wflam <- fst.sprd.weight[4,fire.spread.type+1]
-waspc <- fst.sprd.weight[5,fire.spread.type+1]
+wflam <- fst.sprd.weight[3,fire.spread.type+1]
+waspc <- fst.sprd.weight[4,fire.spread.type+1]
 
 ## Assign the fire suppression levels
 sprd.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$sprd.th
@@ -196,7 +202,7 @@ if(fire.spread.type==2)  # S 80%, SW 10%, SE 10%
   fire.wind <- sample(c(180,225,135), 1, replace=F, p=c(80,10,10))
 if(fire.spread.type==3)  # any at random
   fire.wind <- sample(seq(0,315,45), 1, replace=F)
-cat(paste("Direcció vent", fire.wind))
+spp.flam <- filter(spp.flammability, fst==fire.spread.type) %>% select(-fst)
 
 ## Derive target fire size from a power-law according to clima and fire.spread.type 
 log.size <- seq(1.7, 5, 0.01)

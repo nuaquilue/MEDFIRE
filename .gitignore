@@ -1,0 +1,16 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+outputs
+rscripts/outs
+rscripts/old
+inputlyrs/asc
+desktop.ini
+medfire.rproj
+inputlyrs/rdata/sdm*
+inputlyrs/rdata/climate*
+inputlyrs/sdm*
+*.docx
+inputfiles/sources
+*.tex
