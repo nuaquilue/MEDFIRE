@@ -95,7 +95,7 @@ define.scenario <- function(scn.name){
   file.dmnd.harvest <- "DemandHarvest"
   file.clim.severity <- "ClimaticSeverity"
   file.pctg.hot.days <- "PctgHotDays_noCC"
-  file.fire.suppression <- "FireSuppression_CurrExtrem"
+  file.fire.suppression <- "FireSuppression"
   file.sprd.weight <- "WeightSprdFactors"
     
   

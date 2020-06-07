@@ -12,8 +12,9 @@ define.scenario(scn.name)
 nrun <- 20
 time.horizon <- 91
 write.sp.outputs <- T
-file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
-file.fire.suppression <- "FireSuppression"
+clim.scn <- "rcp45"
+file.clim.severity <- "ClimaticSeverity_rcp85_fixABA"
+file.pctg.hot.days <- "PctgHotDays_rcp45"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
@@ -26,7 +27,7 @@ processes <- c(TRUE,   # 1. Climate change
                TRUE)   # 10. Growth
 # Write the name of the customized parameters in the dump function. 
 # It copies these R objects into the file outputs/test/scn.custom.def.r
-dump(c("file.fire.suppression", "file.clim.severity", "nrun", "write.sp.outputs", "time.horizon", "processes"), 
+dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "nrun", "write.sp.outputs", "time.horizon", "processes"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 # Run the model
 system.time(land.dyn.mdl(scn.name))
