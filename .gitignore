@@ -14,3 +14,5 @@ inputlyrs/sdm*
 *.docx
 inputfiles/sources
 *.tex
+inputlyrs/shp
+inputlyrs/*.zip
