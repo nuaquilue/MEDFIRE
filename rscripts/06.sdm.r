@@ -137,7 +137,7 @@ for(i in 1:nrow(coeff)){
   thresh <- rbind(thresh, data.frame(spp=i,  th1=mean(sdm[!is.na(sdm) & sdm<=q1]),
              th5=mean(sdm[!is.na(sdm) & sdm<=q5]), th10=mean(sdm[!is.na(sdm) & sdm<=q10]) ))
 }
-write.table(thresh, "rscripts/outs/SDMth.txt", quote=F, sep="\t", row.names = F)
+write.table(thresh, "rscripts/outs/SDMth.txt", quote=F, sep="/t", row.names = F)
 
 
 SDM24 <- raster("inputlyrs/asc/SDM_24.asc")
@@ -277,5 +277,31 @@ for(clim.scn in c("rcp45", "rcp85")){
 }
 
 
+## Table of initial IN/OUT per spp
+rm(list=ls())
+library(raster)  
+library(tidyverse)
+load("inputlyrs/rdata/mask.rdata")
+load("inputlyrs/rdata/land.rdata")
+LCMFE <- raster("D:/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/LCMFE_100m_31N-ETRS89.asc")
+dta <- data.frame(cell.id=1:ncell(LCMFE), lcmfe=LCMFE[])
+land <- left_join(land, dta, by="cell.id")
+
+clim.scn <- "rcp45"
+i <- 1
+result <- data.frame(NA,NA, NA, NA, NA, NA) 
+names(result) <- c( "scn", "spp", "lcf.in", "lcf.out", "lcmfe.in", "lcmfe.out")
+for(clim.scn in c("rcp45", "rcp85")){
+  load(paste0("inputlyrs/rdata/sdm_planfix_", clim.scn, "_SMHI-RCA4_MOHC-HadGEM2-ES_10.rdata"))
+  for(i in 1:13){
+    aux.spp <- (land$spp==i) * ifelse(sdm[,i+1]==1, 2, 1)
+    aux.lcfme <- (land$lcmfe==i) * ifelse(sdm[,i+1]==1, 2, 1)
+    aux <- c(clim.scn, i, sum(aux.spp==2, na.rm=T), sum(aux.spp==1, na.rm=T), 
+           sum(aux.lcfme==2, na.rm=T), sum(aux.lcfme==1, na.rm=T))
+    result <- rbind(result, aux)
+  }
+}
+write.table(result[-1,], file="D:/MEDMOD/SpatialModelsR/MEDFIRE/rscripts/outs/inout.lcfme.txt",
+            quote=F, sep="\t")
 
 

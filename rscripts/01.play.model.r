@@ -9,7 +9,7 @@ source("mdl/land.dyn.mdl.r")
 scn.name <- "Scn_rcp45_noFF"
 define.scenario(scn.name)
 # Change target parameters
-nrun <- 20
+nrun <- 10
 time.horizon <- 91
 write.sp.outputs <- T
 clim.scn <- "rcp45"
@@ -20,10 +20,10 @@ processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 3. Forest management
                TRUE,   # 4. Wildfires
                FALSE,   # 5. Prescribed burns
-               TRUE,  # 6. Drought
+               FALSE,  # 6. Drought
                TRUE,   # 7. Post-fire regeneration
-               TRUE,  # 8. Cohort establihsment
-               TRUE,  # 9. Afforestation
+               FALSE,  # 8. Cohort establihsment
+               FALSE,  # 9. Afforestation
                TRUE)   # 10. Growth
 # Write the name of the customized parameters in the dump function. 
 # It copies these R objects into the file outputs/test/scn.custom.def.r
