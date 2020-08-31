@@ -6,15 +6,15 @@ setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Name the new scenario and call the define.scenario function to load default initialization of model’s parameters
-scn.name <- "Scn_rcp45_noFF"
+scn.name <- "Scn_rcp85_noFF_3"
 define.scenario(scn.name)
 # Change target parameters
 nrun <- 10
 time.horizon <- 91
 write.sp.outputs <- T
-clim.scn <- "rcp45"
-file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
-file.pctg.hot.days <- "PctgHotDays_rcp45"
+clim.scn <- "rcp85"
+file.clim.severity <- "ClimaticSeverity_rcp85_fixABA"
+file.pctg.hot.days <- "PctgHotDays_rcp85"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
