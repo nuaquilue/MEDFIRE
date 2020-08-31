@@ -6,15 +6,16 @@ setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Name the new scenario and call the define.scenario function to load default initialization of model’s parameters
-scn.name <- "Scn_rcp45_noFF"
+scn.name <- "Scn_FireShape01sp"
 define.scenario(scn.name)
 # Change target parameters
-nrun <- 10
-time.horizon <- 91
+nrun <- 1
+time.horizon <- 3
 write.sp.outputs <- T
-clim.scn <- "rcp45"
-file.clim.severity <- "ClimaticSeverity_rcp45_fixABA"
-file.pctg.hot.days <- "PctgHotDays_rcp45"
+testing <- F
+clim.scn <- "rcp85"
+file.clim.severity <- "ClimaticSeverity_test"
+file.pctg.hot.days <- "PctgHotDays_rcp85"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
@@ -27,7 +28,7 @@ processes <- c(TRUE,   # 1. Climate change
                TRUE)   # 10. Growth
 # Write the name of the customized parameters in the dump function. 
 # It copies these R objects into the file outputs/test/scn.custom.def.r
-dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", 
+dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "testing",
        "nrun", "write.sp.outputs", "time.horizon", "processes"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 # Run the model

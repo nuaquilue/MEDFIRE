@@ -99,7 +99,7 @@ land.dyn.mdl <- function(scn.name){
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
-  
+  track.target <- data.frame(run=NA, year=NA, swc=NA, atarget=NA)
   
   ## Start the simulations   
   for(irun in 1:nrun){
@@ -196,35 +196,45 @@ land.dyn.mdl <- function(scn.name){
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
           clim.sever <- 1
         # swc = wind, heat and regular. annual.burnt needed to compute PB target area 
-        for(swc in 1:3){
-          fire.out <- fire.regime(land, coord, orography, pigni, swc, clim.sever, t, 
-                                  burnt.cells, fintensity, fire.ids, id.fire, annual.burnt)
-          burnt.cells <- fire.out[[1]]; fintensity <- fire.out[[2]]; 
-          fire.ids <- fire.out[[3]]; id.fire <- id.fire+nrow(fire.out[[4]])
-          # track fire events and total annual burnt area
-          if(nrow(fire.out[[4]])>0)
-            track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[4]]))
-          annual.burnt <- annual.burnt+sum(fire.out[[4]]$aburnt.highintens + fire.out[[4]]$aburnt.lowintens)
+        if(testing){
+          for(swc in 1:3){
+            aux <- fire.regime(land, coord, orography, pigni, swc, clim.sever, t, 
+                              burnt.cells, fintensity, fire.ids, id.fire, annual.burnt, T)
+            track.target <- rbind(track.target, data.frame(run=irun, year=t, swc=swc, atarget=aux))
+          }
         }
-        # track spp and biomass burnt
-        aux <- data.frame(cell.id=burnt.cells, fire.id=fire.ids, fintensity) %>% 
-               left_join(select(land, cell.id, spp, biom), by="cell.id") %>%
-               mutate(bburnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) %>%
-               group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
-        if(nrow(aux)>0)
-          track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
-        # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
-        # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
-        burnt.intens <- fintensity>fire.intens.th
-        land$tsdist[land$cell.id %in% burnt.cells] <- 0
-        land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
-        land$distype[land$cell.id %in% burnt.cells[burnt.intens]] <- hfire
-        land$distype[land$cell.id %in% burnt.cells[!burnt.intens]] <- lfire
-        land$biom[land$cell.id %in% burnt.cells[burnt.intens]] <- 0
-        land$biom[land$cell.id %in% burnt.cells[!burnt.intens]] <- 
-          land$biom[land$cell.id %in% burnt.cells[!burnt.intens]]*(1-fintensity[!burnt.intens])
-        temp.fire.schedule <- temp.fire.schedule[-1] 
-        rm(fire.out); rm(aux)
+        else{
+          for(swc in 1:3){
+            fire.out <- fire.regime(land, coord, orography, pigni, swc, clim.sever, t, 
+                                    burnt.cells, fintensity, fire.ids, id.fire, annual.burnt, F)
+            burnt.cells <- fire.out[[1]]; fintensity <- fire.out[[2]]; 
+            fire.ids <- fire.out[[3]]; id.fire <- id.fire+nrow(fire.out[[4]])
+            # track fire events and total annual burnt area
+            if(nrow(fire.out[[4]])>0)
+              track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[4]]))
+            annual.burnt <- annual.burnt+sum(fire.out[[4]]$aburnt.highintens + fire.out[[4]]$aburnt.lowintens)
+          }
+          # track spp and biomass burnt
+          aux <- data.frame(cell.id=burnt.cells, fire.id=fire.ids, fintensity) %>% 
+            left_join(select(land, cell.id, spp, biom), by="cell.id") %>%
+            mutate(bburnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) %>%
+            group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
+          if(nrow(aux)>0)
+            track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
+          # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
+          # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
+          burnt.intens <- fintensity>fire.intens.th
+          land$tsdist[land$cell.id %in% burnt.cells] <- 0
+          land$tburnt[land$cell.id %in% burnt.cells] <- land$tburnt[land$cell.id %in% burnt.cells] + 1
+          land$distype[land$cell.id %in% burnt.cells[burnt.intens]] <- hfire
+          land$distype[land$cell.id %in% burnt.cells[!burnt.intens]] <- lfire
+          land$biom[land$cell.id %in% burnt.cells[burnt.intens]] <- 0
+          land$biom[land$cell.id %in% burnt.cells[!burnt.intens]] <- 
+            land$biom[land$cell.id %in% burnt.cells[!burnt.intens]]*(1-fintensity[!burnt.intens])
+          temp.fire.schedule <- temp.fire.schedule[-1] 
+          rm(fire.out); rm(aux)  
+        }
+        
       }
       
       
@@ -330,18 +340,18 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      ## Print maps every time step with ignition and low/high intenstiy burnt
-      # if(write.sp.outputs){
-      #   MAP <- MASK
-      #   cat("... writing output layers", "\n")
-      #   nfire <- sum(track.fire$year==t, na.rm=T)
-      #   sizes <- filter(track.fire, year==t) %>% group_by(swc, fire.id) %>% summarise(ab=aburnt.highintens+aburnt.lowintens)
-      #   # Ignitions' cell.id 
-      #   igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)] 
-      #   MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
-      #   MAP[igni.id] <- 9
-      #   writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-      # }
+      # Print maps every time step with ignition and low/high intenstiy burnt
+      if(write.sp.outputs){
+        MAP <- MASK
+        cat("... writing output layers", "\n")
+        nfire <- sum(track.fire$year==t, na.rm=T)
+        sizes <- filter(track.fire, year==t) %>% group_by(swc, fire.id) %>% summarise(ab=aburnt.highintens+aburnt.lowintens)
+        # Ignitions' cell.id
+        igni.id <- burnt.cells[c(1,cumsum(sizes$ab)[1:(nfire-1)]+1)]
+        MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1)
+        MAP[igni.id] <- 9
+        writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+      }
       
       ## Deallocate memory
       gc(verbose=F); cat("\n")
@@ -359,7 +369,7 @@ land.dyn.mdl <- function(scn.name){
   
   cat("... writing outputs", "\n")
   write.table(track.fmgmt[-1,], paste0(out.path, "/Management.txt"), quote=F, row.names=F, sep="\t")
-  track.fire$rem <- pmax(0,track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
+  track.fire$rem <- pmax(0, track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
                            track.fire$asupp.fuel - track.fire$asupp.sprd)
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.fire.spp[-1,], paste0(out.path, "/FiresSpp.txt"), quote=F, row.names=F, sep="\t")
@@ -372,5 +382,5 @@ land.dyn.mdl <- function(scn.name){
   names(track.afforest)[3:4] <- c("spp", "ha")
   write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
-
+  write.table(track.target[-1,], paste0(out.path, "/FireRegime.txt"), quote=F, row.names=F, sep="\t")
 }

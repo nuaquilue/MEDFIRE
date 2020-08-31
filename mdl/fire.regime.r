@@ -4,7 +4,7 @@
 ######################################################################################
 
 fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, 
-                        burnt.cells, fintensity, fire.ids, fire.id=0, annual.burnt=0){
+                        burnt.cells, fiity, fire.ids, fire.id=0, annual.burnt=0, testing=F){
                         
   options(warn=-1)
   cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 
@@ -83,6 +83,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
   }  
   cat(paste(" Annual target area:", area.target), "\n")
   
+  if(testing)
+    return(area.target)
   
   ## Update prob.igni according to swc
   pigni <- mutate(pigni, psft=p*pfst.pwind[,ifelse(swc==1,1,2)+1]) %>%
@@ -166,7 +168,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     burnt.cells <- c(burnt.cells, igni.id)
     visit.cells <- c(burnt.cells, igni.id) # to account for burnt cells in previous SWC
     supp.sprd.cells <- supp.fuel.cells <- numeric()
-    fintensity <- c(fintensity, 1)
+    fiity <- c(fiity, 1)
     fire.ids <- c(fire.ids, fire.id)
       
     ## Start speading from active cells (i.e. the fire front)
@@ -206,7 +208,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       ## Retrieve the orography variables for fire.front and neigbhour cells, 
       ## and already compute aspect factor
       neigh.orography <- suborography[i.land.in.neigh,] %>%
-                         mutate(aspc=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
+                         mutate(aspc=waspc*ifelse(aspect==1, 0.1, 
+                                                  ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
       
       ## Get spread rate by:
       ## Joining to the neig.id data.frame the neigh.land and keep only burnable neighs 
@@ -217,16 +220,16 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
                    left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>%
                    left_join(select(neigh.orography, cell.id, elev, aspc), by="cell.id")  %>% 
                    mutate(dif.elev = elev.y-elev.x, 
-                          slope = wslope * pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5, 
+                          slope = wslope * (pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5), 
                           wind = wwind * (ifelse(abs(windir-fire.wind)>180, 
                                             360-abs(windir-fire.wind), abs(windir-fire.wind)))/180) %>% 
-                   mutate(sr=slope+wind+flam+aspc, pb=1+rpb*log(sr*fuel)) %>%
+                   mutate(sr=slope+wind+flam+aspc, fi=sr*fuel, pb=1+rpb*log(sr*fuel)) %>%
                    group_by(cell.id) %>% 
                    summarize(fire.id=fire.id, spp=mean(spp), age=mean(age), fuel=max(fuel),
                              source.supp.sprd = any(source.supp.sprd[which(sr == max(sr))]),
                              source.supp.fuel = any(source.supp.fuel[which(sr == max(sr))]),
-                             sr=max(sr), fintens=max(sr*fuel), pb=max(pb)) %>%
-                   mutate(tosupp.sprd=(fintens<=sprd.th), tosupp.fuel=(spp<=14 & age<=fuel.th))
+                             sr=max(sr), fi=max(fi), pb=max(pb)) %>%
+                   mutate(tosupp.sprd=(fi<=sprd.th), tosupp.fuel=(spp<=14 & age<=fuel.th))
       
       ## Count how many cells could be suppressed
       n.lowsprd <- n.lowsprd + sum(sprd.rate$tosupp.sprd)
@@ -235,7 +238,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       ## Now compute actual burn state (T or F) according to pb and suppress:
       supp.sprd <- (sprd.rate$tosupp.sprd & n.lowsprd>=accum.supp) | sprd.rate$source.supp.sprd
       supp.fuel <- (sprd.rate$tosupp.fuel & n.lowfuel>=accum.supp) | sprd.rate$source.supp.fuel
-      sprd.rate$burn <- runif(nrow(sprd.rate),0,pb.upper.th)<=sprd.rate$pb & sprd.rate$pb>pb.lower.th
+      sprd.rate$burn <- sprd.rate$pb >= runif(nrow(sprd.rate), pb.lower.th, pb.upper.th)
       source.supp$source.supp.sprd[source.supp$cell.id %in% sprd.rate$cell.id[sprd.rate$tosupp.sprd]] <- T
       source.supp$source.supp.fuel[source.supp$cell.id %in% sprd.rate$cell.id[sprd.rate$tosupp.fuel]] <- T
       filter(source.supp, cell.id %in% sprd.rate$cell.id)
@@ -261,20 +264,33 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
       burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel])
       supp.sprd.cells <- c(supp.sprd.cells, sprd.rate$cell.id[sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & !sprd.rate$burn])
       supp.fuel.cells <- c(supp.fuel.cells, sprd.rate$cell.id[sprd.rate$tosupp.fuel])
-      fintensity <- c(fintensity, sprd.rate$fintens[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel])
+      fiity <- c(fiity, sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel])
       fire.ids <- c(fire.ids, sprd.rate$fire.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel])
       
-      ## Select the new fire front
-      exclude.th <- min(max(sprd.rate$sr)-0.005,   ## 'mad' -> median absolute deviation
-                        rnorm(1,mean(sprd.rate$sr[sprd.rate$burn], na.rm=T)-mad(sprd.rate$sr[sprd.rate$burn], na.rm=T)/2,
-                              mad(sprd.rate$sr[sprd.rate$burn], na.rm=T)))
-      fire.front <- sprd.rate$cell.id[sprd.rate$burn & sprd.rate$sr>=exclude.th]
-      
       ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
-      aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn & sprd.rate$fintens<=ifelse(swc<4,fire.intens.th,100))
-      aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & sprd.rate$fintens>ifelse(swc<4,fire.intens.th,100))
+      aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn & sprd.rate$fi<=ifelse(swc<4,fire.intens.th,100))
+      aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & sprd.rate$fi>ifelse(swc<4,fire.intens.th,100))
       asupp.sprd <- asupp.sprd + sum(sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & !sprd.rate$burn)
       asupp.fuel <- asupp.fuel + sum(sprd.rate$tosupp.fuel & !sprd.rate$burn)
+      
+      ## Select the new fire front
+      ## First, count the number of cells burnt in the current step
+      nburn <- sum(sprd.rate$burn)
+      ## If any cell has burnt in the current step, stop
+      if(nburn==0)
+        break
+      ## Otherwise, select the new fire front, a random number from 1 to n.cell.burnt 
+      ## according to fire.intensity
+      if(nburn==1)
+        fire.front <- sprd.rate$cell.id[sprd.rate$burn]
+      if(nburn>1){
+        z <- scales::rescale((aburnt.lowintens+aburnt.highintens)/fire.size.target, to=c(-3,2), from=c(0,1))
+        n1 <- pmax(2, round(nburn/(1+exp(z))))
+        n2 <- pmin(round(nburn*0.8), pmax(2,round(nburn/(1+exp(z)))))
+        n3 <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
+        fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], n3,
+                                   replace=F, prob=sprd.rate$fi[sprd.rate$burn]*runif(nburn, 0.65, 1))  
+      }
       
       ## In the case, there are no cells in the fire front, stop trying to burn.
       ## This happens when no cells have burnt in the current spreading step
@@ -295,7 +311,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t,
     
   }  #while 'year'
   
-  return(list(burnt.cells=burnt.cells, fintensity=fintensity,
+  return(list(burnt.cells=burnt.cells, fiity=fiity,
               fire.ids=fire.ids, track.fire=track.fire[-1,]))
 }
 
