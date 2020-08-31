@@ -2,29 +2,21 @@
 rm(list=ls())
 # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
 setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
-# Load functions
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
-# Name the new scenario and call the define.scenario function to load default initialization of model’s parameters
-<<<<<<< HEAD
-scn.name <- "Scn_rcp85_noFF_3"
-=======
-scn.name <- "Scn_FireShape01sp"
->>>>>>> f0b5da07ad00dc9818eae901e249d2ddc35bc16d
+# Define scenario
+scn.name <- "Scn_NewCalibCrazyFront10"
 define.scenario(scn.name)
+
 # Change target parameters
 nrun <- 1
 time.horizon <- 3
 write.sp.outputs <- T
-<<<<<<< HEAD
-clim.scn <- "rcp85"
-file.clim.severity <- "ClimaticSeverity_rcp85_fixABA"
-=======
-testing <- F
+fi.accelerate <- 5
 clim.scn <- "rcp85"
 file.clim.severity <- "ClimaticSeverity_test"
->>>>>>> f0b5da07ad00dc9818eae901e249d2ddc35bc16d
 file.pctg.hot.days <- "PctgHotDays_rcp85"
+file.sprd.weight <- "WeightSprdFactorsCalib"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
@@ -35,13 +27,11 @@ processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 8. Cohort establihsment
                FALSE,  # 9. Afforestation
                TRUE)   # 10. Growth
-# Write the name of the customized parameters in the dump function. 
-# It copies these R objects into the file outputs/test/scn.custom.def.r
-dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "testing",
-       "nrun", "write.sp.outputs", "time.horizon", "processes"), 
+dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "fi.accelerate",
+       "nrun", "write.sp.outputs", "time.horizon", "processes", "file.sprd.weight"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
-# Run the model
 system.time(land.dyn.mdl(scn.name))
+
 
 
 ###########################################################################################################

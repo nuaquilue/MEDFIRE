@@ -5,7 +5,10 @@ count.spp <- function(x){
 }
 
 select.cohort <- function(x){
-  return(sample(1:14, 1, replace=F, prob=x))
+  if(sum(x)==0)
+    return(14)
+  else
+    return(sample(1:14, 1, replace=F, prob=x))
 }
 
 

@@ -44,48 +44,28 @@ write.track.lyrs <- function(scn.name, track.spread){
   
 }
 
-
-list.scn <- paste0("TestFire", LETTERS[1:5])
+############ AUTO EXTINCTION ############
 self.extinguishing <- function(list.scn){
-  
-  library(tidyverse)
-  
-  fires <- numeric()
   for(scn in list.scn){
-    aux <- read.table(paste0("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/outputs/", scn, "/Fires.txt"),
-                      header=T)
-    fires <- rbind(fires, data.frame(scn, aux))
-    
-  }
-  
-  # Only 5% fires reach target size
-  cat(paste("Percentage of fires that reach the target size:",
+    fires <- read.table(paste0("d:/MEDMOD/SpatialModelsR/MEDFIRE/outputs/", scn, "/Fires.txt"), header=T)
+    fires$scn <- scn
+    cat(paste("Percentage of fires that reach the target size:",
       round(100*sum(fires$aburnt.highintens+fires$aburnt.lowintens>=fires$atarget) /nrow(fires)) ), "%\n")
-  
-  group_by(fires, scn) %>% summarise(nfire=length(atarget))
-  # 1 TestFireA     5
-  # 2 TestFireB     9
-  # 3 TestFireC    19
-  # 4 TestFireD    27
-  # 5 TestFireE    75
-
-  ## Distribution of remanent areas
-  ggplot(data=filter(fires, rem>0), aes(fires$rem[fires$rem>0])) + geom_histogram()
-  
+    cat(paste("aBurnt/aTarget:",
+              round(100*sum(fires$aburnt.highintens+fires$aburnt.lowintens)/sum(fires$atarget))), "%\n")
+    
+    ## Distribution of remanent areas
+    ggplot(data=filter(fires, rem>0), aes(fires$rem[fires$rem>0])) + geom_histogram(bins = 10)
+  }  
 }
+list.scn <- c("Scn_NewCalibOnly10_1by1")
+self.extinguishing(list.scn)
 
 
-rm(list=ls())
-suppressPackageStartupMessages({
-  library(sp)
-  library(raster)  
-  library(tidyverse)
-})
-
-# Name scn and output folder
-scn.name <- "TestFF"
-fires <- read.table(paste0("outputs/", scn.name, "/Fires.txt"), header=T) %>%
-  mutate(aburnt=aburnt.highintens+aburnt.lowintens, asupp=asupp.fuel+asupp.sprd)
+############ PERCENTAGE BURNT, SUPPRESS, REMANENT ############
+scn <- list.scn[1]
+fires <- read.table(paste0("outputs/", scn, "/Fires.txt"), header=T) %>%
+         mutate(aburnt=aburnt.highintens+aburnt.lowintens, asupp=asupp.fuel+asupp.sprd)
 a <- group_by(fires, year) %>% summarize(at=sum(atarget), ab=sum(aburnt), as=sum(asupp), rem=sum(rem),
                                          pb=round(ab/at*100,1), ps=round(as/at*100,1), pr=round(rem/at*100,1))
 a

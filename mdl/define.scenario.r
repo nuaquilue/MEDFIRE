@@ -75,8 +75,9 @@ define.scenario <- function(scn.name){
 
   
   ## Fire parameters (should not change to much): Spread rate, burn probability, prescribed burns
-  pb.upper.th <- 0.75
-  pb.lower.th <- 0.05
+  pb.upper.th <- 0.85
+  pb.lower.th <- -1
+  fi.accelerate <- 1
   fire.intens.th <- 0.35  # high vs. low intensity fire, sr <= fire.intens.th
   accum.supp <- 3 # minimum number of ha suppressed before to acivate fire-level suppression. it applies for both types of suppression
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
