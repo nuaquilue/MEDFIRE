@@ -4,9 +4,8 @@
 ######################################################################################
 
 fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt.cells, 
-                        fintensity, fire.ids, fire.id=0, annual.atarget, testing){
+                        fintensity, fire.ids, igni.ids, fire.id, annual.aeffective){
                         
-  options(warn=-1)
   cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 
                                ifelse(swc==3, "Regular.", "Prescribed.")))))
 
@@ -40,22 +39,13 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
   track.fire <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, 
                            wind=NA, atarget=NA, aburnt.highintens=NA, 
                            aburnt.lowintens=NA, asupp.sprd=NA, asupp.fuel=NA)
-  
-  
-  ## Wind direction between 12 neigbours
-  ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
-  default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
-                              windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
-                              dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
-  default.nneigh <- nrow(default.neigh)
-  sub.default.neigh <- default.neigh
-  
+
   ## Find either fixed or stochastic annual target area for wildfires
   if(swc<4){ 
     ## Fixed
     if(sum(clim.severity[clim.severity$year==t,2:4])>0){  
       is.aba.fix <- T
-      area.target <- min(200000-annual.atarget, clim.severity[clim.severity$year==t, swc+1])
+      area.target <- min(200000-annual.aeffective, clim.severity[clim.severity$year==t, swc+1])
     }
     ## Find stochastic annual burnt area
     else{ 
@@ -67,7 +57,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
             clim.sever <- 2
       }
       # maximum annual area target is 200.000 ha (for the three SWC together)
-      area.target <- round(min(200000-annual.atarget, max(10, 
+      area.target <- round(min(200000-annual.aeffective, max(10, 
                            rlnorm(1, aba.dist$meanlog[aba.dist$clim==clim.sever & aba.dist$swc==swc],
                                     aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc])))) 
     }  
@@ -78,14 +68,12 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
       area.target <- pb.target.area
     else{
       accum.burnt.area[2:7] <- accum.burnt.area[1:6]
-      accum.burnt.area[1] <- annual.burnt
+      accum.burnt.area[1] <- annual.aeffective
       area.target <- pmax(0,pb.convenient.area*7-sum(accum.burnt.area))
     }
   }  
   cat(paste(" Annual target area:", area.target), "\n")
   
-  if(testing)
-    return(area.target)
   
   ## Update prob.igni according to swc
   pigni <- mutate(pigni, psft=p*pfst.pwind[,ifelse(swc==1,1,2)+1]) %>%
@@ -108,6 +96,14 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
     ## the wind direction and the target fire size according to clim and fire spread type
     ## What if selected igni has already been burnt?? How can I control it? pigni$psft==0 of burnt cells??
     igni.id <- sample(pigni$cell.id, 1, replace=F, pigni$psft)
+    
+    ## Start with the 12 neigbours of the ignition
+    ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
+    default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
+                                windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
+                                dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
+    default.nneigh <- nrow(default.neigh)
+    sub.default.neigh <- default.neigh
     
     ## Assign the fire spread type 
     if(swc==1 | swc==3)
@@ -174,6 +170,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
     supp.sprd.cells <- supp.fuel.cells <- numeric()
     fintensity <- c(fintensity, 1)
     fire.ids <- c(fire.ids, fire.id)
+    igni.ids <- c(igni.ids, igni.id)
       
     ## Start speading from active cells (i.e. the fire front)
     while((aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)<fire.size.target){
@@ -188,13 +185,15 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
                              windir=rep(sub.default.neigh$windir,length(fire.front)) ) %>%
                   filter(cell.id %notin% visit.cells) %>% 
                   left_join(filter(source.supp, cell.id %in% fire.front), by=c("source.id" ="cell.id"))  # look if source cell has been suppressed
-      
-      
+
       ## Now find those neighbours that are currenty in Catalonia
       ## is_inCpp returns the position of neigh.id$cell.id in the 'land' data.frame (not the cell.id)!
       neigh.in.land <- is_inCpp(neigh.id$cell.id, subland$cell.id)
       i.land.in.neigh <- unique(neigh.in.land[which(neigh.in.land!=-1)])
-      
+      ## If all the available neighbours are out of Catalonia, stop spreading
+      if(length(i.land.in.neigh)==0)
+        break
+            
       ## For all neighbours, compute fire intenstiy and flammability factors
       ## fire intenstiy and flam will be NA for non burnable covers
       neigh.land <- subland[i.land.in.neigh,] %>%
@@ -245,8 +244,6 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
       sprd.rate$burn <- sprd.rate$pb >= runif(nrow(sprd.rate), pb.lower.th, pb.upper.th)
       source.supp$source.supp.sprd[source.supp$cell.id %in% sprd.rate$cell.id[sprd.rate$tosupp.sprd]] <- T
       source.supp$source.supp.fuel[source.supp$cell.id %in% sprd.rate$cell.id[sprd.rate$tosupp.fuel]] <- T
-      filter(source.supp, cell.id %in% sprd.rate$cell.id)
-      sprd.rate   
       
       ## Mark that all these neighs have been visited (before breaking in case no burn)
       visit.cells <- c(visit.cells, sprd.rate$cell.id)
@@ -288,11 +285,12 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
       if(nburn==1)
         fire.front <- sprd.rate$cell.id[sprd.rate$burn]
       if(nburn>1){
-        z <- scales::rescale((aburnt.lowintens+aburnt.highintens)/fire.size.target, to=c(-3,2), from=c(0,1))
+        # z <- scales::rescale((aburnt.lowintens+aburnt.highintens)/fire.size.target, to=c(-3,2), from=c(0,1))
         # n1 <- pmax(2, round(nburn/(1+exp(z))))
         # n2 <- pmin(round(nburn*0.8), pmax(2,round(nburn/(1+exp(z)))))
-        n3 <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
-        fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], n3,
+        # n3 <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
+        n4 <- rdunif(1, round(nburn*0.2), round(nburn*0.8))
+        fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], n4,
                                    replace=F, prob=sprd.rate$fi[sprd.rate$burn]*runif(nburn, 0.65, 1))  
       }
       
@@ -301,7 +299,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
       if(length(fire.front)==0)
         break
       
-      ## Subset of 4+(2, or 3, or 4, ... or 7) = 6 or 7 or 8 ... or 11 default neighbours
+      ## Subset of 4+(3, or 4, ... or 7) = 6 or 7 or 8 ... or 11 default neighbours
       ## At least one neighour is not evaluated. 
       sub.default.neigh <- default.neigh[c(1:4, sample(5:12, sample(3:7,1), replace=F)),]
       default.nneigh <- nrow(sub.default.neigh)
@@ -320,6 +318,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
     
   }  # while 'year'
   
-  return(list(burnt.cells=burnt.cells, fintensity=fintensity, fire.ids=fire.ids, track.fire=track.fire[-1,]))
+  return(list(burnt.cells=burnt.cells, fintensity=fintensity, fire.ids=fire.ids, 
+              igni.ids=igni.ids, track.fire=track.fire[-1,]))
 }
 

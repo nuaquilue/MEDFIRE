@@ -5,33 +5,32 @@ setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "Scn_NewCalibCrazyFront10"
+scn.name <- "Scn_pb"
 define.scenario(scn.name)
 
 # Change target parameters
 nrun <- 1
-time.horizon <- 3
-write.sp.outputs <- T
+time.horizon <- 1
+write.sp.outputs <- F
 fi.accelerate <- 5
 clim.scn <- "rcp85"
-file.clim.severity <- "ClimaticSeverity_test"
+file.clim.severity <- "ClimaticSeverity"
 file.pctg.hot.days <- "PctgHotDays_rcp85"
-file.sprd.weight <- "WeightSprdFactorsCalib"
+file.sprd.weight <- "WeightSprdFactors"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
                FALSE,  # 3. Forest management
                TRUE,   # 4. Wildfires
-               FALSE,   # 5. Prescribed burns
+               TRUE,   # 5. Prescribed burns
                FALSE,  # 6. Drought
                TRUE,   # 7. Post-fire regeneration
                FALSE,  # 8. Cohort establihsment
                FALSE,  # 9. Afforestation
                TRUE)   # 10. Growth
-dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "fi.accelerate",
+dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "fi.accelerate", 
        "nrun", "write.sp.outputs", "time.horizon", "processes", "file.sprd.weight"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 system.time(land.dyn.mdl(scn.name))
-
 
 
 ###########################################################################################################
