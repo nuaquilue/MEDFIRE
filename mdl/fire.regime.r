@@ -4,7 +4,7 @@
 ######################################################################################
 
 fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt.cells, 
-                        fintensity, fire.ids, igni.ids, fire.id, annual.aeffective){
+                        fintensity, fire.ids, igni.ids, fire.id, annual.aeffective, MASK, out.path){
                         
   cat(paste0("Fires in SWC: ", ifelse(swc==1, "Wind.", ifelse(swc==2, "Heat.", 
                                ifelse(swc==3, "Regular.", "Prescribed.")))))
@@ -24,6 +24,9 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
   spp.flammability <- read.table("inputfiles/SppSpreadRate.txt", header=T)
   fst.sprd.weight <- read.table(paste0("inputfiles/", file.sprd.weight, ".txt"), header=T)
   
+  ## MAP fire.ids
+  MAP <- MASK
+  mask <- data.frame(cell.id=land$cell.id, id=NA)
   
   ## To be sure that non-burnable covers do not burn (water, rock, urban), nor agriculture land
   ## under prescribed burns
@@ -99,9 +102,13 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
     
     ## Start with the 12 neigbours of the ignition
     ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
-    default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
-                                windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
-                                dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
+    # default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
+    #                             windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
+    #                             dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
+    default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899),
+                                windir=c(270,90,180,0,225,315,135,45),
+                                dist=c(100,100,100,100,141.421,141.421,141.421,141.421))
+    
     default.nneigh <- nrow(default.neigh)
     sub.default.neigh <- default.neigh
     
@@ -171,7 +178,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
     fintensity <- c(fintensity, 1)
     fire.ids <- c(fire.ids, fire.id)
     igni.ids <- c(igni.ids, igni.id)
-      
+    mask$id[mask$cell.id==igni.id] <- fire.id
+    
     ## Start speading from active cells (i.e. the fire front)
     while((aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)<fire.size.target){
       
@@ -224,8 +232,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
                    left_join(select(neigh.orography, cell.id, elev, aspc), by="cell.id")  %>% 
                    mutate(dif.elev = elev.y-elev.x, 
                           slope = wslope * (pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5), 
-                          wind = wwind * (1-(ifelse(abs(windir-fire.wind)>180,   ##31.08.2020 "1-(ifelse)"
-                                            360-abs(windir-fire.wind), abs(windir-fire.wind)))/180)) %>% 
+                          wind = wwind * ((ifelse(abs(windir-fire.wind)>180,   
+                                  360-abs(windir-fire.wind), abs(windir-fire.wind)))/180)) %>% 
                    mutate(sr=slope+wind+flam+aspc, fi=sr*fuel*fi.acc, pb=1+rpb*log(sr*fuel*fi.acc)) %>%
                    group_by(cell.id) %>% 
                    summarize(fire.id=fire.id, spp=mean(spp), age=mean(age), fuel=max(fuel),
@@ -261,6 +269,10 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
         sprd.rate$burn <- (sprd.rate$cell.id %in% def.burnt)
       }
       
+      ## Tring to really get exact fire.id!!
+      mask$id[mask$cell.id %in% 
+                sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]] <- fire.id
+      
       ## Mark the burnt cells, the suppressed, and the fire intensity for burnt cells
       burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel])
       supp.sprd.cells <- c(supp.sprd.cells, sprd.rate$cell.id[sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & !sprd.rate$burn])
@@ -291,7 +303,7 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
         # n3 <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
         n4 <- rdunif(1, round(nburn*0.2), round(nburn*0.8))
         fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], n4,
-                                   replace=F, prob=sprd.rate$fi[sprd.rate$burn]*runif(nburn, 0.65, 1))  
+                                   replace=F, prob=sprd.rate$fi[sprd.rate$burn]*runif(nburn, 0.85, 1)) 
       }
       
       ## In the case, there are no cells in the fire front, stop trying to burn.
@@ -301,7 +313,8 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
       
       ## Subset of 4+(3, or 4, ... or 7) = 6 or 7 or 8 ... or 11 default neighbours
       ## At least one neighour is not evaluated. 
-      sub.default.neigh <- default.neigh[c(1:4, sample(5:12, sample(3:7,1), replace=F)),]
+      # sub.default.neigh <- default.neigh[c(1:4, sample(5:12, sample(3:7,1), replace=F)),]  #12 neigbhours
+      sub.default.neigh <- default.neigh #[sample(1:8, sample(7:8,1), replace=F),]  # 8 neighbours
       default.nneigh <- nrow(sub.default.neigh)
       
     } # while 'fire.size.target'
@@ -317,6 +330,11 @@ fire.regime <- function(land, coord, orography, pigni, swc, clim.sever, t, burnt
     area.target <- area.target - (aburnt.lowintens + aburnt.highintens + asupp.sprd + asupp.fuel)
     
   }  # while 'year'
+  
+  
+  ## fire.ids
+  MAP[!is.na(MAP[])] <- mask$id
+  writeRaster(MAP, paste0(out.path, "/lyr/FireIds_r1", "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
   
   return(list(burnt.cells=burnt.cells, fintensity=fintensity, fire.ids=fire.ids, 
               igni.ids=igni.ids, track.fire=track.fire[-1,]))

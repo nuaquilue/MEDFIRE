@@ -201,7 +201,7 @@ land.dyn.mdl <- function(scn.name){
           clim.sever <- 1
         for(swc in 1:3){
           fire.out <- fire.regime(land, coord, orography, pigni, swc, clim.sever, t, burnt.cells, 
-                                  fintensity, fire.ids, igni.ids, id.fire, annual.aburnt+annual.asupp)
+                                  fintensity, fire.ids, igni.ids, id.fire, annual.aburnt+annual.asupp, MASK, out.path)
           burnt.cells <- fire.out[[1]]; fintensity <- fire.out[[2]]; 
           fire.ids <- fire.out[[3]]; igni.ids <- fire.out[[4]]
           id.fire <- id.fire+nrow(fire.out[[5]])

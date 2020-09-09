@@ -92,7 +92,8 @@ list.scn <- c(paste0("Scn_FireFrontN", c(4,6), "_Crazy08"), paste0("Scn_FireFron
               paste0("Scn_FireFrontN", c(4,6), "_Crazy10"), paste0("Scn_FireFrontN", c(4,6), "_Crazy11"))
 list.scn <- c(paste0("Scn_FireFrontN4_Crazy", c("08", "09", 10, 11), "_5run"))  
 scn <- list.scn[1]
-extinct <- self.extinguishing(list.scn)
+list.scn <- c("Scn_NewCalib_crazy03_r85", "Scn_NewCalib_crazy04_r85", "Scn_NewCalib_crazy05_r85")
+extinct <- self.extinguishing(list.scn);extinct
 metric <- fire.shapes(list.scn, 1:3, 1:5)
 resum <- group_by(metric, scn) %>% summarize(shape=round(mean(shape),2), para=round(mean(para*100),2), 
                                              frac=round(mean(frac),3),
