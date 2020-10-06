@@ -86,8 +86,9 @@ define.scenario <- function(scn.name){
   pb.mean <- 1.974
   pb.sd <- 0.683
   pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
+  nff <- c(0,1)
+  crazy <- 1:8
   
-    
   ## Scenario parameters
   clim.scn <- "rcp45"
   clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
