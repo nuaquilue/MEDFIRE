@@ -54,16 +54,37 @@ read.static.vars <- function(work.path){
   utm <- data.frame(cell.id=1:ncell(UTM),  utm=UTM[])
   save(utm, file="inputlyrs/rdata/utm.rdata")
   
-    # ## Layers for forest management
-    # DIST.PATH <- raster(paste0(work.path, "/inputlyrs/asc/DistPath_100m.asc"))
-    # SLOPE.PCTG <- raster(paste0(work.path, "/inputlyrs/asc/SlopePctg_100m.asc"))
-    # PROTECT.AREA <- raster(paste0(work.path, "/inputlyrs/asc/ENPE_100m.asc"))
-    # type.protect.area <- foreign::read.dbf("c:/work/medmod/inputlayers_MEDFIRE_II/protectareas/enpe.dbf")
-    # protect.area <- as.data.frame(PROTECT.AREA[]); names(protect.area) <- "VALUE"
-    # protect.area <- left_join(protect.area, select(type.protect.area, VALUE, TYPE), by="VALUE")
-    # harvest <- data.frame(protect.area=protect.area$TYPE, dist.path=DIST.PATH[], slope.pctg=SLOPE.PCTG[])
-    # harvest <- harvest[!is.na(MASK[]),]
-    # save(harvest, file="inputlyrs/rdata/harvest.rdata")
+  ## Layers for forest management
+  DIST.PATH <- raster(paste0(work.path, "/inputlyrs/asc/DistPath_100m_31N-ETRS89.asc"))
+  SLOPE.PCTG <- raster(paste0(work.path, "/inputlyrs/asc/SlopePctg_100m_31N-ETRS89.asc"))
+  ENPE <- raster(paste0(work.path, "/inputlyrs/asc/ENPE_100m_31N-ETRS89.asc"))
+  DIST.INDUSTRY <- raster(paste0(work.path, "/inputlyrs/asc/DistIndustry_100m_31N-ETRS89.asc"))
+  # NAs in the SLOPE.PTCG layer within CAT?
+  dta <- data.frame(cell.id=1:ncell(SLOPE.PCTG), m=MASK[], coordinates(SLOPE.PCTG), z=SLOPE.PCTG[]) %>% filter(!is.na(m))
+  na.var <- filter(dta, is.na(z))
+  for(id in na.var$cell.id){
+    neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                  searchtype="priority", k=9)
+    phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+    if(!is.na(phago))
+      na.var$z[na.var$cell.id==id] <- phago
+  }
+  dta$z[is.na(dta$z)] <- na.var$z
+  na.var2 <- filter(na.var, is.na(z))
+  for(id in na.var2$cell.id){
+    neighs <- nn2(select(dta, x, y), filter(na.var2, cell.id==id)%>% select(x,y), 
+                  searchtype="priority", k=25)
+    phago <- mean(dta$z[neighs$nn.idx], na.rm=T)
+    if(!is.na(phago))
+      na.var2$z[na.var2$cell.id==id] <- phago
+  }
+  dta$z[is.na(dta$z)] <- na.var2$z
+  SLOPE.PCTG[!is.na(MASK[])] <- dta$z
+  harvest <- data.frame(cell.id=1:ncell(MASK), enpe=ENPE[], dist.path=DIST.PATH[], 
+                        slope.pctg=SLOPE.PCTG[], dist.industry=round(DIST.INDUSTRY[]/10^3))  # dist to industry in km
+  harvest <- harvest[!is.na(MASK[]),]
+  harvest$enpe[is.na(harvest$enpe)] <- 0
+  save(harvest, file="inputlyrs/rdata/harvest.rdata")
   
   ## Layers for fire
   IGNI.TOPO <- raster(paste0(work.path, "/inputlyrs/asc/IgniTopo_100m_31N-ETRS89.asc"))

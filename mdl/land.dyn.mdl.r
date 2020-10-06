@@ -41,7 +41,7 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/mask.rdata")
   load("inputlyrs/rdata/coordinates.rdata")
   load("inputlyrs/rdata/orography.rdata")
-  # load("inputlyrs/rdata/harvest.rdata")
+  load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
   
   
