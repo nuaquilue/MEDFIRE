@@ -21,11 +21,11 @@ read.state.vars <- function(work.path, hfire=6){
   
   ## Build data frame
   land <- data.frame(cell.id=1:ncell(LCF), spp=LCF[], biom=BIOMASS[], age=AGE[], 
-                     distype=0, tsdist=TSDIST[], tburnt=NA)
+                     typdist=NA, tsdist=TSDIST[], typcut=NA, tscut=NA, tburnt=NA)
   land <- land[!is.na(land$spp),]
   ## According to TimeSinceDisturbance layer (that's actually Time Since Fire),
   ## mark burnt cells in the disturbance type layer:
-  land$distype[land$tsdist<400] <- hfire
+  land$typdist[land$tsdist<400] <- "hfire"
   ## Initialize times burnt at 0 for burnable covers
   land$tburnt[land$spp<=17] <- 0
   
