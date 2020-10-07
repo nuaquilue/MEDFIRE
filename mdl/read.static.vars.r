@@ -59,6 +59,7 @@ read.static.vars <- function(work.path){
   SLOPE.PCTG <- raster(paste0(work.path, "/inputlyrs/asc/SlopePctg_100m_31N-ETRS89.asc"))
   ENPE <- raster(paste0(work.path, "/inputlyrs/asc/ENPE_100m_31N-ETRS89.asc"))
   DIST.INDUSTRY <- raster(paste0(work.path, "/inputlyrs/asc/DistIndustry_100m_31N-ETRS89.asc"))
+  DIST.BIOMASS <- raster(paste0(work.path, "/inputlyrs/asc/DistBiomass_100m_31N-ETRS89.asc"))
   # NAs in the SLOPE.PTCG layer within CAT?
   dta <- data.frame(cell.id=1:ncell(SLOPE.PCTG), m=MASK[], coordinates(SLOPE.PCTG), z=SLOPE.PCTG[]) %>% filter(!is.na(m))
   na.var <- filter(dta, is.na(z))
@@ -81,7 +82,8 @@ read.static.vars <- function(work.path){
   dta$z[is.na(dta$z)] <- na.var2$z
   SLOPE.PCTG[!is.na(MASK[])] <- dta$z
   harvest <- data.frame(cell.id=1:ncell(MASK), enpe=ENPE[], dist.path=DIST.PATH[], 
-                        slope.pctg=SLOPE.PCTG[], dist.industry=round(DIST.INDUSTRY[]/10^3))  # dist to industry in km
+                        slope.pctg=SLOPE.PCTG[], dist.industry=round(DIST.INDUSTRY[]/10^3),
+                        dist.biomass=round(DIST.BIOMASS[]/10^3))  # dist to industry and to biomass in km
   harvest <- harvest[!is.na(MASK[]),]
   harvest$enpe[is.na(harvest$enpe)] <- 0
   save(harvest, file="inputlyrs/rdata/harvest.rdata")
