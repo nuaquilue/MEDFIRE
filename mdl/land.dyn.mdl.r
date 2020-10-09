@@ -77,7 +77,7 @@ land.dyn.mdl <- function(scn.name){
   else
     clim.schedule <- seq(1, time.horizon-1, clim.step)
   lchg.schedule <- seq(1, time.horizon, lchg.step)
-  fmgmt.schedule <- seq(1, time.horizon, fmgmt.step)
+  mgmt.schedule <- seq(1, time.horizon, mgmt.step)
   fire.schedule <- seq(1, time.horizon, fire.step)
   pb.schedule <- seq(1, time.horizon, pb.step)
   drought.schedule <- seq(1, time.horizon, drought.step)
@@ -88,7 +88,7 @@ land.dyn.mdl <- function(scn.name){
   
 
   ## Tracking data.frames
-  track.fmgmt <- data.frame(run=NA, year=NA, spp=NA, sylvi=NA, sawlog=NA, wood=NA)
+  track.harvest <- data.frame(run=NA, year=NA, spp=NA, vol.sawlog=NA, vol.wood=NA)
   track.fire <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
                             aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
   track.fire.spp <- data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
@@ -109,7 +109,7 @@ land.dyn.mdl <- function(scn.name){
     ## Copy the schedulings in auxiliar vectors (only for those processes included in the current version)
     temp.clim.schedule <- clim.schedule
     temp.lchg.schedule <- lchg.schedule
-    temp.fmgmt.schedule <- fmgmt.schedule
+    temp.mgmt.schedule <- mgmt.schedule
     temp.fire.schedule <- fire.schedule
     temp.pb.schedule <- pb.schedule
     temp.drought.schedule <- drought.schedule
@@ -147,7 +147,7 @@ land.dyn.mdl <- function(scn.name){
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
         land$tsdist[land$cell.id %in% visit.cells] <- NA  # don't care the time since it's urban
-        land$distype[land$cell.id %in% chg.cells] <- lchg.urb
+        land$typdist[land$cell.id %in% chg.cells] <- "lchg.urb"
         land$tburnt[land$cell.id %in% chg.cells] <- NA
         # Agriculture conversion
         visit.cells <- chg.cells
@@ -155,7 +155,7 @@ land.dyn.mdl <- function(scn.name){
         land$spp[land$cell.id %in% chg.cells] <- 16 # arableland or 17 - permanent crops
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
-        land$distype[land$cell.id %in% chg.cells] <- lchg.crp
+        land$typdist[land$cell.id %in% chg.cells] <- "lchg.crp"
         land$tsdist[land$cell.id %in% visit.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Rural abandonment
@@ -164,7 +164,7 @@ land.dyn.mdl <- function(scn.name){
         land$spp[land$cell.id %in% chg.cells] <- 14  # shrub
         land$biom[land$cell.id %in% chg.cells] <- 0
         land$age[land$cell.id %in% chg.cells] <- 0
-        land$distype[land$cell.id %in% chg.cells] <- lchg.nat
+        land$typdist[land$cell.id %in% chg.cells] <- "lchg.nat"
         land$tsdist[land$cell.id %in% visit.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Update interface values
@@ -175,14 +175,18 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 3. FOREST MANAGEMENT (under development)
-      if(processes[fmgmt.id] & t %in% temp.fmgmt.schedule){
-        aux <- forest.mgmt(land, coord, clim, harvest, t)
-        land$tsdist[land$cell.id %in% aux$cell.id] <- 0
-        land$distype[land$cell.id %in% aux$cell.id] <- fmgmt.id*10+aux$sylvi
-        track.fmgmt <- rbind(track.fmgmt, 
-                             data.frame(run=irun, year=t, 
-                                        group_by(aux, spp, sylvi) %>% summarize(sawlog=sum(vol.sawlog), wood=sum(vol.wood))))
-        temp.fmgmt.schedule <- temp.fmgmt.schedule[-1] 
+      if(processes[mgmt.id] & t %in% temp.mgmt.schedule){
+        cut.out <- forest.mgmt(land, harvest, clim, t)
+        land$typdist[land$cell.id %in% cut.out$cell.id] <- "cut"
+        land$tsdist[land$cell.id %in% cut.out$cell.id] <- 0
+        land$typcut[land$cell.id %in% cut.out$cell.id] <- cut.out$typcut
+        land$tscut[land$cell.id %in% cut.out$cell.id] <- 0
+        land$age[land$cell.id %in% cut.out$cell.id & cut.out$typcut=="fin"] <- 0
+        land$biom[land$cell.id %in% cut.out$cell.id] <- 
+          land$biom[land$cell.id %in% cut.out$cell.id]-cut.out$ba.extract
+        track.harvest <- rbind(track.harvest, data.frame(run=irun, year=t, 
+                               group_by(cut.out, spp) %>% summarize(vol.sawlog=sum(vol.sawlog), vol.wood=sum(vol.wood))))
+        temp.mgmt.schedule <- temp.mgmt.schedule[-1] 
         rm(aux)
       }
       
@@ -211,8 +215,8 @@ land.dyn.mdl <- function(scn.name){
         burnt.cells$intens <- burnt.cells$fintensity>fire.intens.th
         land$tsdist[land$cell.id %in% burnt.cells$cell.id] <- 0
         land$tburnt[land$cell.id %in% burnt.cells$cell.id] <- land$tburnt[land$cell.id %in% burnt.cells$cell.id] + 1
-        land$distype[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens]] <- hfire
-        land$distype[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- lfire
+        land$typdist[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens]] <- "highfire"
+        land$typdist[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- "lowfire"
         land$biom[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens]] <- 0
         land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- 
            land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]]*(1-burnt.cells$fintensity[!burnt.cells$intens])
@@ -233,7 +237,7 @@ land.dyn.mdl <- function(scn.name){
           pb.cells <- fire.out[[2]] %>% select(-igni)  
           land$tsdist[land$cell.id %in% pb.cells$cell.id] <- 0
           land$tburnt[land$cell.id %in% pb.cells$cell.id] <- land$tburnt[land$cell.id %in% pb.cells$cell.id] + 1
-          land$distype[land$cell.id %in% pb.cells$cell.id] <- pb
+          land$typdist[land$cell.id %in% pb.cells$cell.id] <- "pb"
           land$biom[land$cell.id %in% pb.cells$cell.id] <- land$biom[land$cell.id %in% pb.cells$cell.id]*(1-pb.cells$fintensity)
           temp.pb.schedule <- temp.pb.schedule[-1] 
         }
@@ -246,7 +250,7 @@ land.dyn.mdl <- function(scn.name){
       if(processes[drought.id] & t %in% temp.drought.schedule){
         killed.cells <- drought(land, clim, t)
         land$tsdist[land$cell.id %in% killed.cells] <- 0
-        land$distype[land$cell.id %in% killed.cells] <- drght
+        land$typdist[land$cell.id %in% killed.cells] <- "drght"
         track.drougth <- rbind(track.drougth,
                               data.frame(run=irun, year=t, 
                                          filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))) )
@@ -294,7 +298,7 @@ land.dyn.mdl <- function(scn.name){
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$age[land$cell.id %in% aux$cell.id] <- 0
         land$tsdist[land$cell.id %in% aux$cell.id] <- 0
-        land$distype[land$cell.id %in% aux$cell.id] <- afforest
+        land$typdist[land$cell.id %in% aux$cell.id] <- "afforest"
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
@@ -309,6 +313,7 @@ land.dyn.mdl <- function(scn.name){
         land$biom <- growth.10y(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
+        land$tscut <- pmin(land$tscut+1,600)
         aux <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
                mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
                left_join(eq.ba.volbark, by="spp") %>% 
@@ -328,7 +333,7 @@ land.dyn.mdl <- function(scn.name){
       if(write.sp.outputs){
         cat("... writing output layers", "\n")
         MAP <- MASK
-        MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==1) + 10*(land$cell.id %in% burnt.cells$cell.id[burnt.cells$igni])
+        MAP[!is.na(MASK[])] <- 10*(land$cell.id %in% burnt.cells$cell.id[burnt.cells$igni])
         writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
@@ -347,7 +352,7 @@ land.dyn.mdl <- function(scn.name){
   } # run
   
   cat("... writing outputs", "\n")
-  write.table(track.fmgmt[-1,], paste0(out.path, "/Management.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
   track.fire$rem <- pmax(0, track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
                            track.fire$asupp.fuel - track.fire$asupp.sprd)
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")

@@ -1,11 +1,11 @@
 ############################################ RUN A SCN ##################################################
 rm(list=ls())
-setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
-# setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+# setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
+ setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "Scn12_crazy11_r65_n3_topo"
+scn.name <- "Scn_Harvset01"
 define.scenario(scn.name)
 
 # Change target parameters
@@ -21,11 +21,11 @@ file.pctg.hot.days <- "PctgHotDays_rcp85"
 file.sprd.weight <- "WeightSprdFactors_Wind09"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
-               FALSE,  # 3. Forest management
-               TRUE,   # 4. Wildfires
+               TRUE,  # 3. Forest management
+               FALSE,   # 4. Wildfires
                FALSE,   # 5. Prescribed burns
                FALSE,  # 6. Drought
-               TRUE,   # 7. Post-fire regeneration
+               FALSE,   # 7. Post-fire regeneration
                FALSE,  # 8. Cohort establihsment
                FALSE,  # 9. Afforestation
                TRUE)   # 10. Growth

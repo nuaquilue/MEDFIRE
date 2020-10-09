@@ -45,7 +45,7 @@ define.scenario <- function(scn.name){
   ## Process ID and frequency (in years) 
   clim.id <- 1; clim.step <- 10
   lchg.id <- 2; lchg.step <- 5
-  fmgmt.id <- 3; fmgmt.step <- 1
+  mgmt.id <- 3; mgmt.step <- 1
   fire.id <- 4; fire.step <- 1
   pb.id <- 5; pb.step <- 1
   drought.id <- 6; drought.step <- 1
@@ -54,18 +54,6 @@ define.scenario <- function(scn.name){
   afforest.id <- 9; afforest.step <- 1
   growth.id <- 10; growth.step <- 1
   
-  
-  ## Distrubance types ID
-  lchg.urb <- 1
-  lchg.crp <- 2
-  lchg.nat <- 3
-  cut <- 4
-  thin <- 5
-  hfire <- 6
-  lfire <- 7
-  pb <- 8
-  drght <- 9
-  afforest <- 10  
   
   ## Global model's parametres
   # Radius of the neighborhood (in pixels) to find out if a species is present in a region

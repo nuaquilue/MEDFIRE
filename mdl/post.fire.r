@@ -28,7 +28,7 @@ post.fire <- function(land, coord, orography, clim, sdm){
   ## - it doesn't regenerate per se (fire functional trait), or
   ## - it is out of its climatic range, or
   ## - it is younger than the regeneration age
-  burnt.cells <- filter(land, spp<14 & tsdist==0, distype==hfire) %>% left_join(response.trait, by="spp") %>%
+  burnt.cells <- filter(land, spp<14 & tsdist==0, typdist=="highfire") %>% left_join(response.trait, by="spp") %>%
                  left_join(spp.ages, by="spp") %>% left_join(select(clim, cell.id, sdm, sqi), by="cell.id") %>%
                  filter(age<=regener | sdm==0 | trait==0) %>% left_join(coord, by = "cell.id") 
   

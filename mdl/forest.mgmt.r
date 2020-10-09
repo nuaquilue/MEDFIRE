@@ -2,7 +2,7 @@
 ## In "preparatory" harvesting, between 65% - 85% of harvesting goes for sawlogs, the remainder goes for wood
 ######################################################################################
 
-forest.mgmt <- function(land, harvest, clim){
+forest.mgmt <- function(land, harvest, clim, t){
   
   ## Tracking
   cat("Forest Management")
@@ -17,10 +17,11 @@ forest.mgmt <- function(land, harvest, clim){
   dmnd <- read.table(paste0("inputfiles/", file.dmnd.harvest, ".txt"), header=T)
   dmnd.sawlog <- dmnd$Sawlogs[t]
   dmnd.wood <- dmnd$Primary[t]
+  # dmnd.sawlog <- 500000; dmnd.wood <- 100000
   
   ## Track cut cells
-  track.cut.cells <- data.frame(cut.id=NA, cell.id=NA, typcut=NA, 
-                                pextract=NA, pwood=NA, vol.sawlog=NA, vol.wood=NA)
+  track.cut.cells <- data.frame(cut.id=NA, cell.id=NA, spp=NA, cut.sawlog=NA, typcut=NA, 
+                                pextract=NA, pwood=NA, vol.sawlog=NA, vol.wood=NA, ba.extract=NA)
   cut.id <- 0
   visit.cells <- integer()
   
@@ -86,40 +87,44 @@ forest.mgmt <- function(land, harvest, clim){
   volume <- select(sustain, cell.id, spp, biom, pctgextract) %>% 
             left_join(eq.ba.vol, by="spp") %>% 
             mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
-            mutate(vol.extract = vol*pctgextract/100)
-  
-  ## Finally, adjust the demand according to the available volume
-  dmnd.sawlog <- min(dmnd.sawlog, sum(volume$vol.extract))
-  
-  
+            mutate(vol.extract = vol*pctgextract/100) %>% 
+            mutate(vol.fake=ifelse(spp<=7, vol.extract*5, vol.extract))
+
   ## To compute the probability of being harvested first, compute the volume available in the neighborhodd
   neigh.id <- data.frame(cell.id=as.integer(rep(volume$cell.id, each=default.nneigh)+
                                             rep(default.neigh$x, nrow(volume))),
                          source.id=rep(volume$cell.id, each=default.nneigh)) %>% 
               left_join(volume, by="cell.id") %>% group_by(source.id) %>% 
-              summarise(vol.neigh=sum(vol.extract, na.rm=T))
+              # summarise(vol.neigh=sum(vol.extract, na.rm=T))
+              summarise(vol.neigh=sum(vol.fake, na.rm=T))
   
-  
-  ## Set probability of extraction according to (1) volume available for extraction, 
+  ## Set probability of sawlog extraction according to (1) volume available for extraction, 
   ## (2) volume available for extraction in the neighborhood, (3) distance to forest industries, and
   ## (4) type of species, conifer - 1 vs. deciduous - 0.
   w1 <- 0.4; w2 <- 0.2; w3 <- 0.3; w4 <- 0.1
-  w1 <- 0.3; w2 <- 0; w3 <- 0.3; w4 <- 0.4
+  # w1 <- 0.3; w2 <- 0.3; w3 <- 0; w4 <- 0.4
+  # w1 <- w2 <- w3 <- 0; w4 <- 1           
   pextract <- left_join(volume, neigh.id, by=c("cell.id"="source.id")) %>% 
               left_join(select(harvest, cell.id, dist.industry), by="cell.id") %>% 
-              mutate(f1=scales::rescale(pmin(vol.extract, quantile(vol.extract, p=0.9)), to=c(0,1)) ,
+              # mutate(f1=scales::rescale(pmin(vol.extract, quantile(vol.extract, p=0.9)), to=c(0,1)) ,
+              mutate(f1=scales::rescale(pmin(vol.fake, quantile(vol.fake, p=0.9)), to=c(0,1)) ,
                      f2=scales::rescale(pmin(vol.neigh, quantile(vol.neigh, p=0.9)), to=c(0,1)) ,
                      f3=scales::rescale(pmin(1/dist.industry, quantile(1/dist.industry, p=0.9)), to=c(0,1)),
                      f4=ifelse(spp<=7,1,0) ) %>% 
               mutate(p=w1*f1+w2*f2+w3*f3+w4*f4)
-  rm(volume); rm(w1); rm(w2); rm(w3); rm(w4)
     # # plot probability of extraction
-    # dta <- data.frame(cell.id=1:ncell(MASK)) %>% left_join(select(pextract, cell.id, p))
-    # MASK[] <- dta$p
-    # plot(MASK, col=viridis(6))
+        # dta <- data.frame(cell.id=1:ncell(MASK)) %>% left_join(select(pextract, cell.id, p))
+        # MASK[] <- dta$p
+        # plot(MASK, col=viridis(6))
+    
+  
+  ## Finally, adjust the demands according to the available volume
+  dmnd.sawlog <- min(dmnd.sawlog, sum(volume$vol.extract))
+  dmnd.wood <- min(dmnd.wood, sum(volume$vol.extract)-dmnd.sawlog)
   
   
-  ## Let's start harvesting
+  ## Let's start harvesting for sawlogs and wood
+  more.wood <- T
   while(dmnd.sawlog>0){
     
     ## ID for each harvesting event, and restart step
@@ -131,32 +136,64 @@ forest.mgmt <- function(land, harvest, clim){
     ## Select an ignition point where to start the harvesting intervention
     igni.id <- sample(pextract$cell.id, 1, replace=F, pextract$p)
     
-    ## Harvest this first cell and decrease overall demand, if already reach it, stop cutting
+    ## Harvest this first cell and decrease overall demand (later on, if it is already reached, stop cutting
     area.cut <- 1
     aux <- filter(sustain, cell.id==igni.id) %>% left_join(eq.ba.vol, by="spp") %>% 
            mutate(vol=cx*biom/10+cx2*biom*biom/100, vol.extract=vol*pctgextract/100,
                   pwood=ifelse(todo=="fin", runif(1, 1-0.95, 1-0.9), runif(1, 1-0.85, 1-0.65)))
-    if(aux$pwood>0){
-      dmnd.sawlog <- dmnd.sawlog - aux$vol.extract * (1-aux$pwood)
-      dmnd.wood <- dmnd.wood - aux$vol.extract * aux$pwood   ## dmnd wood is in m3 or t. If tones, need to covert volume to mass!!!
+    
+    ## Decide if harvesting for Sawlog or for Wood  (I think I'll have to adjust these thresholds)
+    cut.sawlog <- T
+    if(more.wood)
+       cut.sawlog <- ifelse(aux$spp<=7, runif(1, 0, 1)<=runif(1, 0.75, 0.9), runif(1, 0, 1)<=runif(1, 0.1, 0.25))
+      # cut.sawlog <- ifelse(aux$spp<=7, TRUE, runif(1, 0, 1)<=runif(1, 0.1, 0.25))
+    
+    ## If harvesting for sawlogs, 
+    if(cut.sawlog){
+      # and need more wood, allocate few of the harvesting to wood
+      if(more.wood){
+        dmnd.sawlog <- dmnd.sawlog - aux$vol.extract * (1-aux$pwood) 
+        dmnd.wood <- dmnd.wood - aux$vol.extract * aux$pwood   ## dmnd wood is in m3 or t. If tones, need to covert volume to mass!!!  
+      }
+      # but if NO need more wood, then, allocate all to sawlogs
+      else{
+        dmnd.sawlog <- dmnd.sawlog - aux$vol.extract
+        aux$pwood <- 0
+      }
     }
-    else
-      dmnd.sawlog <- dmnd.sawlog - aux$vol.extract
-
+    ## If harvesting for wood (more is needed, othwersie the before breaks already has been activated)
+    else{
+      if(more.wood){
+        dmnd.wood <- dmnd.wood - aux$vol.extract
+        aux$pwood <- 1  
+      }
+      else
+        cut.id <- cut.id - 1
+    }
+    
     
     ## Track cutting this first cell of the patch
-    front <- igni.id
-    visit.cells <- c(visit.cells, igni.id)
-    track.cut.cells <- rbind(track.cut.cells, 
-                             data.frame(cut.id=cut.id, cell.id=igni.id, typcut=aux$todo, 
-                             pextract=aux$pctgextract, pwood=aux$pwood,
-                             vol.sawlog=aux$vol.extract*(1-aux$pwood), vol.wood=aux$vol.extract*aux$pwood))
-    pextract <- filter(pextract, cell.id!=igni.id)  ## remove that igni from the pool of selectable cells
+    if(cut.sawlog | (!cut.sawlog & more.wood)){
+      front <- igni.id
+      visit.cells <- c(visit.cells, igni.id)
+      track.cut.cells <- rbind(track.cut.cells, 
+                               data.frame(cut.id=cut.id, cell.id=igni.id, spp=aux$spp, cut.sawlog=cut.sawlog, 
+                                          typcut=aux$todo, pextract=aux$pctgextract, pwood=aux$pwood,
+                                          vol.sawlog=aux$vol.extract*(1-aux$pwood), vol.wood=aux$vol.extract*aux$pwood,
+                                          ba.extract=aux$biom))
+      pextract <- filter(pextract, cell.id!=igni.id)  ## remove that igni from the pool of selectable cells
+    }
+      
+    
+    ## Keep extracting wood?
+    if(dmnd.wood<=0)
+      more.wood <- F
     
     
-    ## Cut as much as left of the target area to be harvested, but if sawlog demand is not reach.
+    ## Cut as much as left of the target area to be harvested, but if sawlog demand is not reach,
+    ## and if harvesting for wood, still it's needed more
     ## Otherwise, no need to keep cutting
-    while(area.cut<target.area & dmnd.sawlog>0){
+    while(area.cut<target.area & dmnd.sawlog>0 & (more.wood & !cut.sawlog)){
       
       ## Increment tracking step
       step <- step + 1
@@ -187,46 +224,88 @@ forest.mgmt <- function(land, harvest, clim){
              mutate(vol=cx*biom/10+cx2*biom*biom/100, vol.extract=vol*pctgextract/100)
       aux$pwood <- runif(nrow(aux), 1-0.95, 1-0.9) * (aux$todo=="fin") +
                    runif(nrow(aux), 1-0.85, 1-0.65) * (aux$todo!="fin")
-      dmnd.sawlog <- dmnd.sawlog -  sum(aux$vol.extract*(1-aux$pwood))
-      dmnd.wood <- dmnd.wood -  sum(aux$vol.extract*aux$pwood)
+      
+      ## If harvesting for sawlogs, 
+      if(cut.sawlog){
+        # and need more wood, allocate few of the harvesting to wood
+        if(more.wood){
+          dmnd.sawlog <- dmnd.sawlog - sum(aux$vol.extract*(1-aux$pwood))
+          dmnd.wood <- dmnd.wood - sum(aux$vol.extract*aux$pwood)
+        }
+        # but if NO need more wood, then, allocate all to sawlogs
+        else{
+          dmnd.sawlog <- dmnd.sawlog - sum(aux$vol.extract)
+          aux$pwood <- 0
+        }
+      }
+      ## If harvesting for wood (more is needed)
+      else{
+        dmnd.wood <- dmnd.wood - sum(aux$vol.extract)
+        aux$pwood <- 1
+      }
+      
       visit.cells <- c(visit.cells, neigh.land$cell.id)
       track.cut.cells <- rbind(track.cut.cells, 
-                               data.frame(cut.id=cut.id, cell.id=aux$cell.id, typcut=aux$todo, 
-                                          pextract=aux$pctgextract, pwood=aux$pwood,
+                               data.frame(cut.id=cut.id, cell.id=aux$cell.id, spp=aux$spp, cut.sawlog=cut.sawlog, 
+                                          typcut=aux$todo, pextract=aux$pctgextract, pwood=aux$pwood,
                                           vol.sawlog=aux$vol.extract*(1-aux$pwood), 
-                                          vol.wood=aux$vol.extract*aux$pwood))
+                                          vol.wood=aux$vol.extract*aux$pwood, ba.extract=aux$biom))
       pextract <- filter(pextract, cell.id %notin% aux$cell.id)  # remove harvested cells from the pool of selectable cells
       
       ## Keep harvesting. If there there are no cells in the front, stop trying to cut.
       front <- neigh.land$cell.id
       if(length(front)==0)
         break
+      
+      ## Keep extracting wood? If harvesting for wood, but no need more, then stop
+      if(dmnd.wood<=0)
+        more.wood <- F
     }
    
-    print(paste("cut.id", cut.id, "- rem.dmnd.sawlog", dmnd.sawlog, "- rem.dmnd.wood", dmnd.wood))
+    # print(paste("cut.id", cut.id, "- cut.sawlog", cut.sawlog, 
+    #             "- rem.dmnd.sawlog", round(dmnd.sawlog), "- rem.dmnd.wood", round(dmnd.wood)))
   }
 
   
-  ## com ha anat això??
-  a <- filter(track.cut.cells, !is.na(cut.id)) %>% 
-        group_by( cut.id) %>% summarise(vol=sum(vol.sawlog+vol.wood),
-       vol.sawlog=sum(vol.sawlog), vol.wood=sum(vol.wood))
-  sum(a$vol); sum(a$vol.sawlog); sum(a$vol.wood)
-  b <- filter(track.cut.cells, !is.na(cut.id)) %>% 
-       left_join(select(sustain, cell.id, spp), by="cell.id") %>% 
-        group_by(spp) %>% summarise(vol.sawlog=sum(vol.sawlog), vol.wood=sum(vol.wood))
-  sum(b$vol.sawlog[b$spp<=7]); round(100*sum(b$vol.sawlog[b$spp<=7])/sum(b$vol.sawlog))
-  sum(b$vol.sawlog[b$spp>7]); round(100*sum(b$vol.sawlog[b$spp>7])/sum(b$vol.sawlog))
+  ## Cells harvested
+  track.cut.cells <- track.cut.cells[-1,]
+          
   
+  #### *************  BY NOW, NO EXTRA WOOD TO EXTRACT. DISMISS THIS PART ************* ####
+  # ## Update available volume to be extracted
+  # volume <- filter(volume, cell.id %notin% track.cut.cells$cell.id)
+  # 
+  # ## To compute the probability of being harvested first, compute the volume available in the neighborhodd
+  # neigh.id <- data.frame(cell.id=as.integer(rep(volume$cell.id, each=default.nneigh)+
+  #                                             rep(default.neigh$x, nrow(volume))),
+  #                        source.id=rep(volume$cell.id, each=default.nneigh)) %>% 
+  #             left_join(volume, by="cell.id") %>% group_by(source.id) %>% 
+  #             summarise(vol.neigh=sum(vol.extract, na.rm=T))
+  # 
+  # ## Set probability of *wood* extraction according to (1) volume available for extraction, 
+  # ## (2) volume available for extraction in the neighborhood, (3) distance to forest industries, and
+  # ## (4) type of species, conifer - 1 vs. deciduous - 0.
+  # pextract <- left_join(volume, neigh.id, by=c("cell.id"="source.id")) %>% 
+  #             left_join(select(harvest, cell.id, dist.biomass), by="cell.id") %>% 
+  #             mutate(f1=scales::rescale(pmin(vol.extract, quantile(vol.extract, p=0.9)), to=c(0,1)) ,
+  #                    f2=scales::rescale(pmin(vol.neigh, quantile(vol.neigh, p=0.9)), to=c(0,1)) ,
+  #                    f3=scales::rescale(pmin(1/dist.biomass, quantile(1/dist.biomass, p=0.9)), to=c(0,1)),
+  #                    f4=ifelse(spp<=7,0,1)) %>% 
+  #             mutate(p=w1*f1+w2*f2+w3*f3+w4*f4)
+  # 
+  # 
+  # ## Finally, adjust the wood demand according to the available volume
+  # dmnd.wood <- min(dmnd.wood, sum(volume$vol.extract))
+  # 
+  # 
+  # ## NOW, extract only for wood 
+  # while(dmnd.sawlog>0){
+  #   
+  #   ## ID for each harvesting event, and restart step
+  #   cut.id <- cut.id+1; step <- 1
+  # }
   
-  ## NOW wood demand
-  while(dmnd.sawlog>0){
-    
-    ## ID for each harvesting event, and restart step
-    cut.id <- cut.id+1; step <- 1
-  }
-  
-  return(track.cut.cells=track.cut.cells[-1,])
+  return(track.cut.cells=track.cut.cells)
 }
   
  

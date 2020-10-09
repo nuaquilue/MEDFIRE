@@ -23,7 +23,7 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
 
   ## Coordinates of killed cells, then find their closest neighbours 
   ## Important to sort killed.cells by cell.id, so the order of the list of neigh matches
-  killed.cells <- filter(land, tsdist==0, distype==drght) 
+  killed.cells <- filter(land, tsdist==0, typdist=="drght") 
   killed.cells <- left_join(killed.cells, filter(coord, cell.id %in% killed.cells$cell.id), by = "cell.id") 
   killed.cells <- killed.cells[order(killed.cells$cell.id),] 
   neighs <- nn2(coord[,-1], select(killed.cells,x,y),  searchtype="priority", k=nneigh[spp.distrib.rad])
