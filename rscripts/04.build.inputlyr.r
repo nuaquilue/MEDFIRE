@@ -198,11 +198,11 @@ plot(HMall)
 HMcat <- crop(HMall, extCat)
 HM100m <- resample(HMcat, MASK, fun="bilinear", expand=T)
 ## Now, match MeanHeight with LCFspp, phagocite in MiraMon
-LCFM <- raster("D:/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
+LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
 HM <- HM100m
 HM[LCFM[]>13] <- NA
 HM[LCFM[]<=13 & is.na(HM[])] <- 0
-writeRaster(HM, "D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight0_100m_31N-ETRS89.asc",
+writeRaster(HM, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight0_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 ## Height has to be transformed to age!!
 HM <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight10_100m_31N-ETRS89.asc")

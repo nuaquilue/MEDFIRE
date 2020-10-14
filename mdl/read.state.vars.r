@@ -7,7 +7,7 @@
 ## Type of last disturbance
 ######################################################################################
 
-read.state.vars <- function(work.path, hfire=6){
+read.state.vars <- function(work.path){
   
   library(raster)
   

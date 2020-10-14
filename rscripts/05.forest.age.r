@@ -101,19 +101,22 @@ forest.age <- function(LCFspp, Hm){
   ########################################
   spp <- 5
   max.age <- 150
-  inv.age = 1/seq(30,120, by=10)
-  log.h = log(c(10.5,13.9,16.7,19.2,21.4,23.3,24.9,26.3,27.6,28.7))
-  m = lm(log.h~inv.age)
-  hfun <- function(t) {
-    lh = m$coefficients[1] - m$coefficients[2]*(1/t)
-    return(exp(lh))
-  }
-  ages <- hfun(1:max.age)   
-  th <- function(x)  which(ages>x)[1]
-  dta$Age[!is.na(dta$LCF) & dta$LCF==spp] <- 
-    apply(as.data.frame(dta$H[!is.na(dta$LCF) & dta$LCF==spp]), 1, th )
+  # inv.age = 1/seq(30, 120, by=10)
+  # log.h = log(c(10.5,13.9,16.7,19.2,21.4,23.3,24.9,26.3,27.6,28.7))
+  # m = lm(log.h~inv.age)
+  # hfun <- function(t) {
+  #   lh = m$coefficients[1] - m$coefficients[2]*(1/t)
+  #   return(exp(lh))
+  # }
+  # ages <- hfun(1:max.age)   
+  # th <- function(x)  which(ages>x)[1]
+  # dta$Age[!is.na(dta$LCF) & dta$LCF==spp] <- 
+  #   apply(as.data.frame(dta$H[!is.na(dta$LCF) & dta$LCF==spp]), 1, th )
+  # dta$Age[is.na(dta$Age) & dta$LCF==spp] <- max.age
+  # Si no tots els pinus pinaster tenen edat 1
+  h <- dta$H[!is.na(dta$LCF) & dta$LCF==spp]
+  dta$Age[!is.na(dta$LCF) & dta$LCF==spp] <-  40.65083/(3.66418-log(h))
   dta$Age[is.na(dta$Age) & dta$LCF==spp] <- max.age
-  
   
   ########################################
   # Pinus uncinata (Calama 2004)
