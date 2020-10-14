@@ -6,6 +6,7 @@ land.dyn.mdl <- function(scn.name){
   
   ## Load required packages and functions 
   suppressPackageStartupMessages({
+    library(viridis)
     library(raster)  
     library(RANN)  
     library(Rcpp)
@@ -176,18 +177,17 @@ land.dyn.mdl <- function(scn.name){
       
       ## 3. FOREST MANAGEMENT (under development)
       if(processes[mgmt.id] & t %in% temp.mgmt.schedule){
-        cut.out <- forest.mgmt(land, harvest, clim, t)
+        cut.out <- forest.mgmt(land, harvest, clim, t, out.path, MASK)
         land$typdist[land$cell.id %in% cut.out$cell.id] <- "cut"
         land$tsdist[land$cell.id %in% cut.out$cell.id] <- 0
         land$typcut[land$cell.id %in% cut.out$cell.id] <- cut.out$typcut
         land$tscut[land$cell.id %in% cut.out$cell.id] <- 0
-        land$age[land$cell.id %in% cut.out$cell.id & cut.out$typcut=="fin"] <- 0
+        land$age[land$cell.id %in% cut.out$cell.id & land$typcut=="fin"] <- 0
         land$biom[land$cell.id %in% cut.out$cell.id] <- 
-          land$biom[land$cell.id %in% cut.out$cell.id]-cut.out$ba.extract
+        land$biom[land$cell.id %in% cut.out$cell.id]-cut.out$ba.extract
         track.harvest <- rbind(track.harvest, data.frame(run=irun, year=t, 
-                               group_by(cut.out, spp) %>% summarize(vol.sawlog=sum(vol.sawlog), vol.wood=sum(vol.wood))))
+            group_by(cut.out, spp) %>% summarize(vol.sawlog=round(sum(vol.sawlog),1), vol.wood=round(sum(vol.wood),1))))
         temp.mgmt.schedule <- temp.mgmt.schedule[-1] 
-        rm(aux)
       }
       
       
@@ -333,8 +333,13 @@ land.dyn.mdl <- function(scn.name){
       if(write.sp.outputs){
         cat("... writing output layers", "\n")
         MAP <- MASK
-        MAP[!is.na(MASK[])] <- 10*(land$cell.id %in% burnt.cells$cell.id[burnt.cells$igni])
-        writeRaster(MAP, paste0(out.path, "/lyr/DistType_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1, 
+                                      ifelse(land$typdist == "cut", 2, 
+                                             ifelse(land$typdist %in% c("highfire", "lowfire"), 3,   
+                                                    ifelse(land$typdist == "pb", 4,
+                                                           ifelse(land$typdist == "drght", 5,
+                                                                  ifelse(land$typdist == "afforest", 6, NA))))))
+        writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
       ## Deallocate memory

@@ -5,12 +5,12 @@ rm(list=ls())
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "Scn_Harvset01"
+scn.name <- "Scn_Harvest01"
 define.scenario(scn.name)
 
 # Change target parameters
 nrun <- 1
-time.horizon <- 3
+time.horizon <- 1
 write.sp.outputs <- T
 fi.accelerate <- 5
 # nff <- c(0.2, 0.7)
