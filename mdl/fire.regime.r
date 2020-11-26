@@ -4,7 +4,7 @@
 ######################################################################################
 
 fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.sever, t, 
-                        annual.burnt.area, MASK, out.path, irun, nff, crazy){
+                        annual.burnt.area, MASK, out.path, irun, crazy, nx, nff){
 
   ## Function to select items not in a vector
   `%notin%` <- Negate(`%in%`)
@@ -208,7 +208,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         
         ## Build a data frame with the theoretical 12 (=default.nneigh) neighbours of cells in fire.front, 
         ## and add the per definition wind direction and the distance.
-        ## Filter cells thathave not been visited yet.
+        ## Filter cells that have not been visited yet.
         neigh.id <- data.frame(cell.id=as.integer(rep(fire.front, each=default.nneigh)+
                                                     rep(sub.default.neigh$x, length(fire.front))),
                                source.id=rep(fire.front, each=default.nneigh),
@@ -217,8 +217,8 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
           filter(cell.id %notin% visit.cells) %>% 
           left_join(filter(source.supp, cell.id %in% fire.front), by=c("source.id" ="cell.id"))  # look if source cell has been suppressed
         
-        ## Now find those neighbours that are currenty in Catalonia
-        ## is_inCpp returns the position of neigh.id$cell.id in the 'land' data.frame (not the cell.id)!
+        ## Now find those neighbours that are currenty in Catalonia and are not burnable
+        ## is_inCpp returns the position of neigh.id$cell.id in the 'subland' data.frame (not the cell.id)!
         neigh.in.land <- is_inCpp(neigh.id$cell.id, subland$cell.id)
         i.land.in.neigh <- unique(neigh.in.land[which(neigh.in.land!=-1)])
         ## If all the available neighbours are out of Catalonia, stop spreading
@@ -231,8 +231,8 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
           mutate(fuel=ifelse(spp %in% c(15,16,17), 0.5,
                              ifelse(spp==14, 0.01638*biom, 
                                     ifelse(age<=7, 0.2,
-                                           ifelse(biom<200, 0.4,
-                                                  ifelse(biom<480, 0.95, 0.6)))))) %>%
+                                           ifelse(biom<=200, 0.4,
+                                                  ifelse(biom<=480, 0.95, 0.6)))))) %>%
           left_join(spp.flam, by="spp") %>% mutate(flam=wflam*flam)
         
         ## Now, add to i.land.in.neigh the indexes (positions) of fire.front cells (in case these are not already there)
@@ -325,11 +325,15 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
           fire.front <- sprd.rate$cell.id[sprd.rate$burn]
         if(nburn>1){
           z <- scales::rescale((aburnt.lowintens+aburnt.highintens)/fire.size.target, to=c(-3,2), from=c(0,1))
-          # n1 <- pmax(2, round(nburn/(1+exp(z))))
-          # n2 <- pmin(round(nburn*0.8), pmax(2,round(nburn/(1+exp(z)))))
-          n3 <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
-          # n4 <- rdunif(1, round(nburn*nff[1]), round(nburn*nff[2]))
-          fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], n3,
+          if(nx==1)
+            ncell.ff <- pmax(2, round(nburn/(1+exp(z))))
+          if(nx==2)
+            ncell.ff <- pmin(round(nburn*0.8), pmax(2,round(nburn/(1+exp(z)))))
+          if(nx==3)
+            ncell.ff <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
+          if(nx==4)
+            ncell.ff <- rdunif(1, round(nburn*nff[1]), round(nburn*nff[2]))
+          fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], ncell.ff,
                                      replace=F, prob=sprd.rate$fi[sprd.rate$burn]*runif(nburn, 0.65, 1)) 
         }
         

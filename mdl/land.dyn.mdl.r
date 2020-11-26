@@ -198,7 +198,7 @@ land.dyn.mdl <- function(scn.name){
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
           clim.sever <- 1
         # Burnt
-        fire.out <- fire.regime(land, coord, orography, clim, interface, 1:3, clim.sever, t, 0, MASK, out.path, irun, nff, crazy)
+        fire.out <- fire.regime(land, coord, orography, clim, interface, 1:3, clim.sever, t, 0, MASK, out.path, irun, crazy, nx, nff)
         # Track fires and Burnt spp & Biomass
         if(nrow(fire.out[[1]])>0)
           track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[1]]))

@@ -19,7 +19,7 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
   ## Assume that the neighbourhood is a star, with the maximum number of pixels in the
   ## east-west or north-south direction is 2*radius + 1 (1 is the center cell).
   ## The num of pixels is sequentially: 3+1*2, 5+3*2+1*2, 7+5*2+3*2+1*2, ...
-  nneigh <- seq(3,41,2) + cumsum(seq(1,40,2)*2)
+  nneigh <- seq(3,201,2) + cumsum(seq(1,200,2)*2)
 
   ## Coordinates of killed cells, then find their closest neighbours 
   ## Important to sort killed.cells by cell.id, so the order of the list of neigh matches

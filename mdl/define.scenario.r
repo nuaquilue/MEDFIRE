@@ -57,7 +57,7 @@ define.scenario <- function(scn.name){
   
   ## Global model's parametres
   # Radius of the neighborhood (in pixels) to find out if a species is present in a region
-  spp.distrib.rad <- 20 	# i.e. 2 km
+  spp.distrib.rad <- 200 	# i.e. 20 km
   # Radius of the neighborhood (in pixels) to look for mature tree species ready to colonize shrubs
   shrub.colon.rad <- 5 		# i.e. 500 m
 
@@ -74,6 +74,7 @@ define.scenario <- function(scn.name){
   pb.mean <- 1.974
   pb.sd <- 0.683
   pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
+  nx <- 0
   nff <- c(0,1)
   crazy <- 1:8
   

@@ -1,11 +1,11 @@
 ############################################ RUN A SCN ##################################################
 rm(list=ls())
-# setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
- setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
+setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #Nú HP
+ # setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 source("mdl/define.scenario.r")
 source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "Scn_Harvset01"
+scn.name <- "Scn12_crazy08_r65_n3_conv"
 define.scenario(scn.name)
 
 # Change target parameters
@@ -14,22 +14,23 @@ time.horizon <- 3
 write.sp.outputs <- T
 fi.accelerate <- 5
 # nff <- c(0.2, 0.7)
-crazy <- 2:7
+crazy <- 3:6
+nx <- 3
 clim.scn <- "rcp85"
-file.clim.severity <- "ClimaticSeverity_test.topo"
+file.clim.severity <- "ClimaticSeverity_test.conv"
 file.pctg.hot.days <- "PctgHotDays_rcp85"
 file.sprd.weight <- "WeightSprdFactors_Wind09"
 processes <- c(TRUE,   # 1. Climate change
                FALSE,  # 2. Land-cover changes
-               TRUE,  # 3. Forest management
-               FALSE,   # 4. Wildfires
+               FALSE,  # 3. Forest management
+               TRUE,   # 4. Wildfires
                FALSE,   # 5. Prescribed burns
                FALSE,  # 6. Drought
                FALSE,   # 7. Post-fire regeneration
                FALSE,  # 8. Cohort establihsment
                FALSE,  # 9. Afforestation
                TRUE)   # 10. Growth
-dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "fi.accelerate", "crazy",
+dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "fi.accelerate", "crazy", "nx",
        "nrun", "write.sp.outputs", "time.horizon", "processes", "file.sprd.weight"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 system.time(land.dyn.mdl(scn.name))
