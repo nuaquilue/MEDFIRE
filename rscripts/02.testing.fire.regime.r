@@ -47,6 +47,9 @@ fire.shapes <- function(list.scn, years, runs){
               #paste0("Scn_crazy03_r85_nff", c("01", "02", "03", "04", "05", "06", "07", "08", "09")))
 list.scn <- c(paste0("Scn12_crazy", c( "08", "09", "10", "11"), "_r65_nff01_topo"),
               paste0("Scn12_crazy", c( "09",  "11"), "_r65_nff11_topo") )
+list.scn <- c(paste0("Scn12_crazy", c( "08", "09", "10", "11"), "_r65_n3_topo"),
+              paste0("Scn12_crazy", c( "08", "09", "10", "11"), "_r65_n3_conv"),
+              paste0("Scn12_crazy", c( "08", "09", "10", "11"), "_r65_n3_wind"))
 extinct <- self.extinguishing(list.scn);extinct
 metric <- fire.shapes(list.scn, 1, 1:3)
 write.table(metric, "rscripts/outs/metricsCrazy04_r85_nff01-09.txt", row.names=F, quote=F, sep="\t")

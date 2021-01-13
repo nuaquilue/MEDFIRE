@@ -21,7 +21,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
   spp.flammability <- read.table("inputfiles/SppSpreadRate.txt", header=T)
   fst.sprd.weight <- read.table(paste0("inputfiles/", file.sprd.weight, ".txt"), header=T)
   
-  ## MAP fire.ids
+  ## MAP fire.ids and fire.step
   MAP <- MASK
   mask <- data.frame(cell.id=land$cell.id, id=NA, step=NA)
   
@@ -31,7 +31,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
   track.burnt.cells <- data.frame(fire.id=NA, cell.id=NA, igni=NA, fintensity=NA)
   track.step <- data.frame(year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   fire.id <- 0
-  burnt.cells <- visit.cells <- integer()
+  visit.cells <- integer()
   annual.aburnt <- annual.asupp <- 0
   
   ## Choose target area per each swc and burn it
@@ -209,8 +209,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## Build a data frame with the theoretical 12 (=default.nneigh) neighbours of cells in fire.front, 
         ## and add the per definition wind direction and the distance.
         ## Filter cells that have not been visited yet.
-        neigh.id <- data.frame(cell.id=as.integer(rep(fire.front, each=default.nneigh)+
-                                                    rep(sub.default.neigh$x, length(fire.front))),
+        neigh.id <- data.frame(cell.id=as.integer(rep(fire.front, each=default.nneigh)+ rep(sub.default.neigh$x, length(fire.front))),
                                source.id=rep(fire.front, each=default.nneigh),
                                dist=rep(sub.default.neigh$dist,length(fire.front)),
                                windir=rep(sub.default.neigh$windir,length(fire.front)) ) %>%
@@ -242,8 +241,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## Retrieve the orography variables for fire.front and neigbhour cells, 
         ## and already compute aspect factor
         neigh.orography <- suborography[i.land.in.neigh,] %>%
-          mutate(aspc=waspc*ifelse(aspect==1, 0.1, 
-                                   ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
+                            mutate(aspc=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
         
         ## Get spread rate by:
         ## Joining to the neig.id data.frame the neigh.land and keep only burnable neighs 

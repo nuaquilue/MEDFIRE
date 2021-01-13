@@ -310,7 +310,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 10. GROWTH
       if(processes[growth.id] & t %in% temp.growth.schedule){
-        land$biom <- growth.10y(land, clim)
+        land$biom <- growth(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
         land$tscut <- pmin(land$tscut+1,600)

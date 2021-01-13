@@ -1,0 +1,21 @@
+spp	IFN	species
+1	24	phalepensis
+2	25	pnigra
+3	23	ppinea
+4	21	psylvestris
+5	26	ppinaster
+6	22	puncinata
+7	31	aalba
+8	45	qilex
+9	46	qsuber
+10	44	qfaginea
+11	243	qhumilis
+12	71	fsylvatica
+13	other
+14	shrub
+15 	grass
+16	crop
+17	orchard
+18	soil
+19	water
+20	urban 
