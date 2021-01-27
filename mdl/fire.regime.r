@@ -4,7 +4,7 @@
 ######################################################################################
 
 fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.sever, t, 
-                        annual.burnt.area, MASK, out.path, irun, crazy, nx, nff){
+                        annual.burnt.area, MASK, out.path, irun, rpb){
 
   ## Function to select items not in a vector
   `%notin%` <- Negate(`%in%`)
@@ -18,12 +18,11 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
   aba.dist <- read.table("inputfiles/AnnualBurntAreaDist.txt", header=T)
   fs.dist <- read.table("inputfiles/FireSizeDist.txt", header=T)
   fire.supp <- read.table(paste0("inputfiles/", file.fire.suppression, ".txt"), header=T)
-  spp.flammability <- read.table("inputfiles/SppSpreadRate.txt", header=T)
   fst.sprd.weight <- read.table(paste0("inputfiles/", file.sprd.weight, ".txt"), header=T)
   
   ## MAP fire.ids and fire.step
   MAP <- MASK
-  mask <- data.frame(cell.id=land$cell.id, id=NA, step=NA)
+  map <- data.frame(cell.id=land$cell.id, id=NA, step=NA)
   
   ## Reset TrackFires data frame each run and swc
   track.fire <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
@@ -31,8 +30,15 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
   track.burnt.cells <- data.frame(fire.id=NA, cell.id=NA, igni=NA, fintensity=NA)
   track.step <- data.frame(year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   fire.id <- 0
-  visit.cells <- integer()
+  visit.cells <- burnt.cells <- integer()
   annual.aburnt <- annual.asupp <- 0
+  
+  ## Start with the 12 neigbours of the ignition
+  ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
+  default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899),
+                              windir=c(270,90,180,0,225,315,135,45),
+                              dist=c(100,100,100,100,141.421,141.421,141.421,141.421))
+  default.nneigh <- nrow(default.neigh)
   
   ## Choose target area per each swc and burn it
   for(swc in all.swc){
@@ -88,7 +94,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
     }  
     cat(paste(" Annual target area:", area.target), "\n")
     print.maps <- F
-    if(area.target>0)
+    if(area.target>0 & write.sp.outputs)
       print.maps <- T
     
     
@@ -116,18 +122,6 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       ## What if selected igni has already been burnt?? How can I control it? pigni$psft==0 of burnt cells??
       igni.id <- sample(pigni$cell.id, 1, replace=F, pigni$psft)
       
-      ## Start with the 12 neigbours of the ignition
-      ## Wind direction is coded as 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
-      default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899,-2,2,5800,-5800),
-                                  windir=c(270,90,180,0,225,315,135,45,270,90,180,0),
-                                  dist=c(100,100,100,100,141.421,141.421,141.421,141.421,200,200,200,200))
-      # default.neigh <- data.frame(x=c(-1,1,2900,-2900,2899,-2901,2901,-2899),
-      #                             windir=c(270,90,180,0,225,315,135,45),
-      #                             dist=c(100,100,100,100,141.421,141.421,141.421,141.421))
-      
-      default.nneigh <- nrow(default.neigh)
-      sub.default.neigh <- default.neigh
-      
       ## Assign the fire spread type 
       # if(swc==1 | swc==3)
       #   fire.spread.type <- swc
@@ -148,12 +142,9 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         fire.spread.type <- 3
       
       ## According to the fire spread type, look at the weights of each factor on spread rate
-      rpb <- fst.sprd.weight[1,fire.spread.type+1]
+      facc <- fst.sprd.weight[1,fire.spread.type+1]
       wwind <- fst.sprd.weight[2,fire.spread.type+1]
       wslope <- fst.sprd.weight[3,fire.spread.type+1]
-      wflam <- fst.sprd.weight[4,fire.spread.type+1]
-      waspc <- fst.sprd.weight[5,fire.spread.type+1]
-      spp.flam <- filter(spp.flammability, fst==fire.spread.type) %>% select(-fst)
       
       ## Assign the fire suppression levels
       sprd.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$sprd.th
@@ -185,35 +176,48 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       if(fire.size.target>area.target)
         fire.size.target <- area.target
       
-      ## Assign fire front acceleration as function of fire size target
-      fi.acc <- ifelse(fire.size.target>1000, fi.accelerate, 1)
+      ## Controls of the fire shape
+      ## Max number of cells in the fire front
+      mx.ncell.ff <- ifelse(fire.size.target<=500, 12, ifelse(fire.size.target<=1500, 20, ifelse(fire.size.target<=5000, 30, 40)))
+      ## Min number of cells in the fire front, no sé si per incendis de me´s de 5000 o me´s d 10000
+      mn.ncell.ff <- ifelse(fire.size.target<=5000, 8, 16)  # not sure if 16 for wind and 12 for convective
+      ## wnsource --> per seguir direccionalitat vent
+      wnsource <- ifelse(fire.spread.type==1, 100, 1)
+      # threshodl ratio.burnt to be aplied, no sé si per incendis de me´s de 5000 o me´s d 10000
+      thruky <- ifelse(fire.size.target<=5000, 0.85, 0.95)
       
+
       ## Initialize tracking variables
       ## Ignition always burnt, and it does in high intensity when no-PB
       fire.front <- igni.id
+      cumul.source <- 1  
       aburnt.lowintens <- ifelse(swc==4, 1, 0)
       aburnt.highintens <- ifelse(swc==4, 0, 1)
       asupp.sprd <- asupp.fuel <- 0
       n.lowsprd <- n.lowfuel <- 0
       visit.cells <- c(visit.cells, igni.id) 
-      mask$id[mask$cell.id==igni.id] <- fire.id
-      mask$step[mask$cell.id==igni.id] <- step
+      burnt.cells <- c(burnt.cells, igni.id) 
+      map$id[map$cell.id==igni.id] <- fire.id
+      map$step[map$cell.id==igni.id] <- step
       track.burnt.cells <- rbind(track.burnt.cells, data.frame(fire.id=fire.id, cell.id=igni.id, igni=T, fintensity=1))
       
       
       ## Start speading from active cells (i.e. the fire front)
       while((aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)<fire.size.target){
         
+        ## Increment step
         step <- step+1
         
         ## Build a data frame with the theoretical 12 (=default.nneigh) neighbours of cells in fire.front, 
         ## and add the per definition wind direction and the distance.
         ## Filter cells that have not been visited yet.
-        neigh.id <- data.frame(cell.id=as.integer(rep(fire.front, each=default.nneigh)+ rep(sub.default.neigh$x, length(fire.front))),
+        neigh.id <- data.frame(cell.id=as.integer(rep(fire.front, each=default.nneigh)+
+                                                  rep(default.neigh$x, length(fire.front))),
                                source.id=rep(fire.front, each=default.nneigh),
-                               dist=rep(sub.default.neigh$dist,length(fire.front)),
-                               windir=rep(sub.default.neigh$windir,length(fire.front)) ) %>%
-          filter(cell.id %notin% visit.cells) %>% 
+                               position=rep(cumul.source, each=default.nneigh),
+                               dist=rep(default.neigh$dist,length(fire.front)),
+                               windir=rep(default.neigh$windir,length(fire.front)) ) %>%
+          filter(cell.id %notin% burnt.cells) %>% 
           left_join(filter(source.supp, cell.id %in% fire.front), by=c("source.id" ="cell.id"))  # look if source cell has been suppressed
         
         ## Now find those neighbours that are currenty in Catalonia and are not burnable
@@ -224,24 +228,22 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         if(length(i.land.in.neigh)==0)
           break
         
-        ## For all neighbours, compute fire intenstiy and flammability factors
-        ## fire intenstiy and flam will be NA for non burnable covers
+        ## Retrive the current neighs, and compute fuel
         neigh.land <- subland[i.land.in.neigh,] %>%
-          mutate(fuel=ifelse(spp %in% c(15,16,17), 0.5,
-                             ifelse(spp==14, 0.01638*biom, 
-                                    ifelse(age<=7, 0.2,
-                                           ifelse(biom<=200, 0.4,
-                                                  ifelse(biom<=480, 0.95, 0.6)))))) %>%
-          left_join(spp.flam, by="spp") %>% mutate(flam=wflam*flam)
+                      mutate(fuel=ifelse(spp %in% c(15,16,17), 0.1,  # grass, crop
+                                   ifelse(spp==14, 0.01638*biom, # shrub
+                                    ifelse(age<=7, 0.2, # saplings
+                                      ifelse(biom<=200 & spp>=1 & spp<=7, 0.5, # conifer young
+                                        ifelse(biom<=200 & spp>=8 & spp<=13, 0.3, # decid young
+                                          ifelse(biom<=480 & spp>=1 & spp<=7, 1, # conifer mature
+                                           ifelse(biom<=480 & spp>=8 & spp<=13, 0.8, 0.6)))))))) # decid mature - old
         
         ## Now, add to i.land.in.neigh the indexes (positions) of fire.front cells (in case these are not already there)
         ## Further on, we'll need to know the elevation of the fire.front cells.
         i.land.in.neigh <- unique(c(i.land.in.neigh, is_inCpp(fire.front, subland$cell.id)) )
         
         ## Retrieve the orography variables for fire.front and neigbhour cells, 
-        ## and already compute aspect factor
-        neigh.orography <- suborography[i.land.in.neigh,] %>%
-                            mutate(aspc=waspc*ifelse(aspect==1, 0.1, ifelse(aspect==3, 0.9, ifelse(aspect==4, 0.4, 0.3))))
+        neigh.orography <- suborography[i.land.in.neigh,] 
         
         ## Get spread rate by:
         ## Joining to the neig.id data.frame the neigh.land and keep only burnable neighs 
@@ -249,24 +251,21 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## Joining to this df, the neigh.orography to get the elevation of the neighbour cells
         ## Computing slope and wind factors
         sprd.rate <- left_join(neigh.land, neigh.id, by="cell.id") %>%
-          left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>%
-          left_join(select(neigh.orography, cell.id, elev, aspc), by="cell.id")  %>% 
-          mutate(dif.elev = elev.y-elev.x, 
-                 slope = wslope * (pmax(pmin(dif.elev/dist,0.5),-0.5)+0.5), 
-                 difwind = abs(windir-fire.wind),
-                 # wind = wwind * ((ifelse(abs(windir-fire.wind)>180,
-                 #         360-abs(windir-fire.wind), abs(windir-fire.wind)))/180)  ) %>% 
-                 wind = wwind * (ifelse(difwind==180, 1, ifelse(difwind==0, 0,  # medium
-                                                                ifelse(difwind==90, 0.3, ifelse(difwind==45, 0.1, 0.8))))) ) %>%
-                 # wind = wwind * (ifelse(difwind==180, 1, ifelse(difwind==0, 0,
-                 #                                                ifelse(difwind==90, 0.15, ifelse(difwind==45, 0.05, 0.65))))) ) %>%
-          mutate(sr=slope+wind+flam+aspc, fi=sr*fuel*fi.acc, pb=1+rpb*log(sr*fuel*fi.acc)) %>%
-          group_by(cell.id) %>% 
-          summarize(fire.id=fire.id, spp=mean(spp), age=mean(age), fuel=max(fuel),
-                    source.supp.sprd = any(source.supp.sprd[which(sr == max(sr))]),
-                    source.supp.fuel = any(source.supp.fuel[which(sr == max(sr))]),
-                    sr=max(sr), fi=max(fi), pb=max(pb)) %>%
-          mutate(tosupp.sprd=(fi<=sprd.th), tosupp.fuel=(spp<=14 & age<=fuel.th))
+                     left_join(select(neigh.orography, cell.id, elev), by=c("source.id"="cell.id")) %>%
+                     left_join(select(neigh.orography, cell.id, elev), by="cell.id")  %>% 
+                     mutate(dif.elev = elev.y-elev.x, 
+                            dif.wind <- abs(windir-fire.wind),
+                            slope = pmax(pmin(dif.elev,0.5),-0.5)+0.5,  
+                            wind = ifelse(dif.wind==0, 0, ifelse(dif.wind %in% c(45,315), 0.25, 
+                                   ifelse(dif.wind %in% c(90,270), 0.5, ifelse(dif.wind %in% c(135,225), 0.75, 1)))) ) %>% 
+                      mutate(sr=wslope*slope+wwind*wind, fi=sr*fuel)
+        sprd.rate$pb <- 1-exp(-facc*sprd.rate$fi) + runif(nrow(sprd.rate), -rpb, rpb)   
+        sprd.rate <- group_by(sprd.rate, cell.id) %>% 
+                     summarize(fire.id=fire.id, spp=mean(spp), age=mean(age), fuel=max(fuel),
+                               source.supp.sprd = any(source.supp.sprd[which(sr == max(sr))]),
+                               source.supp.fuel = any(source.supp.fuel[which(sr == max(sr))]),
+                               sr=max(sr), fi=max(fi), pb=max(pb), nsource=sum(position)) %>%
+                    mutate(tosupp.sprd=(fi<=sprd.th), tosupp.fuel=(spp<=14 & age<=fuel.th))
         
         ## Count how many cells could be suppressed
         n.lowsprd <- n.lowsprd + sum(sprd.rate$tosupp.sprd)
@@ -281,6 +280,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         
         ## Mark that all these neighs have been visited (before breaking in case no burn)
         visit.cells <- c(visit.cells, sprd.rate$cell.id)
+        burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burn])
         
         ## If at least there's a burn cell, continue, otherwise, stop
         if(!any(sprd.rate$burn))
@@ -296,9 +296,9 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         }
         
         ## Tring to really get exact fire.id!!
-        mask$id[mask$cell.id %in% 
+        map$id[map$cell.id %in% 
                   sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]] <- fire.id
-        mask$step[mask$cell.id %in% sprd.rate$cell.id[sprd.rate$burn]] <- step
+        map$step[map$cell.id %in% sprd.rate$cell.id[sprd.rate$burn]] <- step
         
         ## Mark the burnt cells, the suppressed, and the fire intensity for burnt cells
         track.burnt.cells <- rbind(track.burnt.cells, data.frame(fire.id=fire.id, 
@@ -317,22 +317,24 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## If any cell has burnt in the current step, stop
         if(nburn==0)
           break
-        ## Otherwise, select the new fire front, a random number from 1 to n.cell.burnt 
-        ## according to fire.intensity
-        if(nburn==1)
+        ## Otherwise, select the new fire front
+        else if(nburn<=mn.ncell.ff){
           fire.front <- sprd.rate$cell.id[sprd.rate$burn]
-        if(nburn>1){
-          z <- scales::rescale((aburnt.lowintens+aburnt.highintens)/fire.size.target, to=c(-3,2), from=c(0,1))
-          if(nx==1)
-            ncell.ff <- pmax(2, round(nburn/(1+exp(z))))
-          if(nx==2)
-            ncell.ff <- pmin(round(nburn*0.8), pmax(2,round(nburn/(1+exp(z)))))
-          if(nx==3)
-            ncell.ff <- pmin(round(nburn*(1-nburn/(2*nrow(neigh.land)))), pmax(2,round(nburn/(1+exp(z)))))
-          if(nx==4)
-            ncell.ff <- rdunif(1, round(nburn*nff[1]), round(nburn*nff[2]))
-          fire.front <- base::sample(sprd.rate$cell.id[sprd.rate$burn], ncell.ff,
-                                     replace=F, prob=sprd.rate$fi[sprd.rate$burn]*runif(nburn, 0.65, 1)) 
+          cumul.source <- sprd.rate$nsource[sprd.rate$burn]
+        }
+        else{
+          ratio.burnt <- (aburnt.lowintens+aburnt.highintens)/fire.size.target
+          z <- rdunif(1,mx.ncell.ff-5,mx.ncell.ff)
+          ncell.ff <- min(nburn*runif(1,0.5,0.7), z, na.rm=T)
+          # si el nombre cell del ff coincideix amb el màxim  
+          # o bé aleatòriament cap al final de l'incendi, forço compacitat.
+          if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75))
+            fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F,
+                                      prob=sprd.rate$nsource[sprd.rate$burn]/100 ) )  
+          else
+            fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, 
+                                      prob=wnsource^sprd.rate$pb[sprd.rate$burn]) )
+          cumul.source <- sprd.rate$nsource[sprd.rate$cell.id %in% fire.front]
         }
         
         ## In the case, there are no cells in the fire front, stop trying to burn.
@@ -340,12 +342,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         if(length(fire.front)==0)
           break
         
-        ## Subset of 4+(3, or 4, ... or 7) = 6 or 7 or 8 ... or 11 default neighbours
-        ## At least one neighour is not evaluated. 
-        sub.default.neigh <- default.neigh[c(1:4, sample(5:12, sample(crazy,1), replace=F)),]  #12 neigbhours
-        # sub.default.neigh <- default.neigh[sample(1:8, sample(6:8,1), replace=F),]  # 8 neighbours
-        default.nneigh <- nrow(sub.default.neigh)
-        
+        ## Track spreading spet
         track.step <- rbind(track.step, data.frame(year=t, fire.id, step, nneigh=nrow(neigh.id),
                                  nneigh.in=length(i.land.in.neigh), nburn, nff=length(fire.front)))
         
@@ -368,13 +365,14 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
     
     if(print.maps){
       ## fire.ids
-      MAP[!is.na(MASK[])] <- mask$id
+      MAP[!is.na(MASK[])] <- map$id
       writeRaster(MAP, paste0(out.path, "/lyr/FireIds_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
       ## fire.step
-      MAP[!is.na(MASK[])] <- mask$step
+      MAP[!is.na(MASK[])] <- map$step
       writeRaster(MAP, paste0(out.path, "/lyr/FireStep_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
     }
-    
+    # Data frame with 
+    save(map, file=paste0(out.path, "/Maps_r", irun, "t", t, ".rdata"))
   }
   
   return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,], track.step=track.step[-1,]))

@@ -8,7 +8,7 @@ drought <- function(land, clim, t){
   cat("Drought", "\n") #; tic("  t")
   
   ## Count how many ha to kill, totally and this time step
-  to.kill <- filter(cbind(land, select(clim, sdm)), spp<=13, sdm==0, distype==0) 
+  to.kill <- filter(cbind(land, select(clim, sdm)), spp<=13, sdm==0, is.na(typdist)) 
   nkill <- round(table(to.kill$spp) /(10 - (t-(t %/% 10)*10) + 1))
   
   ## Kill randomly as many cells per spp

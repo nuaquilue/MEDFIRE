@@ -5,8 +5,10 @@
 
 land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells){
   
-  cat(paste0("Land-cover transition: ", ifelse(lc.trans==1, "Urbanization.", ifelse(lc.trans==2, "Agriculture conversion.", 
-      ifelse(lc.trans==3, "Rural abandonment.", "Undefined.")))))
+  cat(paste0("Land-cover transition: ", 
+             ifelse(lc.trans==1, "Urbanization.", 
+                    ifelse(lc.trans==2, "Agriculture conversion.", 
+                            ifelse(lc.trans==3, "Rural abandonment.", "Undefined.")))), "\n")
   
   
   ## Function to select items not in a vector
@@ -44,7 +46,8 @@ land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells
   
   ## Retrive target demand and initialize area changed
   trgt.dmnd <- dmnd.lchg[t, lc.trans+1]
-  
+  if(trgt.dmnd==0)
+    return(numeric())
   
   ## Idem for parameters driving spatial aggregation of change
   ligni <- pattern.lchg[lc.trans,2]

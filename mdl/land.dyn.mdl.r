@@ -44,6 +44,10 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/orography.rdata")
   load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
+  if(spin.up){
+    load("inputlyrs/rdata/wildfires.rdata")
+    load("inputlyrs/rdata/land.cover.changes.rdata")
+  }
   
   
   ## Set the directory for writing spatial outputs (create it, if it does not exist yet) 
@@ -64,7 +68,7 @@ land.dyn.mdl <- function(scn.name){
   eq.ba.carbon <- read.table("inputfiles/EqBasalAreaCarbon.txt", header=T)
   
   
-  ## Climatic severity and pctg hot days tabes
+  ## Climatic severity 
   clim.severity <- read.table(paste0("inputfiles/", file.clim.severity, ".txt"), header=T)
   
   
@@ -72,22 +76,22 @@ land.dyn.mdl <- function(scn.name){
   ## 1. Climate change, 2. Land-cover changes, 3. Forest management
   ## 4. Wildfires, 5. Prescribed burns, 6. Drought, 7. Post-fire regeneration,
   ## 8. Cohort establihsment, 9. Afforestation, 10. Growth
-  time.seq <- seq(1, time.horizon, 1)
-  if(time.horizon==1)
-    clim.schedule <- 1
-  else
-    clim.schedule <- seq(1, time.horizon-1, clim.step)
-  lchg.schedule <- seq(1, time.horizon, lchg.step)
-  mgmt.schedule <- seq(1, time.horizon, mgmt.step)
-  fire.schedule <- seq(1, time.horizon, fire.step)
-  pb.schedule <- seq(1, time.horizon, pb.step)
-  drought.schedule <- seq(1, time.horizon, drought.step)
-  post.fire.schedule <- seq(1, time.horizon, post.fire.step)
-  cohort.schedule <- seq(1, time.horizon, cohort.step)
-  afforest.schedule <- seq(1, time.horizon, afforest.step)
-  growth.schedule <- seq(1, time.horizon, growth.step)
-  
-
+  time.seq <- 
+  lchg.schedule <- 
+  mgmt.schedule <- 
+  fire.schedule <- 
+  pb.schedule <- 
+  drought.schedule <-
+  post.fire.schedule <- 
+  cohort.schedule <- 
+  afforest.schedule <- 
+  growth.schedule <- seq(1, time.horizon, time.step)
+  if(spin.up){
+    lchg.schedule <- seq(11, time.horizon, time.step)
+    fire.schedule <- seq(11, time.horizon, time.step)
+  }
+  clim.schedule <- seq(1, time.horizon, time.step*10) 
+    
   ## Tracking data.frames
   track.harvest <- data.frame(run=NA, year=NA, spp=NA, vol.sawlog=NA, vol.wood=NA)
   track.fire <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
@@ -103,11 +107,12 @@ land.dyn.mdl <- function(scn.name){
   track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   track.target <- data.frame(run=NA, year=NA, swc=NA, atarget=NA)
   
+  
   ## Start the simulations   
   irun <- 1
   for(irun in 1:nrun){
     
-    ## Copy the schedulings in auxiliar vectors (only for those processes included in the current version)
+    ## Copy the schedulings in auxiliar vectors 
     temp.clim.schedule <- clim.schedule
     temp.lchg.schedule <- lchg.schedule
     temp.mgmt.schedule <- mgmt.schedule
@@ -123,6 +128,20 @@ land.dyn.mdl <- function(scn.name){
     ## Load initial spatial dynamic state variables in a data.frame format
     load("inputlyrs/rdata/land.rdata")
     
+    ## Land at time 0, at the initial stage
+    aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
+                  mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+                  left_join(eq.ba.volbark, by="spp") %>% 
+                  mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+                  left_join(eq.ba.carbon, by="spp") %>% 
+                  mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
+                  summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+    aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
+                 summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
+    aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
+                 summarise(area=length(spp), vol=0, volbark=0, carbon=0)  
+    track.land <- rbind(track.land, data.frame(run=irun, year=0, aux.forest), data.frame(run=irun, year=0, aux.shrub),
+                        data.frame(run=irun, year=0, aux.other))
     
     ## Start the discrete time sequence 
     t <- 1
@@ -133,21 +152,60 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 1. CLIMATE CHANGE  
-      if(processes[clim.id] & t %in% temp.clim.schedule){
-        clim <- update.clim(MASK, land, orography, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
+      if(!is.climate.change & t==1){
+        clim <- hist.clim(land, orography, clim.mdl)
+        load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
+      }
+      if(is.climate.change & t %in% temp.clim.schedule){
+        clim <- update.clim(land, orography, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
         load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
         temp.clim.schedule <- temp.clim.schedule[-1] 
       }
-      
+
       
       ## 2. LAND-COVER CHANGE
-      if(processes[lchg.id] & t %in% temp.lchg.schedule){
+      if(spin.up & t<=10){
+        cat("Observed land-cover changes", "\n")
+        ## Select the cells 
+        
+        ### i que no hagin estat ja canviades!!
+        urban.cells <- c(sample(unlist(filter(land.cover.changes, code==1420) %>% select(cell.id)), 189, replace=F),
+                         sample(unlist(filter(land.cover.changes, code==1520) %>% select(cell.id)), 4, replace=F),
+                         sample(unlist(filter(land.cover.changes, code==1620) %>% select(cell.id)), 516, replace=F))
+        water.cells <- c(sample(unlist(filter(land.cover.changes, code==1419) %>% select(cell.id)), 220, replace=F),
+                         sample(unlist(filter(land.cover.changes, code==1519) %>% select(cell.id)), 71, replace=F),
+                         sample(unlist(filter(land.cover.changes, code==1619) %>% select(cell.id)), 501, replace=F))
+        grass.cells <- c(sample(unlist(filter(land.cover.changes, code==1415) %>% select(cell.id)), 84, replace=F),
+                         sample(unlist(filter(land.cover.changes, code==1615) %>% select(cell.id)), 119, replace=F))
+        shrub.cells <- sample(unlist(filter(land.cover.changes, code==1614) %>% select(cell.id)), 6340, replace=F)
+        ## Apply the changes in "land"
+        land$spp[land$cell.id %in% urban.cells] <- 20 
+        land$spp[land$cell.id %in% water.cells] <- 19
+        land$spp[land$cell.id %in% grass.cells] <- 15
+        land$spp[land$cell.id %in% shrub.cells] <- 14
+        land$biom[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
+        land$biom[land$cell.id %in% shrub.cells] <- 0
+        land$age[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
+        land$age[land$cell.id %in% shrub.cells] <- 0
+        land$tsdist[land$cell.id %in% c(urban.cells, water.cells)] <- NA
+        land$tsdist[land$cell.id %in% c(grass.cells, shrub.cells)] <- 0
+        land$typdist[land$cell.id %in% grass.cells] <- "lchg.agri"
+        land$typdist[land$cell.id %in% shrub.cells] <- "lchg.rabn"
+        land$tburnt[land$cell.id %in% c(urban.cells, water.cells)] <- NA
+        land$tburnt[land$cell.id %in% c(grass.cells, shrub.cells)] <- 0
+        ## Change in the base dataframe, to not repeat
+        land.cover.changes$code[land.cover.changes$cell.id %in% urban.cells] <- 2020
+        land.cover.changes$code[land.cover.changes$cell.id %in% water.cells] <- 1919
+        land.cover.changes$code[land.cover.changes$cell.id %in% grass.cells] <- 1515
+        land.cover.changes$code[land.cover.changes$cell.id %in% shrub.cells] <- 1414
+      }
+      if(is.land.cover.change & t %in% temp.lchg.schedule){
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         land$spp[land$cell.id %in% chg.cells] <- 20 # urban
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
-        land$tsdist[land$cell.id %in% visit.cells] <- NA  # don't care the time since it's urban
+        land$tsdist[land$cell.id %in% chg.cells] <- NA  # don't care the time since it's urban
         land$typdist[land$cell.id %in% chg.cells] <- "lchg.urb"
         land$tburnt[land$cell.id %in% chg.cells] <- NA
         # Agriculture conversion
@@ -156,8 +214,8 @@ land.dyn.mdl <- function(scn.name){
         land$spp[land$cell.id %in% chg.cells] <- 16 # arableland or 17 - permanent crops
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
-        land$typdist[land$cell.id %in% chg.cells] <- "lchg.crp"
-        land$tsdist[land$cell.id %in% visit.cells] <- 0
+        land$typdist[land$cell.id %in% chg.cells] <- "lchg.agri"
+        land$tsdist[land$cell.id %in% chg.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Rural abandonment
         visit.cells <- c(visit.cells, chg.cells)
@@ -165,18 +223,18 @@ land.dyn.mdl <- function(scn.name){
         land$spp[land$cell.id %in% chg.cells] <- 14  # shrub
         land$biom[land$cell.id %in% chg.cells] <- 0
         land$age[land$cell.id %in% chg.cells] <- 0
-        land$typdist[land$cell.id %in% chg.cells] <- "lchg.nat"
-        land$tsdist[land$cell.id %in% visit.cells] <- 0
+        land$typdist[land$cell.id %in% chg.cells] <- "lchg.rabn"
+        land$tsdist[land$cell.id %in% chg.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Update interface values
         interface <- update.interface(land)
         temp.lchg.schedule <- temp.lchg.schedule[-1] 
-        rm(chg.cells); rm(visit.cells)
+        rm(chg.cells); rm(visit.cells)  
       }
       
       
       ## 3. FOREST MANAGEMENT (under development)
-      if(processes[mgmt.id] & t %in% temp.mgmt.schedule){
+      if(is.harvest & t %in% temp.mgmt.schedule){
         cut.out <- forest.mgmt(land, harvest, clim, t, out.path, MASK)
         land$typdist[land$cell.id %in% cut.out$cell.id] <- "cut"
         land$tsdist[land$cell.id %in% cut.out$cell.id] <- 0
@@ -192,21 +250,26 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 4. FIRE
-      if(processes[fire.id] & t %in% temp.fire.schedule){
+      if(spin.up & t<=ncol(wildfires)-1){
+        cat("Observed wildfires", "\n")
+        a <- !is.na(wildfires[,t+1])
+        burnt.cells <- data.frame(cell.id=wildfires$cell.id[a], fintensity=1)
+      }
+      if(is.wildfire & t %in% temp.fire.schedule){
         # Decide climatic severity of the year (default is mild)
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
           clim.sever <- 1
         # Burnt
-        fire.out <- fire.regime(land, coord, orography, clim, interface, 1:3, clim.sever, t, 0, MASK, out.path, irun, crazy, nx, nff)
+        fire.out <- fire.regime(land, coord, orography, clim, interface, 1:3, clim.sever, t, 0, MASK, out.path, irun, rpb)
         # Track fires and Burnt spp & Biomass
         if(nrow(fire.out[[1]])>0)
           track.fire <- rbind(track.fire, data.frame(run=irun, fire.out[[1]]))
         burnt.cells <- fire.out[[2]] %>% select(-igni)
         if(nrow(burnt.cells)>0){
           aux <- left_join(burnt.cells, select(land, cell.id, spp, biom), by="cell.id") %>%
-                 mutate(bburnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) %>%
-                 group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
+                  mutate(bburnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) %>%
+                  group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
           track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
         }
@@ -221,13 +284,12 @@ land.dyn.mdl <- function(scn.name){
         land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- 
            land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]]*(1-burnt.cells$fintensity[!burnt.cells$intens])
         temp.fire.schedule <- temp.fire.schedule[-1] 
-        rm(fire.out); rm(aux)  
       }
       
       
       ## 5. PRESCRIBED BURNS
       id.fire <- 0
-      if(processes[pb.id] & t %in% temp.pb.schedule){
+      if(is.prescribed.burn & t %in% temp.pb.schedule){
         # Annual area burnt for PB
         annual.burnt.area <- ifelse(exists("burnt.cells"), nrow(burnt.cells), 0)
         fire.out <- fire.regime(land, coord, orography, clim, interface, 4, clim.sever, t, annual.burnt.area, MASK, out.path, irun, nff)
@@ -247,19 +309,20 @@ land.dyn.mdl <- function(scn.name){
       
       ## 6. DROUGHT
       killed.cells <- integer()
-      if(processes[drought.id] & t %in% temp.drought.schedule){
+      if(is.drought & t %in% temp.drought.schedule){
         killed.cells <- drought(land, clim, t)
         land$tsdist[land$cell.id %in% killed.cells] <- 0
         land$typdist[land$cell.id %in% killed.cells] <- "drght"
-        track.drougth <- rbind(track.drougth,
-                              data.frame(run=irun, year=t, 
-                                         filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))) )
+        if(length(killed.cells)>0)
+          track.drougth <- rbind(track.drougth,
+                           data.frame(run=irun, year=t, 
+                                      filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))))
         temp.drought.schedule <- temp.drought.schedule[-1] 
       }
-      
+      plot(killed.cells)
       
       ## 7. POST-FIRE REGENERATION
-      if(processes[post.fire.id] & t %in% temp.post.fire.schedule){
+      if(is.postfire & t %in% temp.post.fire.schedule){
         ## forest transition of tree species burnt in high intensity
         aux  <- post.fire(land, coord, orography, clim, sdm)
         if(nrow(aux)>0){
@@ -278,7 +341,7 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 8. COHORT ESTABLISHMENT
-      if(processes[cohort.id] & t %in% temp.cohort.schedule & length(killed.cells)>0){
+      if(is.cohort.establish & t %in% temp.cohort.schedule & length(killed.cells)>0){
         aux  <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
@@ -293,7 +356,7 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 9. AFFORESTATION
-      if(processes[afforest.id] & t %in% temp.afforest.schedule){
+      if(is.afforestation & t %in% temp.afforest.schedule){
         aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$age[land$cell.id %in% aux$cell.id] <- 0
@@ -309,12 +372,12 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 10. GROWTH
-      if(processes[growth.id] & t %in% temp.growth.schedule){
+      if(is.growth & t %in% temp.growth.schedule){
         land$biom <- growth(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
         land$tscut <- pmin(land$tscut+1,600)
-        aux <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
+        aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
                mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
                left_join(eq.ba.volbark, by="spp") %>% 
                mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
@@ -323,9 +386,11 @@ land.dyn.mdl <- function(scn.name){
                summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
                      summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
-        track.land <- rbind(track.land, data.frame(run=irun, year=t, aux), data.frame(run=irun, year=t, aux.shrub))
+        aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
+                     summarise(area=length(spp), vol=0, volbark=0, carbon=0)  
+        track.land <- rbind(track.land, data.frame(run=irun, year=t, aux.forest), data.frame(run=irun, year=t, aux.shrub),
+                            data.frame(run=irun, year=t, aux.other))
         temp.growth.schedule <- temp.growth.schedule[-1] 
-        rm(aux); rm(aux.shrub)
       }
       
       

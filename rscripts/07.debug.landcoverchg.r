@@ -47,3 +47,7 @@ MAP <- MASK
 MAP[!is.na(MASK[])] <- land$distype*(land$tsdist==0)
 writeRaster(MAP, paste0(out.path, "/lyr/DistType_t", t, ".tif"), format="GTiff", overwrite=T, NAflag=-1)
 writeRaster(MAP, paste0(out.path, "/lyr/DistType_t", t, ".asc"), format="ascii", overwrite=T, NAflag=-1)
+
+
+## 
+land <- read.table("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/outputs/landcover/Land.txt", header=T)

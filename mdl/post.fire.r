@@ -22,7 +22,7 @@ post.fire <- function(land, coord, orography, clim, sdm){
   ## Assume that the neighbourhood is a star, with the maximum number of pixels in the
   ## east-west or north-south direction is 2*radius + 1 (1 is the center cell).
   ## The num of pixels is sequentially: 3+1*2, 5+3*2+1*2, 7+5*2+3*2+1*2, ...
-  nneigh <- seq(3,41,2) + cumsum(seq(1,40,2)*2)
+  nneigh <- seq(3,101,2) + cumsum(seq(1,100,2)*2)
 
   ## Coordinates of high-intensity burnt forest cells the current time step that
   ## - it doesn't regenerate per se (fire functional trait), or

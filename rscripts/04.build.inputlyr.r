@@ -12,7 +12,7 @@ rm(list=ls())
 library(rgdal)
 library(raster)
 library(tidyverse)
- setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
+setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
 # setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
 
 load("inputlyrs/rdata/mask.rdata")
@@ -457,7 +457,40 @@ writeRaster(ASPECT, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/Aspect_1k
 
 
 
-##############################################################################################################
+
+###################################### FIRES 2010 to 2019 (to be burnt in the spin-in) ######################################
+load("inputlyrs/rdata/mask.rdata")
+aux <- data.frame(cell.id=1:ncell(MASK))
+wildfires <- data.frame(cell.id=aux[!is.na(MASK[]),])
+for(y in 0:9){
+  PERIM <- rgdal::readOGR(paste0("c:/WORK/MEDMOD/FIRES/IncendisSHP_1986-2019_31N.ETRS89/incendis", 2010+y, ".shp"))
+  FIRE <- rasterize(PERIM, MASK, 'GRID_CODE')
+  FIRE[!is.na(FIRE[])] <- 1
+  fire <- FIRE[]
+  wildfires <- cbind(wildfires, fire[!is.na(MASK[])])
+  names(wildfires)[y+2] <- paste0("y", 10+y)
+}
+summary(wildfires)
+apply(wildfires, 2, sum, na.rm=T)
+save(wildfires, file="inputlyrs/rdata/wildfires.rdata")
+
+## Land-cover types burnt in 2010-2019 wildfires
+load("inputlyrs/rdata/land.rdata")
+load("inputlyrs/rdata/wildfires.rdata")
+lct.burnt <- data.frame(lct=NA, n=NA, y=NA)
+for(y in 0:8){
+  aux <- as.data.frame(land$spp[!is.na(wildfires[,y+2])])
+  names(aux) <- "lct"
+  aux <- group_by(aux,lct) %>% summarise(n=length(lct)) %>% mutate(y=2010+y)
+  lct.burnt <- rbind(lct.burnt, aux)
+}
+lct.burnt <- lct.burnt[-1,]
+lct.burnt <- filter(lct.burnt, lct<=17)  ## només burnable land-cover types
+tot <- sum(lct.burnt$n)
+group_by(lct.burnt, lct) %>% summarise(area=sum(n), pct=round(100*area/tot,1))
+
+
+
 ############################ Test inputlyrs ############################
 
 rm(list=ls())
@@ -518,20 +551,80 @@ table(na.age$lcf)
     # 79864 644652 355993  70660  22765 178914 
 
 
-# 
-# 
-# 
-# ggplot(filter(land, spp<=13, age<=10), aes(x=as.factor(age), y=biom)) +
-#   geom_violin(width=1.2, color="black", fill="grey") +
-#   geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
-#   facet_wrap(.~as.factor(spp)) +
-#   stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square") 
-# 
-# ggplot(filter(land, spp<=13, age>10 & age<=20), aes(x=as.factor(age), y=biom)) +
-#   geom_violin(width=1.2, color="black", fill="grey") +
-#   geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") + 
-#   facet_wrap(.~as.factor(spp)) +
-#   stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square") 
-# 
-# 
+############################# Compare MCSC v3 - 2009 to  MCSC v4 - 2018 ###################################
+## Read MCSC 2018, and reclassify the 41-legend to the LCFM categories (use thesaurus)
+MCSC <- raster("C:/WORK/CARTO-DATA/MCSC2018/MCSC18.tif")
+DEM <- raster("C:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
+thesaurus <- read.table("C:/WORK/CARTO-DATA/MCSC2018/MCSC18_thesaurus.txt", sep="\t", header=T)
+mcsc <- data.frame(cell.id=1:ncell(MCSC), x=MCSC[], dem=DEM[]) %>% filter(!is.na(x))
+mcsc <- left_join(mcsc, thesaurus, by="x") %>% select(-x)
+names(mcsc)[3] <- "lct18"
+mcsc$lct18[mcsc$lct18==15 & mcsc$dem<=1500] <- 14
+mcsc$lct18[mcsc$lct18==17] <- 16  #one type of agrico
+count18 <- table(mcsc$lct18); count18
+pct18 <- count18/nrow(mcsc); round(100*pct18,1)
+
+## Read MCSC 2010
+LCF <- raster("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/tiff/LCFspp_100m_31N-ETRS89.tif")
+aux <- data.frame(cell.id=1:ncell(LCF), lct10=LCF[]) %>% filter(!is.na(lct10))
+aux$lct10[aux$lct10<=13] <- 1  # forest, one single cover
+aux$lct10[aux$lct10==17] <- 16  # one type of agrio
+count10 <- table(aux$lct10); count10
+pct10 <- count10/nrow(aux); round(100*pct10,1)
+## Join both
+lcf <- left_join(aux, mcsc, by="cell.id") %>% select(-dem)
+lcf$lct18[is.na(lcf$lct18)] <- lcf$lct10[is.na(lcf$lct18)]  # 93 cel·les perdudes
+table(lcf$lct10, lcf$lct18)
+newcount18 <- table(lcf$lct18)
+newcount18-count10
+lcf$code <- paste0(lcf$lct10,lcf$lct18)
+## Map with changes
+MAP <- LCF
+MAP[!is.na(MAP[])] <- lcf$code
+writeRaster(MAP, "C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/rscripts/outs/LandChg1018.tif", 
+            overwrite=T, format="GTiff")
+land.cover.changes <- data.frame(cell.id=1:ncell(MAP), code=MAP[]) %>% filter(!is.na(code))
+save(land.cover.changes, file="C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/rdata/land.cover.changes.rdata")
+
+## Read MCSC 1993
+MCSC93 <- raster("C:/WORK/CARTO-DATA/MCSC/Versio1_MCSC93/MCSC93reclass_100m_31N-ETRS89.tif")
+aux <- data.frame(cell.id=1:ncell(MCSC93), lct93=MCSC93[]) %>% filter(lct93!=255)
+count93 <- table(aux$lct93); count93
+## Join 2018 and 1993
+lcf <- left_join(aux, mcsc, by="cell.id") %>% select(-dem)
+lcf$lct18[is.na(lcf$lct18)] <- lcf$lct93[is.na(lcf$lct18)]  # 305 cel·les perdudes
+table(lcf$lct93, lcf$lct18)
+newcount18 <- table(lcf$lct18)
+newcount18-count93
+
+
+
+################################################# PLOT inputs #################################################
+## Biomass
+BIOMASS <- raster("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc")
+BIOMASS@extent@xmin = BIOMASS@extent@xmin / 1000
+BIOMASS@extent@xmax = BIOMASS@extent@xmax / 1000
+BIOMASS@extent@ymin = BIOMASS@extent@ymin / 1000
+BIOMASS@extent@ymax = BIOMASS@extent@ymax / 1000
+levelplot(BIOMASS, margin=FALSE, colorkey=list(space="bottom"), par.settings=viridisTheme())
+## Age
+AGE <- raster("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc")
+AGE@extent@xmin = AGE@extent@xmin / 1000
+AGE@extent@xmax = AGE@extent@xmax / 1000
+AGE@extent@ymin = AGE@extent@ymin / 1000
+AGE@extent@ymax = AGE@extent@ymax / 1000
+levelplot(AGE, margin=FALSE, colorkey=list(space="bottom"), par.settings=magmaTheme())
+
+## Distribution biomass in young stands
+ggplot(filter(land, spp<=13, age<=10), aes(x=as.factor(age), y=biom)) +
+  geom_violin(width=1.2, color="black", fill="grey") +
+  geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") +
+  facet_wrap(.~as.factor(spp)) +
+  stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square")
+## Distribution biomass in older stands
+ggplot(filter(land, spp<=13, age>10 & age<=20), aes(x=as.factor(age), y=biom)) +
+  geom_violin(width=1.2, color="black", fill="grey") +
+  geom_boxplot(width=0.1) +  theme_bw() +   theme(legend.position="none") +
+  facet_wrap(.~as.factor(spp)) +
+  stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square")
 # 

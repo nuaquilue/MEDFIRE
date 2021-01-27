@@ -58,3 +58,5 @@ atarget <- 386
 aburnt <- c(9,27,51,79,117,170,228,299,366,386)
 z <- scales::rescale(aburnt/atarget, to=c(-3,2), from=c(0,1))
 plot(aburnt/atarget,z, type="b")
+
+
