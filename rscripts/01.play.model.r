@@ -5,34 +5,32 @@ library(tidyverse)
 
 ############################################ RUN A SCN ##################################################
 rm(list=ls())
-source("mdl/define.scenario.r")
-source("mdl/land.dyn.mdl.r")  
+source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "landcover"
-define.scenario(scn.name)
+scn.name <- "landcover"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 90
+time.horizon <- 3
 write.sp.outputs <- F
 spin.up <- T
-clim.scn <- "rcp85"
-file.clim.severity <- "ClimaticSeverity_test.conv"
-file.pctg.hot.days <- "PctgHotDays_rcp85"
+clim.scn <- NA
+file.pctg.hot.days <- "PctgHotDays_noCC"
+file.clim.severity <- "ClimaticSeverity_noCC"
+is.climate.change <- F
 is.land.cover.change <- T
+is.harvest <- F
 is.wildfire <- T
-is.postfire <- T
-dump(c("clim.scn", "file.pctg.hot.days", "file.clim.severity", "spin.up", 
-       "is.wildfire", "is.postfire", "is.land.cover.change",
-       "nrun", "write.sp.outputs", "time.horizon"), 
+dump(c("nrun", "time.horizon", "write.sp.outputs", "spin.up", "clim.scn", "file.pctg.hot.days", 
+       "file.clim.severity", "is.climate.change", "is.land.cover.change", "is.harvest", "is.wildfire"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
-system.time(land.dyn.mdl(scn.name))
+land.dyn.mdl(scn.name)
 
 
 ############################################### RUN FACTORIAL SCN ################################################
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 2){
+for(i in 1){
   scn.name <- scenarios$scn.name[i]
   define.scenario(scn.name)
   ## general

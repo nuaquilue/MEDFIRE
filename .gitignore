@@ -7,7 +7,10 @@ outputs
 rscripts/outs
 rscripts/old
 inputlyrs/asc
-inputlyrs/rdata
+inputlyrs/rdata/climate*
+inputlyrs/rdata/land.cover.changes.rdata
+inputlyrs/rdata/sdm*
+inputlyrs/rdata/wildfires.rdata
 inputlyrs/tiff
 inputfiles/sources
 *.docx

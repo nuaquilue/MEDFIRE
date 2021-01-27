@@ -55,6 +55,11 @@ read.sdm <- function(work.path, set){
     }
     names(sdm)[3:(length(order.spp.sdm)+2)] <- paste0("sdm.", species)
     sdm <- filter(sdm, !is.na(mask)) %>% select(-mask) %>% mutate(sdm.shrub=1)
+    ## Missing SDM (assign SDM from rcp45 decade 10)
+    sdm[sdm$cell.id %in% c(7859391, 7859392, 7859393, 7859394, 7859395),-1] <- 0
+    sdm$sdm.phalepensis[sdm$cell.id %in% c(7859391, 7859392, 7859393, 7859394, 7859395)] <- 1
+    sdm$sdm.qilex[sdm$cell.id %in% c(7859391, 7859392, 7859393, 7859394, 7859395)] <- 1
+    sdm$sdm.shrub[sdm$cell.id %in% c(7859391, 7859392, 7859393, 7859394, 7859395)] <- 1
     save(sdm, file=paste0("inputlyrs/rdata/sdm_", set, "_hist_", clim.mdl, ".rdata"))      
   }
   

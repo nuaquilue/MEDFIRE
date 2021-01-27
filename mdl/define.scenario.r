@@ -34,10 +34,10 @@ define.scenario <- function(scn.name){
   is.harvest <- F
   is.wildfire <- F
   is.prescribed.burn <- F
-  is.drought <- F
-  is.postfire <- F
-  is.cohort.establish <- F
-  is.afforestation <- F
+  is.drought <- T
+  is.postfire <- T
+  is.cohort.establish <- T
+  is.afforestation <- T
   is.growth <- T
   
   ## Processes frequency (in years) 

@@ -38,10 +38,11 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
   clim$sdm[clim$spp==13] <- sdm$sdm.other[clim$spp==13]
   clim$sdm[clim$spp==14] <- 1  ## SDM of shrub is always 1
 
+  
   ## Compute SQ and SQI
   clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
+          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope) %>%
           mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
           select(cell.id, spp, temp, precip, sdm, sqi)
   
@@ -54,7 +55,7 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
                       sqest.brolla=scale(sq.brolla), sqest.maquia=scale(sq.maquia), sqest.boix=scale(sq.boix),
                       sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
                            ifelse(sqest.maquia>=sqest.brolla & sqest.maquia>=sqest.boix, 2,
-                             ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))) )
+                             ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))))
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
   
   return(clim=clim)
@@ -76,7 +77,7 @@ hist.clim <- function(land, orography, clim.mdl){
   
   ## Join land.cover.spp, aspect and slope data
   clim <- left_join(clim, select(land, cell.id, spp), by="cell.id") %>%
-    left_join(orography, by="cell.id")
+          left_join(orography, by="cell.id")
   
   ## Assign SDM according to current spp distribution 
   clim$sdm <- NA
@@ -97,21 +98,21 @@ hist.clim <- function(land, orography, clim.mdl){
   
   ## Compute SQ and SQI
   clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope) %>% 
-    left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-    mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
-    mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
-    select(cell.id, spp, temp, precip, sdm, sqi)
+          left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
+          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope) %>%
+          mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
+          select(cell.id, spp, temp, precip, sdm, sqi)
   
   ## SQI for shrubs
   sqi.shrub <- filter(clim, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by="spp") %>%
-    mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
-           aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,
-           aux.boix=c0_boix+c_temp_boix*temp+c_temp2_boix*temp*temp+c_precip_boix*precip+c_precip2_boix*precip*precip,
-           sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix)),
-           sqest.brolla=scale(sq.brolla), sqest.maquia=scale(sq.maquia), sqest.boix=scale(sq.boix),
-           sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
-                      ifelse(sqest.maquia>=sqest.brolla & sqest.maquia>=sqest.boix, 2,
-                             ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))) )
+               mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
+                      aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,
+                      aux.boix=c0_boix+c_temp_boix*temp+c_temp2_boix*temp*temp+c_precip_boix*precip+c_precip2_boix*precip*precip,
+                      sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix)),
+                      sqest.brolla=scale(sq.brolla), sqest.maquia=scale(sq.maquia), sqest.boix=scale(sq.boix),
+                      sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
+                            ifelse(sqest.maquia>=sqest.brolla & sqest.maquia>=sqest.boix, 2,
+                              ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))))
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
   
   return(clim=clim)

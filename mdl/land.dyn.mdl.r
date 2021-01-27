@@ -66,6 +66,7 @@ land.dyn.mdl <- function(scn.name){
   eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
   eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
   eq.ba.carbon <- read.table("inputfiles/EqBasalAreaCarbon.txt", header=T)
+  site.quality.shrub <- read.table("inputfiles/SiteQualityShrub.txt", header=T)
   
   
   ## Climatic severity 
@@ -86,7 +87,7 @@ land.dyn.mdl <- function(scn.name){
   cohort.schedule <- 
   afforest.schedule <- 
   growth.schedule <- seq(1, time.horizon, time.step)
-  if(spin.up){
+  if(spin.up & time.horizon>10){
     lchg.schedule <- seq(11, time.horizon, time.step)
     fire.schedule <- seq(11, time.horizon, time.step)
   }
@@ -97,7 +98,7 @@ land.dyn.mdl <- function(scn.name){
   track.fire <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
                             aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
   track.fire.spp <- data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
-  track.step <- data.frame(run=NA, year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
+  # track.step <- data.frame(run=NA, year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   track.pb <- data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
                           wind=NA, atarget=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
@@ -127,6 +128,7 @@ land.dyn.mdl <- function(scn.name){
     
     ## Load initial spatial dynamic state variables in a data.frame format
     load("inputlyrs/rdata/land.rdata")
+    
     
     ## Land at time 0, at the initial stage
     aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
@@ -167,8 +169,6 @@ land.dyn.mdl <- function(scn.name){
       if(spin.up & t<=10){
         cat("Observed land-cover changes", "\n")
         ## Select the cells 
-        
-        ### i que no hagin estat ja canviades!!
         urban.cells <- c(sample(unlist(filter(land.cover.changes, code==1420) %>% select(cell.id)), 189, replace=F),
                          sample(unlist(filter(land.cover.changes, code==1520) %>% select(cell.id)), 4, replace=F),
                          sample(unlist(filter(land.cover.changes, code==1620) %>% select(cell.id)), 516, replace=F))
@@ -193,13 +193,26 @@ land.dyn.mdl <- function(scn.name){
         land$typdist[land$cell.id %in% shrub.cells] <- "lchg.rabn"
         land$tburnt[land$cell.id %in% c(urban.cells, water.cells)] <- NA
         land$tburnt[land$cell.id %in% c(grass.cells, shrub.cells)] <- 0
+        ## Update sdm and sqi for shrublands
+        clim$spp[clim$cell.id %in% shrub.cells] <- 14
+        clim$sdm[clim$cell.id %in% shrub.cells] <- 1
+        sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, temp, precip) %>% 
+                     mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                            aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                            aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+                            sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix)),
+                            sqest.brolla=scale(sq.brolla), sqest.maquia=scale(sq.maquia), sqest.boix=scale(sq.boix),
+                            sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
+                                  ifelse(sqest.maquia>=sqest.brolla & sqest.maquia>=sqest.boix, 2,
+                                    ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))))
+        clim$sqi[clim$cell.id %in% shrub.cells] <- sqi.shrub$sqi
         ## Change in the base dataframe, to not repeat
         land.cover.changes$code[land.cover.changes$cell.id %in% urban.cells] <- 2020
         land.cover.changes$code[land.cover.changes$cell.id %in% water.cells] <- 1919
         land.cover.changes$code[land.cover.changes$cell.id %in% grass.cells] <- 1515
         land.cover.changes$code[land.cover.changes$cell.id %in% shrub.cells] <- 1414
       }
-      if(is.land.cover.change & t %in% temp.lchg.schedule){
+      if(is.land.cover.change & t %in% temp.lchg.schedule & !spin.up){
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         land$spp[land$cell.id %in% chg.cells] <- 20 # urban
@@ -250,12 +263,12 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 4. FIRE
-      if(spin.up & t<=ncol(wildfires)-1){
+      if(spin.up & t<=10){
         cat("Observed wildfires", "\n")
         a <- !is.na(wildfires[,t+1])
         burnt.cells <- data.frame(cell.id=wildfires$cell.id[a], fintensity=1)
       }
-      if(is.wildfire & t %in% temp.fire.schedule){
+      if(is.wildfire & t %in% temp.fire.schedule & !spin.up){
         # Decide climatic severity of the year (default is mild)
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
@@ -271,7 +284,7 @@ land.dyn.mdl <- function(scn.name){
                   mutate(bburnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) %>%
                   group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
-          track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
+          # track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
         }
         # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
         # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
@@ -319,7 +332,6 @@ land.dyn.mdl <- function(scn.name){
                                       filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))))
         temp.drought.schedule <- temp.drought.schedule[-1] 
       }
-      plot(killed.cells)
       
       ## 7. POST-FIRE REGENERATION
       if(is.postfire & t %in% temp.post.fire.schedule){
@@ -336,7 +348,6 @@ land.dyn.mdl <- function(scn.name){
         # Reset age of cells burnt in high intensity
         land$age[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens] & !is.na(land$spp) & land$spp<=14] <- 0
         temp.post.fire.schedule <- temp.post.fire.schedule[-1] 
-        rm(aux); rm(spp.out)
       }
       
       
@@ -345,13 +356,13 @@ land.dyn.mdl <- function(scn.name){
         aux  <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
+        # land$spp[land$cell.id %in% killed.cells] <- 0 ¿?¿?¿?
         land$age[land$cell.id %in% aux$cell.id] <- 0  ## not sure if 0 or decade - t -1
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
         clim$sqi[clim$cell.id %in% killed.cells] <- aux$sqi
         track.cohort <- rbind(track.cohort, data.frame(run=irun, year=t, table(spp.out, aux$spp)))
         temp.cohort.schedule <- temp.cohort.schedule[-1] 
-        rm(aux); rm(spp.out); rm(killed.cells)
       }
       
       
@@ -359,6 +370,7 @@ land.dyn.mdl <- function(scn.name){
       if(is.afforestation & t %in% temp.afforest.schedule){
         aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
+        land$biom[land$cell.id %in% aux$cell.id] <- 0
         land$age[land$cell.id %in% aux$cell.id] <- 0
         land$tsdist[land$cell.id %in% aux$cell.id] <- 0
         land$typdist[land$cell.id %in% aux$cell.id] <- "afforest"
@@ -427,7 +439,7 @@ land.dyn.mdl <- function(scn.name){
                            track.fire$asupp.fuel - track.fire$asupp.sprd)
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.fire.spp[-1,], paste0(out.path, "/FiresSpp.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
+  # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
   names(track.post.fire)[4:5] <- c("spp.in", "ha")

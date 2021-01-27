@@ -122,25 +122,21 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       ## What if selected igni has already been burnt?? How can I control it? pigni$psft==0 of burnt cells??
       igni.id <- sample(pigni$cell.id, 1, replace=F, pigni$psft)
       
-      ## Assign the fire spread type 
-      # if(swc==1 | swc==3)
-      #   fire.spread.type <- swc
-      # else if(swc==4)
-      #   fire.spread.type <- 3
-      # else{
-      #   neighs <- nn2(coord[,-1], filter(coord, cell.id==igni.id)[,-1], searchtype="standard", k=100)
-      #   nneigh <- sum(neighs$nn.dists[,]<=500)  #sqrt(2*500^2)
-      #   old.neighs <- nn2(old.forest.coord[,-1], filter(coord, cell.id==igni.id)[,-1], searchtype="standard", k=100)
-      #   old.nneigh <- sum(old.neighs$nn.dists[,]<=500) #sqrt(2*500^2)
-      #   z <- filter(prob.conv, clim==clim.sever)$inter + filter(prob.conv, clim==clim.sever)$slope*(old.nneigh/nneigh)*100
-      #   1/(1+exp(-z))
-      #   fire.spread.type <- ifelse(runif(1,0,1)<=1/(1+exp(-z)),2,3)
-      # }
-      if(swc<4)
+      # Assign the fire spread type
+      if(swc==1 | swc==3)
         fire.spread.type <- swc
-      if(swc==4)
+      else if(swc==4)
         fire.spread.type <- 3
-      
+      else{
+        neighs <- nn2(coord[,-1], filter(coord, cell.id==igni.id)[,-1], searchtype="standard", k=100)
+        nneigh <- sum(neighs$nn.dists[,]<=500)  #sqrt(2*500^2)
+        old.neighs <- nn2(old.forest.coord[,-1], filter(coord, cell.id==igni.id)[,-1], searchtype="standard", k=100)
+        old.nneigh <- sum(old.neighs$nn.dists[,]<=500) #sqrt(2*500^2)
+        z <- filter(prob.conv, clim==clim.sever)$inter + filter(prob.conv, clim==clim.sever)$slope*(old.nneigh/nneigh)*100
+        1/(1+exp(-z))
+        fire.spread.type <- ifelse(runif(1,0,1)<=1/(1+exp(-z)),2,3)
+      }
+
       ## According to the fire spread type, look at the weights of each factor on spread rate
       facc <- fst.sprd.weight[1,fire.spread.type+1]
       wwind <- fst.sprd.weight[2,fire.spread.type+1]
@@ -201,7 +197,6 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       map$step[map$cell.id==igni.id] <- step
       track.burnt.cells <- rbind(track.burnt.cells, data.frame(fire.id=fire.id, cell.id=igni.id, igni=T, fintensity=1))
       
-      
       ## Start speading from active cells (i.e. the fire front)
       while((aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)<fire.size.target){
         
@@ -231,7 +226,8 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## Retrive the current neighs, and compute fuel
         neigh.land <- subland[i.land.in.neigh,] %>%
                       mutate(fuel=ifelse(spp %in% c(15,16,17), 0.1,  # grass, crop
-                                   ifelse(spp==14, 0.01638*biom, # shrub
+                                   # ifelse(spp==14, 0.01638*biom, # shrub
+                                   ifelse(spp==14, biom/10^4, # shrub PATILLERUUUU
                                     ifelse(age<=7, 0.2, # saplings
                                       ifelse(biom<=200 & spp>=1 & spp<=7, 0.5, # conifer young
                                         ifelse(biom<=200 & spp>=8 & spp<=13, 0.3, # decid young
@@ -318,7 +314,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         if(nburn==0)
           break
         ## Otherwise, select the new fire front
-        else if(nburn<=mn.ncell.ff){
+        if(nburn<=mn.ncell.ff){
           fire.front <- sprd.rate$cell.id[sprd.rate$burn]
           cumul.source <- sprd.rate$nsource[sprd.rate$burn]
         }
@@ -352,8 +348,8 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, 
                                                  wind=fire.wind, atarget=fire.size.target, aburnt.highintens, 
                                                  aburnt.lowintens, asupp.sprd, asupp.fuel))
-      # cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- aBurnt:", aburnt.lowintens+aburnt.highintens,
-      #           "- aSupp:", asupp.sprd+asupp.fuel), "\n")
+       # cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- aBurnt:", aburnt.lowintens+aburnt.highintens,
+       #           "- aSupp:", asupp.sprd+asupp.fuel), "\n")
       
       ## Update annual burnt area
       area.target <- area.target - (aburnt.lowintens + aburnt.highintens + asupp.sprd + asupp.fuel)
