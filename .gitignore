@@ -15,3 +15,4 @@ inputlyrs/tiff
 inputfiles/sources
 *.docx
 *.tex
+*.ini
