@@ -30,24 +30,19 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 1){
+for(i in 7){
   scn.name <- scenarios$scn.name[i]
   define.scenario(scn.name)
   ## general
   nrun <- scenarios$nrun[i]
-  write.sp.outputs <- F
+  write.maps <- F
   spin.up <- as.logical(scenarios$spin.up[i])
   ## processes
-  is.drought <- T
-  is.cohort.establish <- T
-  is.afforestation <- T
-  is.growth <- T
   is.climate.change <- as.logical(scenarios$is.climate.change[i])
   is.land.cover.change <- as.logical(scenarios$is.land.cover.change[i])
   is.harvest <- as.logical(scenarios$is.harvest[i])
   is.wildfire <- as.logical(scenarios$is.wildfire[i])
-  is.prescribed.burn <- F
-  is.postfire <- as.logical(scenarios$is.postfire[i])
+  is.postfire <- as.logical(scenarios$is.wildfire[i])
   ## scenario parameters
   file.fire.suppression <- scenarios$fire.suppression[i]
   if(is.climate.change){
@@ -60,9 +55,8 @@ for(i in 1){
     file.pctg.hot.days <- "PctgHotDays_noCC"
     file.clim.severity <- "ClimaticSeverity_noCC"
   }
-  dump(c("nrun", "write.sp.outputs", "spin.up", "is.drought", "is.cohort.establish", "is.afforestation", "is.growth",
-         "is.climate.change", "is.land.cover.change", "is.harvest", "is.wildfire", "is.prescribed.burn",
-         "is.postfire", "file.fire.suppression", "clim.scn", "file.pctg.hot.days", "file.clim.severity"), 
+  dump(c("nrun", "write.maps", "spin.up", "is.climate.change", "is.land.cover.change", "is.harvest", 
+         "is.wildfire", "is.postfire", "file.fire.suppression", "clim.scn", "file.pctg.hot.days", "file.clim.severity"), 
        paste0("outputs/", scn.name, "/scn.custom.def.r"))
   land.dyn.mdl(scn.name)
 }

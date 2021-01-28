@@ -94,7 +94,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
     }  
     cat(paste(" Annual target area:", area.target), "\n")
     print.maps <- F
-    if(area.target>0 & write.sp.outputs)
+    if(area.target>0 & write.maps)
       print.maps <- T
     
     

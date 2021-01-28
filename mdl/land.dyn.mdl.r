@@ -44,14 +44,12 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/orography.rdata")
   load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
-  if(spin.up){
+  if(spin.up)
     load("inputlyrs/rdata/wildfires.rdata")
-    load("inputlyrs/rdata/land.cover.changes.rdata")
-  }
   
   
   ## Set the directory for writing spatial outputs (create it, if it does not exist yet) 
-  if(write.sp.outputs){      
+  if(write.maps){      
     if(!file.exists(paste0(out.path, "/lyr")))
       dir.create(file.path(getwd(), out.path, "/lyr"), showWarnings = F) 
   }
@@ -128,7 +126,8 @@ land.dyn.mdl <- function(scn.name){
     
     ## Load initial spatial dynamic state variables in a data.frame format
     load("inputlyrs/rdata/land.rdata")
-    
+    if(spin.up)
+      load("inputlyrs/rdata/land.cover.changes.rdata")
     
     ## Land at time 0, at the initial stage
     aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
@@ -212,7 +211,7 @@ land.dyn.mdl <- function(scn.name){
         land.cover.changes$code[land.cover.changes$cell.id %in% grass.cells] <- 1515
         land.cover.changes$code[land.cover.changes$cell.id %in% shrub.cells] <- 1414
       }
-      if(is.land.cover.change & t %in% temp.lchg.schedule & !spin.up){
+      if(is.land.cover.change & t %in% temp.lchg.schedule){
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         land$spp[land$cell.id %in% chg.cells] <- 20 # urban
@@ -268,7 +267,7 @@ land.dyn.mdl <- function(scn.name){
         a <- !is.na(wildfires[,t+1])
         burnt.cells <- data.frame(cell.id=wildfires$cell.id[a], fintensity=1)
       }
-      if(is.wildfire & t %in% temp.fire.schedule & !spin.up){
+      if(is.wildfire & t %in% temp.fire.schedule){
         # Decide climatic severity of the year (default is mild)
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
@@ -407,8 +406,14 @@ land.dyn.mdl <- function(scn.name){
       
       
       # Print maps every time step with ignition and low/high intenstiy burnt
-      if(write.sp.outputs){
-        cat("... writing output layers", "\n")
+      if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
+        cat("... writing maps", "\n")
+        MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
+        writeRaster(MAP, paste0(out.path, "/lyr/Spp_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP <- MASK; MAP[!is.na(MASK[])] <- land$biom
+        writeRaster(MAP, paste0(out.path, "/lyr/Biom_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP <- MASK; MAP[!is.na(MASK[])] <- land$age
+        writeRaster(MAP, paste0(out.path, "/lyr/Age_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
         MAP <- MASK
         MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1, 
                                       ifelse(land$typdist == "cut", 2, 
@@ -425,7 +430,7 @@ land.dyn.mdl <- function(scn.name){
     } # time
   
     # Print maps at the end of the simulation period per each run
-    if(write.sp.outputs){
+    if(write.maps){
       MAP <- MASK
       MAP[!is.na(MASK[])] <- land$tburnt
       writeRaster(MAP, paste0(out.path, "/lyr/TimesBurnt_r", irun, ".tif"), format="GTiff", overwrite=T)

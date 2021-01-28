@@ -25,7 +25,8 @@ define.scenario <- function(scn.name){
   nrun <- 1
   
   ## Flags to write spatial and tabular output data
-  write.sp.outputs <- F
+  write.maps <- F
+  write.freq <- 1
   spin.up <- T
   
   ## Processes of the model included (TRUE or FLASE)
