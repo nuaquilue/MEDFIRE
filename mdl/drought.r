@@ -5,10 +5,11 @@
 drought <- function(land, clim, t){
   
   ## Tracking
-  cat("Drought", "\n") #; tic("  t")
+  cat("Drought", "\n") 
   
   ## Count how many ha to kill, totally and this time step
-  to.kill <- filter(cbind(land, select(clim, sdm)), spp<=13, sdm==0, is.na(typdist)) 
+  ## Those forest species out of its climatic range and not burnt the current time step
+  to.kill <- left_join(land, select(clim, -spp), by="cell.id") %>% filter(spp<=13, sdm==0, tsdist>0)
   nkill <- round(table(to.kill$spp) /(10 - (t-(t %/% 10)*10) + 1))
   
   ## Kill randomly as many cells per spp
@@ -18,6 +19,5 @@ drought <- function(land, clim, t){
       killed.cells <- c(killed.cells, sample(to.kill$cell.id[to.kill$spp==i], nkill[i], replace=F))
   }
   
-  # toc()
   return(killed.cells)
 }

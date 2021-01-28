@@ -5,7 +5,7 @@
 post.fire <- function(land, coord, orography, clim, sdm){
   
   ## Tracking
-  cat("Post-fire regeneration", "\n") #; tic("  t")
+  cat("Post-fire regeneration", "\n") 
   
   ## Read matrix of secondary species according to species - sqi
   ## and fire response trait per species
@@ -61,19 +61,20 @@ post.fire <- function(land, coord, orography, clim, sdm){
     
     ## Join climatic and orographic variables to compute sq and then sqi
     new.cohort <- left_join(new.cohort, select(clim, cell.id, temp, precip), by = "cell.id") %>% 
-      left_join(select(orography, cell.id, aspect, slope), by = "cell.id") %>%
-      left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-      mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
-      mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
-      select(cell.id, spp, temp, precip, biom, age, sdm, sqi)
+                  left_join(select(orography, cell.id, aspect, slope.stand), by = "cell.id") %>%
+                  left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
+                  mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+                           c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
+                  mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
+                  select(cell.id, spp, temp, precip, biom, age, sdm, sqi)
     sqi.shrub <- filter(new.cohort, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by = "spp") %>%
-      mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
-             aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,
-             aux.boix=c0_boix+c_temp_boix*temp+c_temp2_boix*temp*temp+c_precip_boix*precip+c_precip2_boix*precip*precip,
-             sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix)),
-             sqi=ifelse(sq.brolla>=sq.maquia & sq.brolla>=sq.maquia, 1,
-                        ifelse(sq.maquia>=sq.brolla & sq.maquia>=sq.boix, 2,
-                               ifelse(sq.boix>=sq.brolla & sq.boix>=sq.maquia, 3, 0))) )
+                 mutate(aux.brolla=c0_brolla+c_temp_brolla*temp+c_temp2_brolla*temp*temp+c_precip_brolla*precip+c_precip2_brolla*precip*precip,
+                        aux.maquia=c0_maquia+c_temp_maquia*temp+c_temp2_maquia*temp*temp+c_precip_maquia*precip+c_precip2_maquia*precip*precip,
+                        aux.boix=c0_boix+c_temp_boix*temp+c_temp2_boix*temp*temp+c_precip_boix*precip+c_precip2_boix*precip*precip,
+                        sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix)),
+                        sqi=ifelse(sq.brolla>=sq.maquia & sq.brolla>=sq.maquia, 1,
+                              ifelse(sq.maquia>=sq.brolla & sq.maquia>=sq.boix, 2,
+                                ifelse(sq.boix>=sq.brolla & sq.boix>=sq.maquia, 3, 0))) )
     new.cohort$sqi[new.cohort$spp==14] <- sqi.shrub$sqi
     
     # toc()

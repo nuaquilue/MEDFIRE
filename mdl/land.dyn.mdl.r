@@ -110,20 +110,7 @@ land.dyn.mdl <- function(scn.name){
   ## Start the simulations   
   irun <- 1
   for(irun in 1:nrun){
-    
-    ## Copy the schedulings in auxiliar vectors 
-    temp.clim.schedule <- clim.schedule
-    temp.lchg.schedule <- lchg.schedule
-    temp.mgmt.schedule <- mgmt.schedule
-    temp.fire.schedule <- fire.schedule
-    temp.pb.schedule <- pb.schedule
-    temp.drought.schedule <- drought.schedule
-    temp.post.fire.schedule <- post.fire.schedule
-    temp.cohort.schedule <- cohort.schedule
-    temp.afforest.schedule <- afforest.schedule
-    temp.growth.schedule <- growth.schedule
-    
-    
+
     ## Load initial spatial dynamic state variables in a data.frame format
     load("inputlyrs/rdata/land.rdata")
     if(spin.up)
@@ -157,10 +144,9 @@ land.dyn.mdl <- function(scn.name){
         clim <- hist.clim(land, orography, clim.mdl)
         load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
       }
-      if(is.climate.change & t %in% temp.clim.schedule){
+      if(is.climate.change & t %in% clim.schedule){
         clim <- update.clim(land, orography, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
         load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
-        temp.clim.schedule <- temp.clim.schedule[-1] 
       }
 
       
@@ -211,7 +197,7 @@ land.dyn.mdl <- function(scn.name){
         land.cover.changes$code[land.cover.changes$cell.id %in% grass.cells] <- 1515
         land.cover.changes$code[land.cover.changes$cell.id %in% shrub.cells] <- 1414
       }
-      if(is.land.cover.change & t %in% temp.lchg.schedule){
+      if(is.land.cover.change & t %in% lchg.schedule){
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         land$spp[land$cell.id %in% chg.cells] <- 20 # urban
@@ -240,13 +226,11 @@ land.dyn.mdl <- function(scn.name){
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         # Update interface values
         interface <- update.interface(land)
-        temp.lchg.schedule <- temp.lchg.schedule[-1] 
-        rm(chg.cells); rm(visit.cells)  
       }
       
       
       ## 3. FOREST MANAGEMENT (under development)
-      if(is.harvest & t %in% temp.mgmt.schedule){
+      if(is.harvest & t %in% mgmt.schedule){
         cut.out <- forest.mgmt(land, harvest, clim, t, out.path, MASK)
         land$typdist[land$cell.id %in% cut.out$cell.id] <- "cut"
         land$tsdist[land$cell.id %in% cut.out$cell.id] <- 0
@@ -257,7 +241,6 @@ land.dyn.mdl <- function(scn.name){
         land$biom[land$cell.id %in% cut.out$cell.id]-cut.out$ba.extract
         track.harvest <- rbind(track.harvest, data.frame(run=irun, year=t, 
             group_by(cut.out, spp) %>% summarize(vol.sawlog=round(sum(vol.sawlog),1), vol.wood=round(sum(vol.wood),1))))
-        temp.mgmt.schedule <- temp.mgmt.schedule[-1] 
       }
       
       
@@ -266,8 +249,13 @@ land.dyn.mdl <- function(scn.name){
         cat("Observed wildfires", "\n")
         a <- !is.na(wildfires[,t+1])
         burnt.cells <- data.frame(cell.id=wildfires$cell.id[a], fintensity=1)
+        ## Make it effectively burnt
+        land$tsdist[land$cell.id %in% burnt.cells$cell.id] <- 0
+        land$tburnt[land$cell.id %in% burnt.cells$cell.id] <- land$tburnt[land$cell.id %in% burnt.cells$cell.id] + 1
+        land$typdist[land$cell.id %in% burnt.cells$cell.id] <- "highfire"
+        land$biom[land$cell.id %in% burnt.cells$cell.id] <- 0
       }
-      if(is.wildfire & t %in% temp.fire.schedule){
+      if(is.wildfire & t %in% fire.schedule){
         # Decide climatic severity of the year (default is mild)
         clim.sever <- 0
         if(runif(1,0,100) < clim.severity[clim.severity$year==t, ncol(clim.severity)]) # not-mild
@@ -295,13 +283,12 @@ land.dyn.mdl <- function(scn.name){
         land$biom[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens]] <- 0
         land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- 
            land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]]*(1-burnt.cells$fintensity[!burnt.cells$intens])
-        temp.fire.schedule <- temp.fire.schedule[-1] 
       }
       
       
       ## 5. PRESCRIBED BURNS
       id.fire <- 0
-      if(is.prescribed.burn & t %in% temp.pb.schedule){
+      if(is.prescribed.burn & t %in% pb.schedule){
         # Annual area burnt for PB
         annual.burnt.area <- ifelse(exists("burnt.cells"), nrow(burnt.cells), 0)
         fire.out <- fire.regime(land, coord, orography, clim, interface, 4, clim.sever, t, annual.burnt.area, MASK, out.path, irun, nff)
@@ -313,15 +300,13 @@ land.dyn.mdl <- function(scn.name){
           land$tburnt[land$cell.id %in% pb.cells$cell.id] <- land$tburnt[land$cell.id %in% pb.cells$cell.id] + 1
           land$typdist[land$cell.id %in% pb.cells$cell.id] <- "pb"
           land$biom[land$cell.id %in% pb.cells$cell.id] <- land$biom[land$cell.id %in% pb.cells$cell.id]*(1-pb.cells$fintensity)
-          temp.pb.schedule <- temp.pb.schedule[-1] 
         }
-        rm(fire.out)
       }
       
       
       ## 6. DROUGHT
       killed.cells <- integer()
-      if(is.drought & t %in% temp.drought.schedule){
+      if(is.drought & t %in% drought.schedule){
         killed.cells <- drought(land, clim, t)
         land$tsdist[land$cell.id %in% killed.cells] <- 0
         land$typdist[land$cell.id %in% killed.cells] <- "drght"
@@ -329,11 +314,11 @@ land.dyn.mdl <- function(scn.name){
           track.drougth <- rbind(track.drougth,
                            data.frame(run=irun, year=t, 
                                       filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))))
-        temp.drought.schedule <- temp.drought.schedule[-1] 
       }
       
+      
       ## 7. POST-FIRE REGENERATION
-      if(is.postfire & t %in% temp.post.fire.schedule){
+      if(is.postfire & t %in% post.fire.schedule){
         ## forest transition of tree species burnt in high intensity
         aux  <- post.fire(land, coord, orography, clim, sdm)
         if(nrow(aux)>0){
@@ -346,27 +331,25 @@ land.dyn.mdl <- function(scn.name){
         }
         # Reset age of cells burnt in high intensity
         land$age[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens] & !is.na(land$spp) & land$spp<=14] <- 0
-        temp.post.fire.schedule <- temp.post.fire.schedule[-1] 
       }
       
       
       ## 8. COHORT ESTABLISHMENT
-      if(is.cohort.establish & t %in% temp.cohort.schedule & length(killed.cells)>0){
+      if(is.cohort.establish & t %in% cohort.schedule & length(killed.cells)>0){
         aux  <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
-        # land$spp[land$cell.id %in% killed.cells] <- 0 ¿?¿?¿?
+        # land$biom[land$cell.id %in% killed.cells] <- 0 ¿?¿?¿? no big losses of biomass when drought?
         land$age[land$cell.id %in% aux$cell.id] <- 0  ## not sure if 0 or decade - t -1
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
         clim$sqi[clim$cell.id %in% killed.cells] <- aux$sqi
         track.cohort <- rbind(track.cohort, data.frame(run=irun, year=t, table(spp.out, aux$spp)))
-        temp.cohort.schedule <- temp.cohort.schedule[-1] 
       }
       
       
       ## 9. AFFORESTATION
-      if(is.afforestation & t %in% temp.afforest.schedule){
+      if(is.afforestation & t %in% afforest.schedule){
         aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- 0
@@ -377,13 +360,11 @@ land.dyn.mdl <- function(scn.name){
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
         track.afforest <- rbind(track.afforest, data.frame(run=irun, year=t, table(aux$spp)))
-        temp.afforest.schedule <- temp.afforest.schedule[-1] 
-        rm(aux)
       }
       
       
       ## 10. GROWTH
-      if(is.growth & t %in% temp.growth.schedule){
+      if(is.growth & t %in% growth.schedule){
         land$biom <- growth(land, clim)
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
@@ -401,7 +382,6 @@ land.dyn.mdl <- function(scn.name){
                      summarise(area=length(spp), vol=0, volbark=0, carbon=0)  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux.forest), data.frame(run=irun, year=t, aux.shrub),
                             data.frame(run=irun, year=t, aux.other))
-        temp.growth.schedule <- temp.growth.schedule[-1] 
       }
       
       

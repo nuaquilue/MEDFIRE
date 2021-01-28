@@ -26,7 +26,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
   shrub.coord <- filter(land, tsdist>=20, spp==14) %>% select(cell.id) 
   shrub.coord <- data.frame(cell.id=shrub.coord[sample(1:nrow(shrub.coord), 10000, replace=F),1])
   shrub.coord <- left_join(shrub.coord, coord, by = "cell.id")
-  neigh.id <- nn2(coord[,-1], shrub.coord[,-1],  searchtype="priority", k=nneigh[shrub.colon.rad]) 
+  neigh.id <- nn2(coord[,-1], shrub.coord[,-1],  searchtype="priority", k=nneigh[colon.rad]) 
   neigh.id <- neigh.id$nn.idx  # dim 10.000 x 61
   
   ## Count number of forest mature neigbhours within their climatic range
@@ -41,8 +41,8 @@ afforestation <- function(land, coord, orography, clim, sdm){
   ## Apply the afforestation model
   oldneigh <- apply(neigh.spp, 1, count.forest)
   z = afforest.mdl[1] + afforest.mdl[2]*20 + afforest.mdl[3]*(20^2) + 
-      afforest.mdl[4]*(orography$slope[neigh.id[,1]]/10) + 
-      afforest.mdl[5]*((orography$slope[neigh.id[,1]]/10)^2) + 
+      afforest.mdl[4]*(orography$slope[neigh.id[,1]]) + 
+      afforest.mdl[5]*((orography$slope[neigh.id[,1]])^2) + 
       afforest.mdl[6]*(oldneigh/(ncol(neigh.id)-1)) +
       afforest.mdl[7]*((oldneigh/(ncol(neigh.id)-1))^2)
   p = 1/(1+exp(-1*z)); p = 1-(1-p)^(1/16); rm(z)
@@ -63,9 +63,10 @@ afforestation <- function(land, coord, orography, clim, sdm){
   
   ## Join climatic and orographic variables to compute sq and then sqi
   new.spp <- left_join(new.spp, select(clim, cell.id, temp, precip), by = "cell.id") %>% 
-             left_join(select(orography, cell.id, aspect, slope), by = "cell.id") %>%
+             left_join(select(orography, cell.id, aspect, slope.stand), by = "cell.id") %>%
              left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-             mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
+             mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+                      c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
              mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
              select(cell.id, spp, sqi) %>% mutate(biom=0, age=1, sdm=1)
   

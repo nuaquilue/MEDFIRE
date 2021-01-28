@@ -49,7 +49,8 @@ define.scenario <- function(scn.name){
   # Radius of the neighborhood (in pixels) to find out if a species is present in a region
   spp.distrib.rad <- 50 	# i.e. 5000 m -> 5 km, a ~circular (in fact it's a star) of radius 5 km (circle of 10 km diameter)
   # Radius of the neighborhood (in pixels) to look for mature tree species ready to colonize shrubs
-  shrub.colon.rad <- 5 		# i.e. 500 m
+  # or locations killed by drought
+  colon.rad <- 5 		# i.e. 500 m
 
   ## Fire parameters (should not change to much): Spread rate, burn probability, prescribed burns
   rpb <- 0.2

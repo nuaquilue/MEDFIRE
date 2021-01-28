@@ -7,7 +7,7 @@
 ## 5. Fire regime related variables
 ######################################################################################
 
-read.static.vars <- function(work.path){
+read.static.vars <- function(){
   
   library(raster)
   library(RANN)
@@ -16,7 +16,7 @@ read.static.vars <- function(work.path){
   cat("Reading orographyic, utm, fire regime variables, harvesting-restrictions", "\n")
   
   ## MASK of the study area
-  MASK <- raster(paste0(work.path, "/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc"))
+  MASK <- raster("inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
   MASK[!is.na(MASK[])] <- 1
   crs(MASK) <- CRS("+init=epsg:25831")
   save(MASK, file="inputlyrs/rdata/mask.rdata") 
@@ -27,13 +27,15 @@ read.static.vars <- function(work.path){
   save(coord, file="inputlyrs/rdata/coordinates.rdata") 
   
   ## Read initial state vars,  build and save the data frame
-  ELEVATION <- raster(paste0(work.path, "/inputlyrs/asc/DEM_100m_31N-ETRS89.asc"))
-  ASPECT <- raster(paste0(work.path, "/inputlyrs/asc/Aspect_100m_31N-ETRS89.asc"))
-  SLOPE <- raster(paste0(work.path, "/inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc"))
-  ROAD <- raster(paste0(work.path, "/inputlyrs/asc/DensRoad_100m_31N-ETRS89.asc"))
+  ELEVATION <- raster("inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
+  ASPECT <- raster("inputlyrs/asc/Aspect_100m_31N-ETRS89.asc")
+  SLOPE <- raster("inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc")
+  ROAD <- raster("inputlyrs/asc/DensRoad_100m_31N-ETRS89.asc")
   ROAD[is.na(ROAD[])] <- 0  ## why there are so many NA is ROAD layer?
   orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], road=ROAD[])
   orography <- orography[!is.na(MASK[]),]
+  slope.st <- c(cellStats(SLOPE,'mean'), cellStats(SLOPE,'sd'))
+  orography$slope.stand <- (orography$slope-slope.st[1])/slope.st[2]
   save(orography, file="inputlyrs/rdata/orography.rdata")
   
   ## UTM layer

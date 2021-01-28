@@ -16,10 +16,9 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
   load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   load(paste0("inputlyrs/rdata/climate_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
   
-  ## Join land.cover.spp
-  clim$spp <- land$spp
-  clim$aspect <- orography$aspect
-  clim$slope <- orography$slope
+  ## Join land.cover.spp, aspect and slope data
+  clim <- left_join(clim, select(land, cell.id, spp), by="cell.id") %>%
+          left_join(orography, by="cell.id")
   
   ## Assign SDM according to current spp distribution 
   clim$sdm <- NA
@@ -40,10 +39,11 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
 
   
   ## Compute SQ and SQI
-  clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope) %>% 
+  clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope.stand) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope) %>%
-          mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
+          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+                   c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
+          mutate(sq=1/(1+exp(-aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
           select(cell.id, spp, temp, precip, sdm, sqi)
   
   ## SQI for shrubs
@@ -97,9 +97,10 @@ hist.clim <- function(land, orography, clim.mdl){
   clim$sdm[clim$spp==14] <- 1  ## SDM of shrub is always 1
   
   ## Compute SQ and SQI
-  clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope) %>% 
+  clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope.stand) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope) %>%
+          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+                   c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
           mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
           select(cell.id, spp, temp, precip, sdm, sqi)
   

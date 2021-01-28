@@ -5,7 +5,7 @@
 cohort.establish <- function(land, coord, orography, clim, sdm){
   
   ## Tracking
-  cat("Cohort establishment", "\n") #; tic("  t")
+  cat("Cohort establishment", "\n") 
   
   ## Read matrix of secondary species according to species - sqi
   secondary.spp <- read.table("inputfiles/SecondarySpp.txt", header=T)
@@ -26,7 +26,7 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
   killed.cells <- filter(land, tsdist==0, typdist=="drght") 
   killed.cells <- left_join(killed.cells, filter(coord, cell.id %in% killed.cells$cell.id), by = "cell.id") 
   killed.cells <- killed.cells[order(killed.cells$cell.id),] 
-  neighs <- nn2(coord[,-1], select(killed.cells,x,y),  searchtype="priority", k=nneigh[spp.distrib.rad])
+  neighs <- nn2(coord[,-1], select(killed.cells,x,y),  searchtype="priority", k=nneigh[colon.rad])
   
   ## Retrive the species of the neighbors (first column is cell.id of killed.cells)
   aux <- matrix(land$spp[neighs$nn.idx[,-1]], nrow=nrow(killed.cells), ncol=nneigh[spp.distrib.rad]-1)*
@@ -51,14 +51,14 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
                            spp=apply(select(killed.cells, phalepensis:shrub) * 
                                        select(killed.cells, sdm.phalepensis:sdm.shrub) * 
                                          select(killed.cells, X1:X14), 1, select.cohort), 
-                           biom=0, sdm=1, age=1 )
+                           biom=0, sdm=1, age=1)
   
   ## Join climatic and orographic variables to compute sq and then sqi
-  new.cohort <- left_join(new.cohort, 
-                          filter(clim, cell.id %in% new.cohort$cell.id) %>% select(cell.id, temp, precip), by = "cell.id") %>%
-                left_join(filter(orography, cell.id %in% new.cohort$cell.id) %>% select(cell.id, aspect, slope), by = "cell.id") %>%
+  new.cohort <- left_join(new.cohort, filter(clim, cell.id %in% new.cohort$cell.id) %>% select(cell.id, temp, precip), by = "cell.id") %>%
+                left_join(filter(orography, cell.id %in% new.cohort$cell.id) %>% select(cell.id, aspect, slope.stand), by = "cell.id") %>%
                 left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-                mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope/10) %>%
+                mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+                         c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
                 mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
                 select(cell.id, spp, temp, precip, biom, age, sdm, sqi)
   sqi.shrub <- filter(new.cohort, spp==14) %>% select(spp, temp, precip) %>% left_join(site.quality.shrub, by = "spp") %>%

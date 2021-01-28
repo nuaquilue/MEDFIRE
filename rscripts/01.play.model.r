@@ -10,17 +10,17 @@ source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")
 scn.name <- "landcover"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 3
-write.sp.outputs <- F
+time.horizon <- 30
 spin.up <- T
-clim.scn <- NA
+clim.scn <- "rcp85"
 file.pctg.hot.days <- "PctgHotDays_noCC"
 file.clim.severity <- "ClimaticSeverity_noCC"
-is.climate.change <- F
+is.climate.change <- T
 is.land.cover.change <- T
 is.harvest <- F
 is.wildfire <- T
-dump(c("nrun", "time.horizon", "write.sp.outputs", "spin.up", "clim.scn", "file.pctg.hot.days", 
+is.postfire <- T
+dump(c("nrun", "time.horizon", "spin.up", "clim.scn", "file.pctg.hot.days", "is.postfire",
        "file.clim.severity", "is.climate.change", "is.land.cover.change", "is.harvest", "is.wildfire"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 land.dyn.mdl(scn.name)
@@ -30,7 +30,7 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 4){
+for(i in 13){
   scn.name <- scenarios$scn.name[i]
   define.scenario(scn.name)
   ## general
@@ -64,15 +64,15 @@ for(i in 4){
 
 ###########################################################################################################
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
-work.path <- getwd()
 source("mdl/read.static.vars.r")
-read.static.vars(work.path)
+read.static.vars()
 ## Create .Rdata with initial values of variables of the model, used at each replicate of any scn.
 source("mdl/read.state.vars.r")
-read.state.vars(work.path)
-## Create 2 data frames per climatic scn and decade: SDMs of all spp, and climatic variables (temp & precip) for CAT
+read.state.vars()
+## Create a data frame with climatic variables (temp & precip) for CAT
 source("mdl/read.climatic.vars.r")
-read.climatic.vars(work.path)
+read.climatic.vars()
+# s per climatic scn and decade: SDMs of all spp, and
 source("mdl/read.sdm.r")
 work.path <- "C:/WORK/MEDMOD"
 read.sdm(work.path, "base")
