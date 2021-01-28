@@ -29,8 +29,8 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
   neighs <- nn2(coord[,-1], select(killed.cells,x,y),  searchtype="priority", k=nneigh[colon.rad])
   
   ## Retrive the species of the neighbors (first column is cell.id of killed.cells)
-  aux <- matrix(land$spp[neighs$nn.idx[,-1]], nrow=nrow(killed.cells), ncol=nneigh[spp.distrib.rad]-1)*
-                ifelse(matrix(neighs$nn.dists[,-1], nrow=nrow(killed.cells), ncol=nneigh[spp.distrib.rad]-1)<=spp.distrib.rad*100,1,0) 
+  aux <- matrix(land$spp[neighs$nn.idx[,-1]], nrow=nrow(killed.cells), ncol=nneigh[colon.rad]-1)*
+                ifelse(matrix(neighs$nn.dists[,-1], nrow=nrow(killed.cells), ncol=nneigh[colon.rad]-1)<=colon.rad*100,1,0) 
                           
   ## Return presence (TRUE) or abscence (FALSE) of neighbor species, 
   ## assume that shrubs are always presence in no matter which neighbourhood
