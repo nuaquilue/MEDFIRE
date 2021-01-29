@@ -133,7 +133,6 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         old.neighs <- nn2(old.forest.coord[,-1], filter(coord, cell.id==igni.id)[,-1], searchtype="standard", k=100)
         old.nneigh <- sum(old.neighs$nn.dists[,]<=500) #sqrt(2*500^2)
         z <- filter(prob.conv, clim==clim.sever)$inter + filter(prob.conv, clim==clim.sever)$slope*(old.nneigh/nneigh)*100
-        1/(1+exp(-z))
         fire.spread.type <- ifelse(runif(1,0,1)<=1/(1+exp(-z)),2,3)
       }
 
