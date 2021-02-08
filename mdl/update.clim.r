@@ -42,7 +42,7 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
   clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope.stand) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
           mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
-                   c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
+                 c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
           mutate(sq=1/(1+exp(-aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
           select(cell.id, spp, temp, precip, sdm, sqi)
   
@@ -105,7 +105,7 @@ hist.clim <- function(land, orography, clim.mdl){
           select(cell.id, spp, temp, precip, sdm, sqi)
   
   ## SQI for shrubs
-  sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, temp, precip) %>% 
+  sqi.shrub <- filter(clim, spp %in% 14) %>% select(spp, temp, precip) %>% 
                mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
                       aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
                       aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,

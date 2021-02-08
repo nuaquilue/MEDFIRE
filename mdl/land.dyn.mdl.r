@@ -370,12 +370,12 @@ land.dyn.mdl <- function(scn.name){
         land$tsdist <- pmin(land$tsdist+1,600)
         land$tscut <- pmin(land$tscut+1,600)
         aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
-               mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
-               left_join(eq.ba.volbark, by="spp") %>% 
-               mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
-               left_join(eq.ba.carbon, by="spp") %>% 
-               mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
-               summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+                      mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+                      left_join(eq.ba.volbark, by="spp") %>% 
+                      mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+                      left_join(eq.ba.carbon, by="spp") %>% 
+                      mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
+                      summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
                      summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
         aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
