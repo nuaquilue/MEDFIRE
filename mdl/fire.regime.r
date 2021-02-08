@@ -211,8 +211,8 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
                                position=rep(cumul.source, each=default.nneigh),
                                dist=rep(default.neigh$dist,length(fire.front)),
                                windir=rep(default.neigh$windir,length(fire.front)) ) %>%
-          filter(cell.id %notin% burnt.cells) %>% 
-          left_join(filter(source.supp, cell.id %in% fire.front), by=c("source.id" ="cell.id"))  # look if source cell has been suppressed
+                    filter(cell.id %notin% burnt.cells) %>% 
+                    left_join(filter(source.supp, cell.id %in% fire.front), by=c("source.id" ="cell.id"))  # look if source cell has been suppressed
         
         ## Now find those neighbours that are currenty in Catalonia and are not burnable
         ## is_inCpp returns the position of neigh.id$cell.id in the 'subland' data.frame (not the cell.id)!
