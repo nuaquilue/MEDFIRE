@@ -21,10 +21,14 @@ growth <- function(land, clim){
                     mutate(increment = c + x*biom/10 + x2*(biom/10)^2 ) %>%
                     mutate(increment=ifelse(increment<0,0,increment)) %>% select(cell.id, increment)
   aux.shrub <- filter(land, spp==14) %>% select(cell.id, spp, biom)  %>%
-               left_join(select(clim, cell.id, sdm, sqi), by = "cell.id")         
-  aux.shrub <- left_join(aux.shrub, growth.coeff.shrub, by = "sqi")  %>%
-               mutate(increment = a*log(biom/10000) + b ) %>% 
-               mutate(increment = ifelse(increment<=0, b*1000, increment)) %>% select(cell.id, increment)
+               left_join(select(clim, cell.id, sdm, sqi), by="cell.id") %>% 
+               left_join(growth.coeff.shrub, by="sqi")  %>%
+               mutate(increment = a*log(biom) + b ) %>% 
+               mutate(increment = ifelse(increment<=0 | is.infinite(increment), b, increment)/10) %>% 
+               select(cell.id, increment)
+      ## Divideixo per 10 el increment de creixement dels matollars pq al calcular biomass_t
+      ## en functió de biomass_t-1, li sumo increment*10.
+      ## Sumo increment*10 pq les unitats de la biomassa dels boscos són m2/ha*10 !! Tocada de pebrots.
   
   ## Join increment
   all <- rbind(aux.spp.sdmin, aux.spp.sdmout, aux.shrub)

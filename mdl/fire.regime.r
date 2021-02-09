@@ -57,7 +57,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       i <- land$spp<=15        # 1.937.915
     subland <- land[i,]   
     suborography <- orography[i,]
-    source.supp <- data.frame(cell.id=subland$cell.id, source.supp.sprd=F, source.supp.fuel=F)
+    source.supp <- data.frame(cell.id=subland$cell.id, nsupp.sprd=0, nsupp.fuel=0)
     
     
     ## Find either fixed or stochastic annual target area for wildfires
@@ -226,8 +226,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## Retrive the current neighs, and compute fuel
         neigh.land <- subland[i.land.in.neigh,] %>%
                       mutate(fuel=ifelse(spp %in% c(15,16,17), 0.1,  # grass, crop
-                                   # ifelse(spp==14, 0.01638*biom, # shrub
-                                   ifelse(spp==14, biom/10^4, # shrub PATILLERUUUU
+                                   ifelse(spp==14, 0.01638*biom, # shrub
                                     ifelse(age<=7, 0.2, # saplings
                                       ifelse(biom<=200 & spp>=1 & spp<=7, 0.5, # conifer young
                                         ifelse(biom<=200 & spp>=8 & spp<=13, 0.3, # decid young
@@ -246,18 +245,20 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## Joining to this df, the neigh.orography to get the elevation of the source cells
         ## Joining to this df, the neigh.orography to get the elevation of the neighbour cells
         ## Computing slope and wind factors
-        sprd.rate <- left_join(neigh.land, neigh.id, by="cell.id") %>%
-                     left_join(neigh.orography, by=c("source.id"="cell.id")) %>%
-                     left_join(neigh.orography, by="cell.id")  %>% 
-                     mutate(dif.elev = elev.y-elev.x, 
-                            dif.wind <- abs(windir-fire.wind),
-                            slope = pmax(pmin(dif.elev,0.5),-0.5)+0.5,  
-                            wind = ifelse(dif.wind==0, 0, ifelse(dif.wind %in% c(45,315), 0.25, 
-                                   ifelse(dif.wind %in% c(90,270), 0.5, ifelse(dif.wind %in% c(135,225), 0.75, 1)))) ) %>% 
-                      mutate(sr=wslope*slope+wwind*wind, fi=sr*fuel)
-        sprd.rate$pb <- 1-exp(-facc*sprd.rate$fi) + runif(nrow(sprd.rate), -rpb, rpb)   
-        sprd.rate <- group_by(sprd.rate, cell.id) %>% 
-                     summarize(fire.id=fire.id, spp=mean(spp), age=mean(age), fi=max(fi), pb=max(pb), nsource=sum(position)) %>%
+        sprd.rate.sources <- left_join(neigh.land, neigh.id, by="cell.id") %>%
+                             left_join(neigh.orography, by=c("source.id"="cell.id")) %>%
+                             left_join(neigh.orography, by="cell.id")  %>% 
+                             mutate(dif.elev = elev.y-elev.x, 
+                                    dif.wind <- abs(windir-fire.wind),
+                                    slope = pmax(pmin(dif.elev,0.5),-0.5)+0.5,  
+                                    wind = ifelse(dif.wind==0, 0, ifelse(dif.wind %in% c(45,315), 0.25, 
+                                           ifelse(dif.wind %in% c(90,270), 0.5, ifelse(dif.wind %in% c(135,225), 0.75, 1)))) ) %>% 
+                             mutate(sr=wslope*slope+wwind*wind, fi=sr*fuel)
+        sprd.rate.sources$pb <- 1-exp(-facc*sprd.rate.sources$fi) + runif(nrow(sprd.rate.sources), -rpb, rpb)   
+        sprd.rate <- group_by(sprd.rate.sources, cell.id) %>% 
+                     summarize(fire.id=fire.id, spp=mean(spp), age=mean(age), fi=max(fi), 
+                               pb=max(pb), nsource=sum(position)) %>%
+                     left_join(select(sprd.rate.sources, cell.id, pb, nsupp.sprd, nsupp.fuel), by=c("cell.id", "pb")) %>% 
                      mutate(nsupp.sprd=nsupp.sprd+(fi<=sprd.th), nsupp.fuel=nsupp.fuel+(spp<=14 & age<=fuel.th), 
                             tosupp.sprd=(nsupp.sprd>=accum.supp), tosupp.fuel=(nsupp.fuel>=accum.supp))
         
@@ -298,7 +299,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
         ## cells from which to spread from.
         ## Otherwise, keep spreading even if everything is by suppression. that's what we want!
         nburn <- sum(sprd.rate$burn)
-        if(is.na(nburnt)){
+        if(is.na(nburn)){
           write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
           write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
           stop("NA in spread.rate")

@@ -30,7 +30,7 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 7){
+for(i in 14){
   scn.name <- scenarios$scn.name[i]
   define.scenario(scn.name)
   ## general
