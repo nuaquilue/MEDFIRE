@@ -142,11 +142,15 @@ writeRaster(BA, "D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA0_100m_
 LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
 TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
 BA <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA10_100m_31N-ETRS89.asc")
-load("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/sqi.rdata")
+load("inputlyrs/rdata/land.rdata")
+load("inputlyrs/rdata/orography.rdata")
+source("mdl/update.clim.r")
+clim <- hist.clim(land, orography, "SMHI-RCA4_MOHC-HadGEM2-ES")
 w <- read.table("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputfiles/InitialBiomassShrub.txt", header=T)
 # Shrub Biomassa: W=exp(a0+a1*ln(hm*x)+a2*ln(fcc*x)) where x=TSF and W=Biomassa (Tones/hectarea)
 dta.shrub <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], tsf=TSF[]) %>% filter(!is.na(lcfm)) %>%
-              filter(lcfm==14) %>%  left_join(sqi, by="cell.id") %>% left_join(w, by="x")   %>% 
+             filter(lcfm==14) %>%  left_join(select(clim, cell.id, sqi), by="cell.id") %>% 
+             left_join(w, by="sqi") %>% 
              mutate(ba=exp(a0+a1*log(hm*pmin(tsf, age_max))+a2*log(fcc*pmin(tsf,age_max))))
 summary(dta.shrub$ba[dta.shrub$lcfm==14])
 BA[LCFM[]==14] <- dta.shrub$ba
@@ -158,7 +162,7 @@ any(is.na(dta$ba))
 dta$ba[is.na(dta$ba)] <- mean(dta$ba[dta$lcfm==1], na.rm=T)
 BA[LCFM[]<=14] <- dta$ba
 writeRaster(BA, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc",
-            format="ascii", NAflag=-1, overwrite=T)
+            format="ascii", NAflag=-1, overwrite=T)  ## Biomass forest is m2/ha * 10 and Biomass shrubs is tones/ha
 
 load("inputlyrs/rdata/land.rdata")
 land$biom[land$spp==14] <- dta.shrub$ba
