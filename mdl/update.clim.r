@@ -57,6 +57,11 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
                             ifelse(sqest.maquia>=sqest.brolla & sqest.maquia>=sqest.boix, 2,
                               ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))))
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
+
+  if(any(is.infinite(sqi.shrub$sq.brolla)) | any(is.na(sqi.shrub$sq.brolla))){
+    write.table(sqi.shrub, paste0(out.path, "/ErrorSQIshrub.txt"), quote=F, row.names=F, sep="\t")
+    stop("Error SQI shrub")
+  }
   
   return(clim=clim)
 }
@@ -116,7 +121,7 @@ hist.clim <- function(land, orography, clim.mdl){
                               ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))))
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
   
-  return(clim=clim)
+  save(clim, file=paste0("inputlyrs/rdata/clim_hist_", clim.mdl,".rdata"))
 }
 
 

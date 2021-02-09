@@ -7,7 +7,7 @@ outputs
 rscripts/outs
 rscripts/old
 inputlyrs/asc
-inputlyrs/rdata/climate*
+inputlyrs/rdata/clim*
 inputlyrs/rdata/land.cover.changes.rdata
 inputlyrs/rdata/sdm*
 inputlyrs/rdata/wildfires.rdata

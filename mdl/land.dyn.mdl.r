@@ -141,7 +141,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 1. CLIMATE CHANGE  
       if(!is.climate.change & t==1){
-        clim <- hist.clim(land, orography, clim.mdl)
+        load(paste0("inputlyrs/rdata/clim_hist_", clim.mdl, ".rdata"))
         load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
       }
       if(is.climate.change & t %in% clim.schedule){
