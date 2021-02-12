@@ -339,7 +339,6 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
             write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
             stop("NA in sample fire.front")
           }
-          
           if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75))
             fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F,
                                       prob=sprd.rate$nsource[sprd.rate$burn]/100 ) )  
