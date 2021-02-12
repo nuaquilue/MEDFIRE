@@ -101,7 +101,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
     ## Update prob.igni according to swc
     pigni <- prob.igni(land, orography, clim, interface)
     pigni <- mutate(pigni, psft=p*pfst.pwind[,ifelse(swc==1,1,2)+1]) %>%
-            filter(cell.id %in% subland$cell.id)
+             filter(cell.id %in% subland$cell.id)
     
     
     ## Pre-select the coordinates of old Mediterranean vegetation, i.e.
@@ -141,9 +141,12 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       wwind <- fst.sprd.weight[2,fire.spread.type+1]
       wslope <- fst.sprd.weight[3,fire.spread.type+1]
       
-      ## Assign the fire suppression levels
+      ## Assign the fire suppression levels and
+      ## minimum number of ha suppressed before to acivate fire-level suppression. 
+      ## It applies for both types of suppression
       sprd.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$sprd.th
       fuel.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$fuel.th
+      accum.supp <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$accum
       
       ## Assign the main wind direction according to the fire spread type
       ## Wind directions: 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
@@ -195,7 +198,7 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       map$step[map$cell.id==igni.id] <- step
       track.burnt.cells <- rbind(track.burnt.cells, data.frame(fire.id=fire.id, cell.id=igni.id, igni=T, fintensity=1))
       
-      cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- igni:", igni.id))
+      # cat(paste("Fire:", fire.id, "- aTarget:", fire.size.target, "- igni:", igni.id))
       
       ## Start speading from active cells (i.e. the fire front)
       while((aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)<fire.size.target){
@@ -315,8 +318,8 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
                                                                    igni=F, fintensity=sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]))
         
         ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
-        aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn & sprd.rate$fi<=ifelse(swc<4,fire.intens.th,100))
-        aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & sprd.rate$fi>ifelse(swc<4,fire.intens.th,100))
+        aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn  & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & sprd.rate$fi<=ifelse(swc<4,fire.intens.th,100))
+        aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & sprd.rate$fi>ifelse(swc<4,fire.intens.th,100))
         asupp.sprd <- asupp.sprd + sum(sprd.rate$burn & !sprd.rate$tosupp.fuel & sprd.rate$tosupp.sprd)
         asupp.fuel <- asupp.fuel + sum(sprd.rate$burn & sprd.rate$tosupp.fuel)
         
@@ -326,11 +329,17 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
           cumul.source <- sprd.rate$nsource[sprd.rate$burn]
         }
         else{
-          ratio.burnt <- (aburnt.lowintens+aburnt.highintens)/fire.size.target
+          ratio.burnt <- (aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)/fire.size.target
           z <- rdunif(1,mx.ncell.ff-5,mx.ncell.ff)
           ncell.ff <- min(nburn*runif(1,0.5,0.7), z, na.rm=T)
           # si el nombre cell del ff coincideix amb el màxim  
           # o bé aleatòriament cap al final de l'incendi, forço compacitat.
+          if(any(is.na(sprd.rate$nsource)) | any(is.na(sprd.rate$pb))){
+            write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
+            write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
+            stop("NA in sample fire.front")
+          }
+          
           if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75))
             fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F,
                                       prob=sprd.rate$nsource[sprd.rate$burn]/100 ) )  
@@ -355,27 +364,33 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, 
                                                  wind=fire.wind, atarget=fire.size.target, aburnt.highintens, 
                                                  aburnt.lowintens, asupp.sprd, asupp.fuel))
-      cat(paste(" - aBurnt:", aburnt.lowintens+aburnt.highintens, "- aSupp:", asupp.sprd+asupp.fuel), "\n")
+      # cat(paste(" - aBurnt:", aburnt.lowintens+aburnt.highintens, "- aSupp:", asupp.sprd+asupp.fuel), "\n")
       
       ## Update annual burnt area
       area.target <- area.target - (aburnt.lowintens + aburnt.highintens + asupp.sprd + asupp.fuel)
       annual.aburnt <- annual.aburnt + aburnt.lowintens + aburnt.highintens
       annual.asupp <- annual.asupp + asupp.sprd + asupp.fuel
       
+      if(is.na(area.target)){
+        write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
+        write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
+        stop("NA in area.target")
+      }
+      
     }  # while 'area.target'
     
-    
     if(print.maps){
-      ## fire.ids
-      MAP[!is.na(MASK[])] <- map$id
-      writeRaster(MAP, paste0(out.path, "/lyr/FireIds_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
-      ## fire.step
-      MAP[!is.na(MASK[])] <- map$step
-      writeRaster(MAP, paste0(out.path, "/lyr/FireStep_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
+      # Data frame with 
+      save(map, file=paste0(out.path, "/Maps_r", irun, "t", t, "_swc", swc, ".rdata"))
+      # ## fire.ids
+      # MAP[!is.na(MASK[])] <- map$id
+      # writeRaster(MAP, paste0(out.path, "/lyr/FireIds_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
+      # ## fire.step
+      # MAP[!is.na(MASK[])] <- map$step
+      # writeRaster(MAP, paste0(out.path, "/lyr/FireStep_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
     }
-    # Data frame with 
-    save(map, file=paste0(out.path, "/Maps_r", irun, "t", t, ".rdata"))
-  }
+    
+  }  # 'all.swc
   
   return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,], track.step=track.step[-1,]))
 }

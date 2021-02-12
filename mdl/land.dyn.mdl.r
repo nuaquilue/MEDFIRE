@@ -12,18 +12,18 @@ land.dyn.mdl <- function(scn.name){
     library(Rcpp)
     library(tidyverse)
   })
+  source("mdl/auxiliars.r")
+  source("mdl/afforestation.r")
+  source("mdl/cohort.establish.r")
+  source("mdl/drought.r")
+  source("mdl/fire.regime.r")
+  source("mdl/forest.mgmt.r")
+  source("mdl/growth.r")
+  source("mdl/land.cover.change.r")
+  source("mdl/post.fire.r")
+  source("mdl/prob.igni.r")
   source("mdl/update.clim.r")
   source("mdl/update.interface.r")
-  source("mdl/land.cover.change.r")
-  source("mdl/prob.igni.r")
-  source("mdl/growth.r")
-  source("mdl/drought.r")
-  source("mdl/cohort.establish.r")
-  source("mdl/afforestation.r")
-  source("mdl/forest.mgmt.r")
-  source("mdl/fire.regime.r")
-  source("mdl/post.fire.r")
-  source("mdl/auxiliars.r")
   sourceCpp("mdl/is.in.cpp")
   
   
@@ -163,11 +163,11 @@ land.dyn.mdl <- function(scn.name){
         grass.cells <- c(sample(unlist(filter(land.cover.changes, code==1415) %>% select(cell.id)), 84, replace=F),
                          sample(unlist(filter(land.cover.changes, code==1615) %>% select(cell.id)), 119, replace=F))
         shrub.cells <- sample(unlist(filter(land.cover.changes, code==1614) %>% select(cell.id)), 6340, replace=F)
-        ## Apply the changes in "land"
-        land$spp[land$cell.id %in% urban.cells] <- 20 
-        land$spp[land$cell.id %in% water.cells] <- 19
-        land$spp[land$cell.id %in% grass.cells] <- 15
-        land$spp[land$cell.id %in% shrub.cells] <- 14
+        ## Apply the changes in "land" and "clim
+        land$spp[land$cell.id %in% urban.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 20 
+        land$spp[land$cell.id %in% water.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 19
+        land$spp[land$cell.id %in% grass.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 15
+        land$spp[land$cell.id %in% shrub.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 14
         land$biom[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
         land$biom[land$cell.id %in% shrub.cells] <- 0
         land$age[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
@@ -178,8 +178,9 @@ land.dyn.mdl <- function(scn.name){
         land$typdist[land$cell.id %in% shrub.cells] <- "lchg.rabn"
         land$tburnt[land$cell.id %in% c(urban.cells, water.cells)] <- NA
         land$tburnt[land$cell.id %in% c(grass.cells, shrub.cells)] <- 0
+        clim$sdm[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
+        clim$sqi[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
         ## Update sdm and sqi for shrublands
-        clim$spp[clim$cell.id %in% shrub.cells] <- 14
         clim$sdm[clim$cell.id %in% shrub.cells] <- 1
         sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, temp, precip) %>% 
                      mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
@@ -196,34 +197,59 @@ land.dyn.mdl <- function(scn.name){
         land.cover.changes$code[land.cover.changes$cell.id %in% water.cells] <- 1919
         land.cover.changes$code[land.cover.changes$cell.id %in% grass.cells] <- 1515
         land.cover.changes$code[land.cover.changes$cell.id %in% shrub.cells] <- 1414
+        
+        if(any(is.infinite(sqi.shrub$sq.brolla)) | any(is.na(sqi.shrub$sq.brolla))){
+          write.table(sqi.shrub, paste0(out.path, "/ErrorSQIshrub.txt"), quote=F, row.names=F, sep="\t")
+          stop("Error SQI shrub")
+        }
+        
       }
       if(is.land.cover.change & t %in% lchg.schedule){
         # Urbanization
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
-        land$spp[land$cell.id %in% chg.cells] <- 20 # urban
+        land$spp[land$cell.id %in% chg.cells] <- clim$spp[clim$cell.id %in% chg.cells] <- 20 # urban
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
         land$tsdist[land$cell.id %in% chg.cells] <- NA  # don't care the time since it's urban
         land$typdist[land$cell.id %in% chg.cells] <- "lchg.urb"
         land$tburnt[land$cell.id %in% chg.cells] <- NA
+        clim$sdm[clim$cell.id %in% chg.cells] <- clim$sqi[clim$cell.id %in% chg.cells] <- NA
         # Agriculture conversion
         visit.cells <- chg.cells
         chg.cells <- land.cover.change(land, coord, interface, 2, t, visit.cells)
-        land$spp[land$cell.id %in% chg.cells] <- 16 # arableland or 17 - permanent crops
+        land$spp[land$cell.id %in% chg.cells]<- clim$spp[clim$cell.id %in% chg.cells] <- 16 # arableland or 17 - permanent crops
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
         land$typdist[land$cell.id %in% chg.cells] <- "lchg.agri"
         land$tsdist[land$cell.id %in% chg.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
+        clim$sdm[clim$cell.id %in% chg.cells] <- clim$sqi[clim$cell.id %in% chg.cells] <- NA
         # Rural abandonment
         visit.cells <- c(visit.cells, chg.cells)
         chg.cells <- land.cover.change(land, coord, interface, 3, t, visit.cells)
-        land$spp[land$cell.id %in% chg.cells] <- 14  # shrub
+        land$spp[land$cell.id %in% chg.cells] <- clim$spp[clim$cell.id %in% chg.cells] <- 14  # shrub
         land$biom[land$cell.id %in% chg.cells] <- 0
         land$age[land$cell.id %in% chg.cells] <- 0
         land$typdist[land$cell.id %in% chg.cells] <- "lchg.rabn"
         land$tsdist[land$cell.id %in% chg.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
+        clim$sdm[clim$cell.id %in% chg.cells] <- 1
+        sqi.shrub <- filter(clim, cell.id %in% chg.cells) %>% select(spp, temp, precip) %>% 
+                     mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                            aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                            aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+                            sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) %>% 
+                     mutate(sqest.brolla=sq.brolla/max(sq.brolla), sqest.maquia=sq.maquia/max(sq.maquia), sqest.boix=sq.boix/max(sq.boix),
+                            sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
+                                  ifelse(sqest.maquia>=sqest.brolla & sqest.maquia>=sqest.boix, 2,
+                                   ifelse(sqest.boix>=sqest.brolla & sqest.boix>=sqest.maquia, 3, 0))))
+        clim$sqi[clim$cell.id %in% chg.cells] <- sqi.shrub$sqi
+        
+        if(any(is.infinite(sqi.shrub$sq.brolla)) | any(is.na(sqi.shrub$sq.brolla))){
+          write.table(sqi.shrub, paste0(out.path, "/ErrorSQIshrub.txt"), quote=F, row.names=F, sep="\t")
+          stop("Error SQI shrub")
+        }
+        
         # Update interface values
         interface <- update.interface(land)
       }

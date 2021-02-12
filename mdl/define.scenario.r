@@ -57,7 +57,6 @@ define.scenario <- function(scn.name){
   pb.upper.th <- 0.8
   pb.lower.th <- -1
   fire.intens.th <- 0.35  # high vs. low intensity fire, sr <= fire.intens.th
-  accum.supp <- 3 # minimum number of ha suppressed before to acivate fire-level suppression. it applies for both types of suppression
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
   pb.convenient.area <- 400 ## should be 15.000 ha
   accum.burnt.area <- rep(pb.convenient.area,7)
@@ -73,7 +72,7 @@ define.scenario <- function(scn.name){
   file.dmnd.harvest <- "DemandHarvest"
   file.clim.severity <- "ClimaticSeverity_noCC"
   file.pctg.hot.days <- "PctgHotDays_noCC"
-  file.fire.suppression <- "FireSuppression"
+  file.fire.suppression <- "FireSuppress"
   file.sprd.weight <- "WeightSprdFactors"
   
   ## Save all the variables in .r file to be further loaded by landscape.dyn.r

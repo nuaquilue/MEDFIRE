@@ -16,7 +16,7 @@ growth <- function(land, clim){
              left_join(select(clim, cell.id, sdm, sqi), by = "cell.id") 
   aux.spp.sdmin <- filter(aux.spp, sdm==1) %>% left_join(growth.coeff, by = c("spp", "sqi")) %>% 
                    mutate(increment = c + x*biom/10 + x2*(biom/10)^2 ) %>%
-                   mutate(increment=ifelse(increment<0,0,increment))  %>% select(cell.id, increment)
+                   mutate(increment=ifelse(increment<0,0,increment)) %>% select(cell.id, increment)
   aux.spp.sdmout <- filter(aux.spp, sdm==0) %>% left_join(filter(growth.coeff, sqi==1) %>% select(-sqi), by = "spp") %>% 
                     mutate(increment = c + x*biom/10 + x2*(biom/10)^2 ) %>%
                     mutate(increment=ifelse(increment<0,0,increment)) %>% select(cell.id, increment)
@@ -32,7 +32,7 @@ growth <- function(land, clim){
   
   ## Join increment
   all <- rbind(aux.spp.sdmin, aux.spp.sdmout, aux.shrub)
-  new.biom <- left_join(land, all, by = "cell.id") %>% mutate(biom=biom+increment*10) %>% select(biom)
+  new.biom <- left_join(land, all, by = "cell.id") %>% mutate(biom=biom+increment*10) # %>% select(biom)
   
   return(new.biom$biom)
 }
