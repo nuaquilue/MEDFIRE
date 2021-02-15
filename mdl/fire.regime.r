@@ -3,14 +3,13 @@
 ###
 ######################################################################################
 
-fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.sever, t, 
+fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all.swc, clim.sever, t, 
                         annual.burnt.area, MASK, out.path, irun, rpb){
 
   ## Function to select items not in a vector
   `%notin%` <- Negate(`%in%`)
   
   ## Read and load input data
-  load("inputlyrs/rdata/pfst.pwind.rdata")
   clim.severity <- read.table(paste0("inputfiles/", file.clim.severity, ".txt"), header=T)
   pctg.hot.days <- read.table(paste0("inputfiles/", file.pctg.hot.days, ".txt"), header=T)
   prob.hot <- read.table("inputfiles/ProbHot.txt", header=T)
@@ -120,6 +119,11 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       ## Select an ignition point, to then decide the fire spread type, the fire suppression level,
       ## the wind direction and the target fire size according to clim and fire spread type
       ## What if selected igni has already been burnt?? How can I control it? pigni$psft==0 of burnt cells??
+      if(any(is.na(pigni$psft))){
+        write.table(land, paste0(out.path, "/ErrorLand.txt"), quote=F, row.names=F, sep="\t")
+        write.table(pigni, paste0(out.path, "/ErrorPI.txt"), quote=F, row.names=F, sep="\t")
+        stop("NA in prob.igni")
+      }
       igni.id <- sample(pigni$cell.id, 1, replace=F, pigni$psft)
       
       # Assign the fire spread type
@@ -150,6 +154,11 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
       
       ## Assign the main wind direction according to the fire spread type
       ## Wind directions: 0-N, 45-NE, 90-E, 135-SE, 180-S, 225-SW, 270-W, 315-NE
+      if(any(is.na(filter(pfst.pwind, cell.id==igni.id)[4:6]))){
+        write.table(land, paste0(out.path, "/ErrorLand.txt"), quote=F, row.names=F, sep="\t")
+        write.table(pfst.pwind, paste0(out.path, "/ErrorPI.txt"), quote=F, row.names=F, sep="\t")
+        stop("NA in pfst.wind")
+      }
       if(fire.spread.type==1)  # N, NW or W according to map
         fire.wind <- sample(c(0,315,270), 1, replace=F, p=filter(pfst.pwind, cell.id==igni.id)[4:6])
       if(fire.spread.type==2)  # S 80%, SW 10%, SE 10%
@@ -166,6 +175,10 @@ fire.regime <- function(land, coord, orography, clim, interface, all.swc, clim.s
           log.size <- seq(1.7, 5, 0.01)  ## max fire size is 100.000 ha
         log.num <- filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$intercept +
           filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$slope * log.size
+        if(any(is.na(log.num))){
+          write.table(log.num, paste0(out.path, "/ErrorLogNum.txt"), quote=F, row.names=F, sep="\t")
+          stop("NA in log.num")
+        }
         fire.size.target <- sample(round(10^log.size), 1, replace=F, prob=10^log.num)
       }
       else

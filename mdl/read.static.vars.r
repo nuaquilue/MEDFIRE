@@ -91,14 +91,17 @@ read.static.vars <- function(){
   save(harvest, file="inputlyrs/rdata/harvest.rdata")
   
   ## Layers for fire
-  IGNI.TOPO <- raster(paste0(work.path, "/inputlyrs/asc/IgniTopo_100m_31N-ETRS89.asc"))
-  IGNI.WIND <- raster(paste0(work.path, "/inputlyrs/asc/IgniWind_100m_31N-ETRS89.asc"))
-  PWIND.N <- raster(paste0(work.path, "/inputlyrs/asc/ProbN_100m_31N-ETRS89.asc"))
-  PWIND.NW <- raster(paste0(work.path, "/inputlyrs/asc/ProbNW_100m_31N-ETRS89.asc"))
-  PWIND.W <- raster(paste0(work.path, "/inputlyrs/asc/ProbW_100m_31N-ETRS89.asc"))
+  IGNI.TOPO <- raster("inputlyrs/asc/IgniTopo_100m_31N-ETRS89.asc")
+  IGNI.WIND <- raster("inputlyrs/asc/IgniWind_100m_31N-ETRS89.asc")
+  PWIND.N <- raster("inputlyrs/asc/ProbN_100m_31N-ETRS89.asc")
+  PWIND.NW <- raster("inputlyrs/asc/ProbNW_100m_31N-ETRS89.asc")
+  PWIND.W <- raster("inputlyrs/asc/ProbW_100m_31N-ETRS89.asc")
   pfst.pwind <- data.frame(cell.id=1:ncell(MASK), pfst.wind=IGNI.WIND[], pfst.topo=IGNI.TOPO[],
                            pwind.n=PWIND.N[], pwind.nw=PWIND.NW[], pwind.w=PWIND.W[])
   pfst.pwind <- pfst.pwind[!is.na(MASK[]),]
+  pfst.pwind$pwind.n[is.na(pfst.pwind$pwind.n)] <- 0
+  pfst.pwind$pwind.nw[is.na(pfst.pwind$pwind.nw)] <- 0
+  pfst.pwind$pwind.w[is.na(pfst.pwind$pwind.w)] <- 0
   save(pfst.pwind, file="inputlyrs/rdata/pfst.pwind.rdata")
 }
 
