@@ -122,9 +122,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       if(any(is.na(pigni$psft))){
         write.table(land, paste0(out.path, "/ErrorLand.txt"), quote=F, row.names=F, sep="\t")
         write.table(pigni, paste0(out.path, "/ErrorPI.txt"), quote=F, row.names=F, sep="\t")
-        stop("NA in prob.igni")
+        cat("NA in prob.igni")
       }
-      igni.id <- sample(pigni$cell.id, 1, replace=F, pigni$psft)
+      pigni$psft[is.na(pigni$psft)] <- 0
+      igni.id <- sample(pigni$cell.id, 1, replace=F, prob=pigni$psft)
       
       # Assign the fire spread type
       if(swc==1 | swc==3)
@@ -157,12 +158,15 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       if(any(is.na(filter(pfst.pwind, cell.id==igni.id)[4:6]))){
         write.table(land, paste0(out.path, "/ErrorLand.txt"), quote=F, row.names=F, sep="\t")
         write.table(pfst.pwind, paste0(out.path, "/ErrorPI.txt"), quote=F, row.names=F, sep="\t")
-        stop("NA in pfst.wind")
+        cat("NA in pfst.wind")
       }
-      if(fire.spread.type==1)  # N, NW or W according to map
-        fire.wind <- sample(c(0,315,270), 1, replace=F, p=filter(pfst.pwind, cell.id==igni.id)[4:6])
+      if(fire.spread.type==1){  # N, NW or W according to map
+        p <- filter(pfst.pwind, cell.id==igni.id)[4:6]
+        p[is.na(p)] <- 0
+        fire.wind <- sample(c(0,315,270), 1, replace=F, prob=p) #=filter(pfst.pwind, cell.id==igni.id)[4:6])
+      }
       if(fire.spread.type==2)  # S 80%, SW 10%, SE 10%
-        fire.wind <- sample(c(180,225,135), 1, replace=F, p=c(80,10,10))
+        fire.wind <- sample(c(180,225,135), 1, replace=F, prob=c(80,10,10))
       if(fire.spread.type==3)  # any at random
         fire.wind <- sample(seq(0,315,45), 1, replace=F)
       
@@ -174,11 +178,12 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         else
           log.size <- seq(1.7, 5, 0.01)  ## max fire size is 100.000 ha
         log.num <- filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$intercept +
-          filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$slope * log.size
+                   filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$slope * log.size
         if(any(is.na(log.num))){
           write.table(log.num, paste0(out.path, "/ErrorLogNum.txt"), quote=F, row.names=F, sep="\t")
-          stop("NA in log.num")
+          cat("NA in log.num")
         }
+        log.num[is.na(log.num)] <- 0
         fire.size.target <- sample(round(10^log.size), 1, replace=F, prob=10^log.num)
       }
       else
@@ -347,17 +352,23 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           ncell.ff <- min(nburn*runif(1,0.5,0.7), z, na.rm=T)
           # si el nombre cell del ff coincideix amb el màxim  
           # o bé aleatòriament cap al final de l'incendi, forço compacitat.
-          if(any(is.na(sprd.rate$nsource)) | any(is.na(sprd.rate$pb))){
+          if(any(is.na(sprd.rate$nsource)) | any(is.na(sprd.rate$pb)) | any(is.na(sprd.rate$burn))){
             write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
             write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
-            stop("NA in sample fire.front")
+            cat("NA in sample fire.front")
           }
-          if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75))
+          if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75)){
+            sprd.rate$burn[is.na(sprd.rate$burn)] <- F
+            sprd.rate$nsource[is.na(sprd.rate$nsource)] <- 1
             fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F,
-                                      prob=sprd.rate$nsource[sprd.rate$burn]/100 ) )  
-          else
+                                      prob=sprd.rate$nsource[sprd.rate$burn]/100 ) )  ## error.sample.int
+          }
+          else{
+            sprd.rate$burn[is.na(sprd.rate$burn)] <- F
+            sprd.rate$pb[is.na(sprd.rate$pb)] <- 0
             fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, 
                                       prob=wnsource^sprd.rate$pb[sprd.rate$burn]) )
+          }
           cumul.source <- sprd.rate$nsource[sprd.rate$cell.id %in% fire.front]
         }
         
