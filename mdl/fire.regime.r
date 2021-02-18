@@ -363,8 +363,9 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75)){
             sprd.rate$burn[is.na(sprd.rate$burn)] <- F
             sprd.rate$nsource[is.na(sprd.rate$nsource)] <- 1
-            fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F,
-                                      prob=sprd.rate$nsource[sprd.rate$burn]/100 ) )  ## error.sample.int
+            kk <- sprd.rate$nsource[sprd.rate$burn]/100
+            kk[is.na(kk)] <- 0
+            fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=kk))  ## error.sample.int
           }
           else{
             sprd.rate$burn[is.na(sprd.rate$burn)] <- F
