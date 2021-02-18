@@ -98,6 +98,8 @@ land.dyn.mdl <- function(scn.name){
                             aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
   track.fire.spp <- data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
   # track.step <- data.frame(run=NA, year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
+  track.sr <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
+                         nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
   track.pb <- data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
                           wind=NA, atarget=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
@@ -300,6 +302,7 @@ land.dyn.mdl <- function(scn.name){
                   group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
           # track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
+          track.sr <- rbind(track.sr, data.frame(run=irun, fire.out[[4]]))
         }
         # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
         # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
