@@ -462,8 +462,9 @@ land.dyn.mdl <- function(scn.name){
   track.fire$rem <- pmax(0, track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
                            track.fire$asupp.fuel - track.fire$asupp.sprd)
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.fire.spp[-1,], paste0(out.path, "/FiresSpp.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
   # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.sr[-1,], paste0(out.path, "/FireSprd.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
   names(track.post.fire)[4:5] <- c("spp.in", "ha")
