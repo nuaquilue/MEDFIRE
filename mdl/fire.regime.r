@@ -81,9 +81,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         area.target <- round(min(200000-(annual.aburnt+annual.asupp), 
                              max(10,rlnorm(1, aba.dist$meanlog[aba.dist$clim==clim.sever & aba.dist$swc==swc],
                                               aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc])))) 
-        if(is.na(area.target))
+        if(is.na(area.target)){
           cat(paste("SWC", swc, "- clim.sever", clim.sever))
-        
+          area.target <- 100
+        }
       }  
     }
     ## Find annual target area for prescribed burns
