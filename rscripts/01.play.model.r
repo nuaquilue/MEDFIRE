@@ -7,11 +7,7 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-<<<<<<< HEAD
 scn.name <- "firesupp_test"; define.scenario(scn.name)
-=======
-scn.name <- "firesupp_v6"; define.scenario(scn.name)
->>>>>>> 01be45673d65015c727ad3265c0a3474fcc602b3
 # Change target parameters
 nrun <- 1
 time.horizon <- 2
