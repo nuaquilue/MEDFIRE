@@ -7,7 +7,11 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
+<<<<<<< HEAD
 scn.name <- "firesupp_test"; define.scenario(scn.name)
+=======
+scn.name <- "firesupp_v6"; define.scenario(scn.name)
+>>>>>>> 01be45673d65015c727ad3265c0a3474fcc602b3
 # Change target parameters
 nrun <- 1
 time.horizon <- 2
@@ -20,7 +24,7 @@ is.land.cover.change <- F
 is.harvest <- F
 is.wildfire <- T
 is.postfire <- T
-file.fire.suppression <- "FireSuppress_Current_v3"
+file.fire.suppression <- "FireSuppress_Current_v6"
 dump(c("nrun", "time.horizon", "spin.up", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
        "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
@@ -32,7 +36,7 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 7){
+for(i in 16){
   scn.name <- scenarios$scn.name[i]
   define.scenario(scn.name)
   ## general
