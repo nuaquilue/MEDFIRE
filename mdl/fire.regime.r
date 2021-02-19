@@ -126,6 +126,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       ## the wind direction and the target fire size according to clim and fire spread type
       ## What if selected igni has already been burnt?? How can I control it? pigni$psft==0 of burnt cells??
       if(class(try(sample(pigni$cell.id, 1, replace=F, prob=pigni$psft), silent=T))=="try-error"){
+        save.image(file= paste0(out.path, "/EnvironmentPIGNI.rdata"))
         write.table(land, paste0(out.path, "/ErrorLand.txt"), quote=F, row.names=F, sep="\t")
         write.table(pigni, paste0(out.path, "/ErrorPI.txt"), quote=F, row.names=F, sep="\t")
         cat("NA in prob.igni")
@@ -170,6 +171,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       if(fire.spread.type==1){  # N, NW or W according to map
         p <- filter(pfst.pwind, cell.id==igni.id)[4:6]
         if(class(try(sample(c(0,315,270), 1, replace=F, prob=p), silent=T))=="try-error"){
+          save.image(file= paste0(out.path, "/EnvironmentPWIND.rdata"))
           write.table(pfst.pwind, paste0(out.path, "/ErrorPWIND.txt"), quote=F, row.names=F, sep="\t")
           cat("NA in pfst.pwind")
           fire.wind <-  sample(c(0,315,270), 1, replace=F) # choose randomly
@@ -192,6 +194,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         log.num <- filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$intercept +
                    filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$slope * log.size
         if(class(try(sample(round(10^log.size), 1, replace=F, prob=10^log.num), silent=T))=="try-error"){
+          save.image(file= paste0(out.path, "/EnvironmentFIRESIZE.rdata"))
           write.table(log.num, paste0(out.path, "/ErrorLogNum.txt"), quote=F, row.names=F, sep="\t")
           cat(paste("NA in log.num - clim.sever:", clim.sever, "- fire.spread.type:", fire.spread.type))
           fire.size.target <- 50  ## minimum
@@ -369,6 +372,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75)){
             p <- sprd.rate$nsource[sprd.rate$burn]/100
             if(class(try(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=p), silent=T))=="try-error"){
+              save.image(file= paste0(out.path, "/EnvironmentFRONT1.rdata"))
               write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
               write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
               cat("NA in sample fire.front 1")
@@ -380,6 +384,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           else{
             p <- wnsource^sprd.rate$pb[sprd.rate$burn]
             if(class(try(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=p), silent=T))=="try-error"){
+              save.image(file= paste0(out.path, "/EnvironmentFRONT2.rdata"))
               write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
               write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
               cat("NA in sample fire.front 2")
@@ -414,9 +419,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       annual.asupp <- annual.asupp + asupp.sprd + asupp.fuel
       
       if(is.na(area.target)){
+        save.image(file= paste0(out.path, "/EnvironmentAT.rdata"))
         write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
         write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
-        stop("NA in area.target")
+        cat("NA in area.target")
       }
       
     }  # while 'area.target'
