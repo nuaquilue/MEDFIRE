@@ -71,7 +71,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       ## Find stochastic annual burnt area
       else{ 
         is.aba.fix <- F
-        if(clim.sever==1 & swc<=2){  # decide if climatic severity is extrem for 'wind' or 'heat' swc
+        if(clim.sever==1 & swc==1){  # decide if climatic severity is extrem for 'wind' or 'heat' swc
           pctg <- pctg.hot.days[pctg.hot.days$year==t, swc+1]
           prob.extrem <- 1/(1+exp(-(prob.hot$inter[swc] + prob.hot$slope[swc]*pctg)))
           if(runif(1,0,100) <= prob.extrem) # extreme
@@ -81,10 +81,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         area.target <- round(min(200000-(annual.aburnt+annual.asupp), 
                              max(10,rlnorm(1, aba.dist$meanlog[aba.dist$clim==clim.sever & aba.dist$swc==swc],
                                               aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc])))) 
-        if(is.na(area.target)){
-          cat(paste("SWC", swc, "- clim.sever", clim.sever))
-          area.target <- 100
-        }
+            # if(is.na(area.target)){
+            #   cat(paste("SWC", swc, "- clim.sever", clim.sever))
+            #   area.target <- 100
+            # }
       }  
     }
     ## Find annual target area for prescribed burns
@@ -125,13 +125,14 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       ## Select an ignition point, to then decide the fire spread type, the fire suppression level,
       ## the wind direction and the target fire size according to clim and fire spread type
       ## What if selected igni has already been burnt?? How can I control it? pigni$psft==0 of burnt cells??
-      if(any(is.na(pigni$psft))){
+      if(class(try(sample(pigni$cell.id, 1, replace=F, prob=pigni$psft), silent=T))=="try-error"){
         write.table(land, paste0(out.path, "/ErrorLand.txt"), quote=F, row.names=F, sep="\t")
         write.table(pigni, paste0(out.path, "/ErrorPI.txt"), quote=F, row.names=F, sep="\t")
         cat("NA in prob.igni")
+        pigni$psft[!is.finite(pigni$psft)] <- 0
       }
-      pigni$psft[is.na(pigni$psft)] <- 0
-      igni.id <- sample(pigni$cell.id, 1, replace=F, prob=pigni$psft)
+      else
+        igni.id <- sample(pigni$cell.id, 1, replace=F, prob=pigni$psft)
       
       # Assign the fire spread type
       if(swc==1 | swc==3)
@@ -168,8 +169,13 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       }
       if(fire.spread.type==1){  # N, NW or W according to map
         p <- filter(pfst.pwind, cell.id==igni.id)[4:6]
-        p[is.na(p)] <- 0
-        fire.wind <- sample(c(0,315,270), 1, replace=F, prob=p) #=filter(pfst.pwind, cell.id==igni.id)[4:6])
+        if(class(try(sample(c(0,315,270), 1, replace=F, prob=p), silent=T))=="try-error"){
+          write.table(pfst.pwind, paste0(out.path, "/ErrorPWIND.txt"), quote=F, row.names=F, sep="\t")
+          cat("NA in pfst.pwind")
+          fire.wind <-  sample(c(0,315,270), 1, replace=F) # choose randomly
+        }
+        else  
+          fire.wind <- sample(c(0,315,270), 1, replace=F, prob=p) 
       }
       if(fire.spread.type==2)  # S 80%, SW 10%, SE 10%
         fire.wind <- sample(c(180,225,135), 1, replace=F, prob=c(80,10,10))
@@ -185,12 +191,13 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           log.size <- seq(1.7, 5, 0.01)  ## max fire size is 100.000 ha
         log.num <- filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$intercept +
                    filter(fs.dist, clim==clim.sever, fst==fire.spread.type)$slope * log.size
-        if(any(is.na(log.num))){
+        if(class(try(sample(round(10^log.size), 1, replace=F, prob=10^log.num), silent=T))=="try-error"){
           write.table(log.num, paste0(out.path, "/ErrorLogNum.txt"), quote=F, row.names=F, sep="\t")
-          cat("NA in log.num")
+          cat(paste("NA in log.num - clim.sever:", clim.sever, "- fire.spread.type:", fire.spread.type))
+          fire.size.target <- 50  ## minimum
         }
-        log.num[is.na(log.num)] <- 0
-        fire.size.target <- sample(round(10^log.size), 1, replace=F, prob=10^log.num)
+        else
+          fire.size.target <- sample(round(10^log.size), 1, replace=F, prob=10^log.num)
       }
       else
         fire.size.target <- max(1,min(round(rlnorm(1,pb.mean,pb.sd)),100))
@@ -359,23 +366,27 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           ncell.ff <- min(nburn*runif(1,0.5,0.7), z, na.rm=T)
           # si el nombre cell del ff coincideix amb el màxim  
           # o bé aleatòriament cap al final de l'incendi, forço compacitat.
-          if(any(is.na(sprd.rate$nsource)) | any(is.na(sprd.rate$pb)) | any(is.na(sprd.rate$burn))){
-            write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
-            write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
-            cat("NA in sample fire.front")
-          }
           if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75)){
-            sprd.rate$burn[is.na(sprd.rate$burn)] <- F
-            sprd.rate$nsource[is.na(sprd.rate$nsource)] <- 1
-            kk <- sprd.rate$nsource[sprd.rate$burn]/100
-            kk[is.na(kk)] <- 0
-            fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=kk))  ## error.sample.int
+            p <- sprd.rate$nsource[sprd.rate$burn]/100
+            if(class(try(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=p), silent=T))=="try-error"){
+              write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
+              write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
+              cat("NA in sample fire.front 1")
+              fire.front <- sort(sprd.rate$cell.id[sprd.rate$burn]) ## all burnt in fire.front
+            }
+            else
+              fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=p))  
           }
           else{
-            sprd.rate$burn[is.na(sprd.rate$burn)] <- F
-            sprd.rate$pb[is.na(sprd.rate$pb)] <- 0
-            fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, 
-                                      prob=wnsource^sprd.rate$pb[sprd.rate$burn]) )
+            p <- wnsource^sprd.rate$pb[sprd.rate$burn]
+            if(class(try(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=p), silent=T))=="try-error"){
+              write.table(sprd.rate, paste0(out.path, "/ErrorSR.txt"), quote=F, row.names=F, sep="\t")
+              write.table(sprd.rate.sources, paste0(out.path, "/ErrorSRsource.txt"), quote=F, row.names=F, sep="\t")
+              cat("NA in sample fire.front 2")
+              fire.front <- sort(sprd.rate$cell.id[sprd.rate$burn]) ## all burnt in fire.front
+            }
+            else
+              fire.front <- sort(sample(sprd.rate$cell.id[sprd.rate$burn], round(ncell.ff), replace=F, prob=p))
           }
           cumul.source <- sprd.rate$nsource[sprd.rate$cell.id %in% fire.front]
         }

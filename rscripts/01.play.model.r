@@ -7,7 +7,7 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "firesupp_v6"; define.scenario(scn.name)
+scn.name <- "firesupp_v7"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 10
 time.horizon <- 16
@@ -20,7 +20,7 @@ is.land.cover.change <- F
 is.harvest <- F
 is.wildfire <- T
 is.postfire <- T
-file.fire.suppression <- "FireSuppress_Current_v6"
+file.fire.suppression <- "FireSuppress_Current_v7"
 dump(c("nrun", "time.horizon", "spin.up", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
        "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
