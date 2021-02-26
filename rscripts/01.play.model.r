@@ -1,4 +1,4 @@
-library(readxl)
+
 library(raster)
 library(viridis)
 library(tidyverse)
@@ -30,10 +30,11 @@ land.dyn.mdl(scn.name)
 
 ############################################### RUN FACTORIAL SCN ################################################
 rm(list=ls())
+library(readxl)
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 19){
-  scn.name <- scenarios$scn.name[i]
+for(i in 20){
+  scn.name <- paste0(scenarios$scn.name[i],"_1")
   define.scenario(scn.name)
   ## general
   nrun <- scenarios$nrun[i]
