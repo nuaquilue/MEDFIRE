@@ -312,14 +312,6 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         source.supp$nsupp.sprd[source.supp$cell.id %in% sprd.rate$cell.id] <- sprd.rate$nsupp.sprd
         source.supp$nsupp.fuel[source.supp$cell.id %in% sprd.rate$cell.id] <- sprd.rate$nsupp.fuel
         
-        ## Mark that all these neighs have been visited (before breaking in case no burn)
-        visit.cells <- c(visit.cells, sprd.rate$cell.id)
-        burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burn]) # effectively burnt or suppressed
-        
-        ## If at least there's a burn cell, continue, otherwise, stop
-        if(!any(sprd.rate$burn))
-          break
-        
         ## Avoid fire overshooting at last iteration: Only burn cells with higher pb
         temp.burnt <- sprd.rate[sprd.rate$burn, c("cell.id", "pb")]
         if((aburnt.lowintens+aburnt.highintens+asupp.fuel+asupp.sprd+nrow(temp.burnt))>fire.size.target){
@@ -332,6 +324,14 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         ## Tring to really get exact fire.id!!
         map$id[map$cell.id %in% sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]] <- fire.id
         map$step[map$cell.id %in% sprd.rate$cell.id[sprd.rate$burn]] <- step
+        
+        ## Mark that all these neighs have been visited (before breaking in case no burn)
+        visit.cells <- c(visit.cells, sprd.rate$cell.id)
+        burnt.cells <- c(burnt.cells, sprd.rate$cell.id[sprd.rate$burn]) # effectively burnt or suppressed
+        
+        ## If at least there's a burn cell, continue, otherwise, stop
+        if(!any(sprd.rate$burn))
+          break
         
         ## If any cell has effectively burnt or suppressed in the current step, stop, because there is no
         ## cells from which to spread from.
