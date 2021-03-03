@@ -100,6 +100,9 @@ land.dyn.mdl <- function(scn.name){
   # track.step <- data.frame(run=NA, year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   track.sr <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
                          nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
+  track.sr.source <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, spp=NA, biom=NA, age=NA, fuel=NA,
+                                source.id=NA, position=NA, dist=NA, windir=NA, nsupp.sprd=NA, nsupp.fuel=NA,
+                                elev.x=NA, elev.y=NA, dif.elev=NA, dif.wind=NA, slope=NA, wind=NA, sr=NA, fi=NA, pb=NA)
   track.pb <- data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
                           wind=NA, atarget=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
@@ -107,7 +110,6 @@ land.dyn.mdl <- function(scn.name){
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
-  track.target <- data.frame(run=NA, year=NA, swc=NA, atarget=NA)
   
   
   ## Start the simulations   
@@ -308,8 +310,10 @@ land.dyn.mdl <- function(scn.name){
                   group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
           # track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
-          track.sr <- rbind(track.sr, data.frame(run=irun, fire.out[[4]]))
+          track.sr <- rbind(track.sr, data.frame(run=irun, fire.out[[3]]))
         }
+        if(nrow(fire.out[[4]])>0)
+          track.sr.source <- rbind(track.sr.source, data.frame(run=irun, fire.out[[4]]))
         # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
         # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
         burnt.cells$intens <- burnt.cells$fintensity>fire.intens.th
@@ -463,14 +467,15 @@ land.dyn.mdl <- function(scn.name){
   write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
   # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.sr[-1,], paste0(out.path, "/FireSprd.txt"), quote=F, row.names=F, sep="\t")
+  write.table(track.sr.source[-1,], paste0(out.path, "/FireSprdSource.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
   names(track.post.fire)[4:5] <- c("spp.in", "ha")
   write.table(track.post.fire[-1,], paste0(out.path, "/PostFire.txt"), quote=F, row.names=F, sep="\t")
   names(track.cohort)[4:5] <- c("spp.in", "ha")
+  track.cohort <- filter(track.cohort, ha>0)
   write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
   names(track.afforest)[3:4] <- c("spp", "ha")
   write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.target[-1,], paste0(out.path, "/FireRegime.txt"), quote=F, row.names=F, sep="\t")
 }

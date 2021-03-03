@@ -27,9 +27,12 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
   track.fire <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
                            aburnt.highintens=NA, aburnt.lowintens=NA, asupp.sprd=NA, asupp.fuel=NA)
   track.burnt.cells <- data.frame(fire.id=NA, cell.id=NA, igni=NA, fintensity=NA)
-  track.step <- data.frame(year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
+  # track.step <- data.frame(year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   track.sr <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
                          nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
+  track.sr.source <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, spp=NA, biom=NA, age=NA, fuel=NA,
+                                source.id=NA, position=NA, dist=NA, windir=NA, nsupp.sprd=NA, nsupp.fuel=NA,
+                                elev.x=NA, elev.y=NA, dif.elev=NA, dif.wind=NA, slope=NA, wind=NA, sr=NA, fi=NA, pb=NA)
   fire.id <- 0
   visit.cells <- burnt.cells <- integer()
   annual.aburnt <- annual.asupp <- 0
@@ -56,8 +59,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       i <- land$spp<=17        # 2.938.560
     else
       i <- land$spp<=15        # 1.937.915
-    subland <- land[i,]   
-    suborography <- orography[i,]
+    subland <- land[i,1:4]  # cell.id, spp, biom, and age   
+    suborography <- orography[i,1:2]  # cell.id & elev
     source.supp <- data.frame(cell.id=subland$cell.id, nsupp.sprd=0, nsupp.fuel=0)
     
     
@@ -285,8 +288,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         sprd.rate.sources <- left_join(neigh.land, neigh.id, by="cell.id") %>%
                              left_join(neigh.orography, by=c("source.id"="cell.id")) %>%
                              left_join(neigh.orography, by="cell.id")  %>% 
-                             mutate(dif.elev = elev.y-elev.x, 
-                                    dif.wind <- abs(windir-fire.wind),
+                             mutate(dif.elev = (elev.y-elev.x)/dist, 
+                                    dif.wind = abs(windir-fire.wind),
                                     slope = pmax(pmin(dif.elev,0.5),-0.5)+0.5,  
                                     wind = ifelse(dif.wind==0, 0, ifelse(dif.wind %in% c(45,315), 0.25, 
                                            ifelse(dif.wind %in% c(90,270), 0.5, ifelse(dif.wind %in% c(135,225), 0.75, 1)))) ) %>% 
@@ -302,6 +305,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         ## Compute probability of burnt
         sprd.rate$burn <- sprd.rate$pb >= runif(nrow(sprd.rate), pb.lower.th, pb.upper.th)
         track.sr <- rbind(track.sr, data.frame(year=t, swc, clim.sever, sprd.rate))
+        if(any(sprd.rate.sources$fi>1))
+         track.sr.source <- rbind(track.sr.source, data.frame(year=t, swc, clim.sever, sprd.rate.sources))
         
         ## Now compute actual burn state (T or F) according to pb and suppress:
         if(nrow(sprd.rate)!=sum(source.supp$cell.id %in% sprd.rate$cell.id)){
@@ -402,8 +407,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
           break
         
         ## Track spreading spet
-        track.step <- rbind(track.step, data.frame(year=t, fire.id, step, nneigh=nrow(neigh.id),
-                                 nneigh.in=length(i.land.in.neigh), nburn, nff=length(fire.front)))
+        # track.step <- rbind(track.step, data.frame(year=t, fire.id, step, nneigh=nrow(neigh.id),
+        #                          nneigh.in=length(i.land.in.neigh), nburn, nff=length(fire.front)))
         
       } # while 'fire.size.target'
       
@@ -440,7 +445,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
     
   }  # 'all.swc
   
-  return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,], track.step=track.step[-1,],
-              track.sr=track.sr[-1,]))
+  return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,], track.sr=track.sr[-1,],
+              track.sr.source=track.sr.source[-1,]))
+              # track.step=track.step[-1,]))
 }
 

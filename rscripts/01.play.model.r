@@ -1,4 +1,3 @@
-
 library(raster)
 library(viridis)
 library(tidyverse)
@@ -7,20 +6,20 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "firesupp_v7"; define.scenario(scn.name)
+scn.name <- "fireintens2"; define.scenario(scn.name)
 # Change target parameters
-nrun <- 10
-time.horizon <- 16
+nrun <- 1
+time.horizon <- 90
 spin.up <- F
 is.climate.change <- F
 clim.scn <- NA
 file.pctg.hot.days <- "PctgHotDays_noCC"
-file.clim.severity <- "ClimaticSeverity_00-15"
+file.clim.severity <- "ClimaticSeverity_noCC"
 is.land.cover.change <- F
 is.harvest <- F
 is.wildfire <- T
 is.postfire <- T
-file.fire.suppression <- "FireSuppress_Current_v7"
+file.fire.suppression <- "FireSuppress"
 dump(c("nrun", "time.horizon", "spin.up", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
        "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
@@ -33,8 +32,8 @@ rm(list=ls())
 library(readxl)
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 20){
-  scn.name <- paste0(scenarios$scn.name[i],"_1")
+for(i in 13:14){
+  scn.name <- paste0(scenarios$scn.name[i])
   define.scenario(scn.name)
   ## general
   nrun <- scenarios$nrun[i]

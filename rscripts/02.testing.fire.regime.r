@@ -76,6 +76,18 @@ a
 mean(a$pb); mean(a$ps); mean(a$pr)
 
 
+####################### FIRE INTENSITY  #######################
+sprd1 <- read.table("outputs/fireintens1/FireSprd.txt", header=T)
+source1<- read.table("outputs/fireintens1/FireSprdSource.txt", header=T, nrows = 100000)
+sprd2 <- read.table("outputs/fireintens2/FireSprd.txt", header=T)
+sprd <- rbind(sprd1, sprd2)
+rm(sprd2)
+sprd.f <- filter(sprd, spp<14)
+summary(sprd.f$fi); hist(sprd.f$fi)
+sh <- filter(source1, spp==14)
+summary(sh$biom)
+
+
 
 
 write.track.lyrs <- function(scn.name, track.spread){
