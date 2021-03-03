@@ -2,11 +2,11 @@
 ##
 ######################################################################################
 
-growth <- function(land, clim){
+growth <- function(land, clim, what){
  
   ## Tracking
-  cat("Species growth", "\n") 
-
+  cat(paste(what, "growth", "\n"))
+  
   ## Read coefficients
   growth.coeff <- read.table("inputfiles/GrowthSpp.txt", header=T)
   growth.coeff.shrub <- read.table("inputfiles/GrowthShrub.txt", header=T)

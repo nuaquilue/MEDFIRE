@@ -6,10 +6,10 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "fireintens2"; define.scenario(scn.name)
+scn.name <- "fire.intens"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 90
+time.horizon <- 10
 spin.up <- F
 is.climate.change <- F
 clim.scn <- NA

@@ -87,8 +87,8 @@ land.dyn.mdl <- function(scn.name){
   afforest.schedule <- 
   growth.schedule <- seq(1, time.horizon, time.step)
   if(spin.up & time.horizon>10){
-    lchg.schedule <- seq(11, time.horizon, time.step)
-    fire.schedule <- seq(11, time.horizon, time.step)
+    lchg.schedule <- seq(11, time.horizon-1, time.step)
+    fire.schedule <- seq(11, time.horizon-1, time.step)
   }
   clim.schedule <- seq(1, time.horizon, time.step*10) 
     
@@ -142,7 +142,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## Track scenario, replicate and time step
       cat(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon), "\n")
-      
+      decade=(1+floor((t-1)/10))*10
       
       ## 1. CLIMATE CHANGE  
       if(!is.climate.change & t==1){
@@ -150,8 +150,8 @@ land.dyn.mdl <- function(scn.name){
         load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
       }
       if(is.climate.change & t %in% clim.schedule){
-        clim <- update.clim(land, orography, decade=(1+floor(t/10))*10, clim.scn, clim.mdl)
-        load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", (1+floor(t/10))*10, ".rdata"))
+        clim <- update.clim(land, orography, decade, clim.scn, clim.mdl)
+        load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
       }
 
       
@@ -323,7 +323,7 @@ land.dyn.mdl <- function(scn.name){
         land$typdist[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- "lowfire"
         land$biom[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens]] <- 0
         land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]] <- 
-           land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]]*(1-burnt.cells$fintensity[!burnt.cells$intens])
+            land$biom[land$cell.id %in% burnt.cells$cell.id[!burnt.cells$intens]]*(1-burnt.cells$fintensity[!burnt.cells$intens])
       }
       
       
@@ -348,13 +348,12 @@ land.dyn.mdl <- function(scn.name){
       ## 6. DROUGHT
       killed.cells <- integer()
       if(is.drought & t %in% drought.schedule){
-        killed.cells <- drought(land, clim, t)
+        killed.cells <- drought(land, clim, decade, t)
         land$tsdist[land$cell.id %in% killed.cells] <- 0
         land$typdist[land$cell.id %in% killed.cells] <- "drght"
         if(length(killed.cells)>0)
-          track.drougth <- rbind(track.drougth,
-                           data.frame(run=irun, year=t, 
-                                      filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))))
+          track.drougth <- rbind(track.drougth, data.frame(run=irun, year=t, 
+                                 filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))))
       }
       
       
@@ -377,11 +376,15 @@ land.dyn.mdl <- function(scn.name){
       
       ## 8. COHORT ESTABLISHMENT
       if(is.cohort.establish & t %in% cohort.schedule & length(killed.cells)>0){
-        aux  <- cohort.establish(land, coord, orography, clim, sdm)
+        aux <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
-        # land$biom[land$cell.id %in% killed.cells] <- 0 ¿?¿?¿? no big losses of biomass when drought?
-        land$age[land$cell.id %in% aux$cell.id] <- 0  ## not sure if 0 or decade - t -1
+        land$age[land$cell.id %in% killed.cells] <- t+(decade-10)-1 ## 0 to 9, so after growth(), age is 1 to 10
+        land$biom[land$cell.id %in% killed.cells] <- 0  ## biomass at 0,
+        if(t+(decade-10)-1 > 0){ ## increase biomass up to cohort.age1, and it will increase in growth() one year more
+          for(i in 1:(t+(decade-10)-1))
+            land$biom[land$cell.id %in% killed.cells] <- growth(land[land$cell.id %in% killed.cells,], clim, "Cohort")
+        }
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
         clim$sqi[clim$cell.id %in% killed.cells] <- aux$sqi
@@ -406,7 +409,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 10. GROWTH
       if(is.growth & t %in% growth.schedule){
-        land$biom <- growth(land, clim)
+        land$biom <- growth(land, clim, "Species")
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
         land$tscut <- pmin(land$tscut+1,600)
@@ -445,8 +448,7 @@ land.dyn.mdl <- function(scn.name){
         writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
-      ## Deallocate memory
-      gc(verbose=F); cat("\n")
+      # cat("\n")
       
     } # time
   

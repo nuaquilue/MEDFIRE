@@ -305,7 +305,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         ## Compute probability of burnt
         sprd.rate$burn <- sprd.rate$pb >= runif(nrow(sprd.rate), pb.lower.th, pb.upper.th)
         track.sr <- rbind(track.sr, data.frame(year=t, swc, clim.sever, sprd.rate))
-        if(any(sprd.rate.sources$fi>1))
+        if(any(sprd.rate.sources$fi>10))
          track.sr.source <- rbind(track.sr.source, data.frame(year=t, swc, clim.sever, sprd.rate.sources))
         
         ## Now compute actual burn state (T or F) according to pb and suppress:
