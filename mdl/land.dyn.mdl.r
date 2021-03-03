@@ -379,10 +379,10 @@ land.dyn.mdl <- function(scn.name){
         aux <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
-        land$age[land$cell.id %in% killed.cells] <- t+(decade-10)-1 ## 0 to 9, so after growth(), age is 1 to 10
+        land$age[land$cell.id %in% killed.cells] <- t-(decade-10)-1 ## 0 to 9, so after growth(), age is 1 to 10
         land$biom[land$cell.id %in% killed.cells] <- 0  ## biomass at 0,
-        if(t+(decade-10)-1 > 0){ ## increase biomass up to cohort.age1, and it will increase in growth() one year more
-          for(i in 1:(t+(decade-10)-1))
+        if(t-(decade-10)-1 > 0){ ## increase biomass up to cohort.age1, and it will increase in growth() one year more
+          for(i in 1:(t-(decade-10)-1))
             land$biom[land$cell.id %in% killed.cells] <- growth(land[land$cell.id %in% killed.cells,], clim, "Cohort")
         }
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
