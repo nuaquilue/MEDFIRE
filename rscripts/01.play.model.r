@@ -6,11 +6,11 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "fire.intens"; define.scenario(scn.name)
+scn.name <- "postfire"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
 time.horizon <- 10
-spin.up <- F
+spin.up <- T
 is.climate.change <- F
 clim.scn <- NA
 file.pctg.hot.days <- "PctgHotDays_noCC"
@@ -32,7 +32,7 @@ rm(list=ls())
 library(readxl)
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 13:14){
+for(i in 14){
   scn.name <- paste0(scenarios$scn.name[i])
   define.scenario(scn.name)
   ## general

@@ -87,8 +87,12 @@ land.dyn.mdl <- function(scn.name){
   afforest.schedule <- 
   growth.schedule <- seq(1, time.horizon, time.step)
   if(spin.up & time.horizon>10){
-    lchg.schedule <- seq(11, time.horizon-1, time.step)
-    fire.schedule <- seq(11, time.horizon-1, time.step)
+    lchg.schedule <- seq(11, time.horizon, time.step)
+    fire.schedule <- seq(11, time.horizon, time.step)
+  }
+  if(spin.up & time.horizon<=10){
+    lchg.schedule <- 
+    fire.schedule <- numeric()
   }
   clim.schedule <- seq(1, time.horizon, time.step*10) 
     
@@ -98,11 +102,11 @@ land.dyn.mdl <- function(scn.name){
                             aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
   track.fire.spp <- data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
   # track.step <- data.frame(run=NA, year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
-  track.sr <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
-                         nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
-  track.sr.source <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, spp=NA, biom=NA, age=NA, fuel=NA,
-                                source.id=NA, position=NA, dist=NA, windir=NA, nsupp.sprd=NA, nsupp.fuel=NA,
-                                elev.x=NA, elev.y=NA, dif.elev=NA, dif.wind=NA, slope=NA, wind=NA, sr=NA, fi=NA, pb=NA)
+  # track.sr <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
+  #                        nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
+  # track.sr.source <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, spp=NA, biom=NA, age=NA, fuel=NA,
+  #                               source.id=NA, position=NA, dist=NA, windir=NA, nsupp.sprd=NA, nsupp.fuel=NA,
+  #                               elev.x=NA, elev.y=NA, dif.elev=NA, dif.wind=NA, slope=NA, wind=NA, sr=NA, fi=NA, pb=NA)
   track.pb <- data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
                           wind=NA, atarget=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
@@ -310,10 +314,10 @@ land.dyn.mdl <- function(scn.name){
                   group_by(fire.id, spp) %>% summarize(aburnt=length(spp), bburnt=round(sum(bburnt, na.rm=T),1))
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
           # track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
-          track.sr <- rbind(track.sr, data.frame(run=irun, fire.out[[3]]))
+          # track.sr <- rbind(track.sr, data.frame(run=irun, fire.out[[3]]))
         }
-        if(nrow(fire.out[[4]])>0)
-          track.sr.source <- rbind(track.sr.source, data.frame(run=irun, fire.out[[4]]))
+        # if(nrow(fire.out[[4]])>0)
+        #   track.sr.source <- rbind(track.sr.source, data.frame(run=irun, fire.out[[4]]))
         # Done with fires! When high-intensity fire, age = biom = 0 and dominant tree species may change
         # when low-intensity fire, age remains, spp remains and biomass.t = biomass.t-1 * (1-fintensity)
         burnt.cells$intens <- burnt.cells$fintensity>fire.intens.th
@@ -349,6 +353,12 @@ land.dyn.mdl <- function(scn.name){
       killed.cells <- integer()
       if(is.drought & t %in% drought.schedule){
         killed.cells <- drought(land, clim, decade, t)
+          # ## detect SDM=0 after the 1st decade when there is no climate change
+          # if(scn.name=="Scn_NULL" & t>10 & length(killed.cells)>0){
+          #   write.table(land, paste0(out.path, "/ErrorSDMland_", irun, "_", t, ".txt"), quote=F, row.names=F, sep="\t")
+          #   write.table(clim, paste0(out.path, "/ErrorSDMclim_", irun, "_", t, ".txt"), quote=F, row.names=F, sep="\t")
+          #   cat("SDM=0", "\n")
+          # }
         land$tsdist[land$cell.id %in% killed.cells] <- 0
         land$typdist[land$cell.id %in% killed.cells] <- "drght"
         if(length(killed.cells)>0)
@@ -383,7 +393,8 @@ land.dyn.mdl <- function(scn.name){
         land$biom[land$cell.id %in% killed.cells] <- 0  ## biomass at 0,
         if(t-(decade-10)-1 > 0){ ## increase biomass up to cohort.age1, and it will increase in growth() one year more
           for(i in 1:(t-(decade-10)-1))
-            land$biom[land$cell.id %in% killed.cells] <- growth(land[land$cell.id %in% killed.cells,], clim, "Cohort")
+            land$biom[land$cell.id %in% killed.cells] <- 
+              growth(land[land$cell.id %in% killed.cells,], clim, paste("Cohort", i))
         }
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
@@ -468,8 +479,8 @@ land.dyn.mdl <- function(scn.name){
   write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
   # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.sr[-1,], paste0(out.path, "/FireSprd.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.sr.source[-1,], paste0(out.path, "/FireSprdSource.txt"), quote=F, row.names=F, sep="\t")
+  # write.table(track.sr[-1,], paste0(out.path, "/FireSprd.txt"), quote=F, row.names=F, sep="\t")
+  # write.table(track.sr.source[-1,], paste0(out.path, "/FireSprdSource.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
   write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
   names(track.post.fire)[4:5] <- c("spp.in", "ha")

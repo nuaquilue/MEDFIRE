@@ -77,18 +77,25 @@ mean(a$pb); mean(a$ps); mean(a$pr)
 
 
 ####################### FIRE INTENSITY  #######################
-sprd1 <- read.table("outputs/fireintens1/FireSprd.txt", header=T)
-source1<- read.table("outputs/fireintens1/FireSprdSource.txt", header=T, nrows = 100000)
-sprd2 <- read.table("outputs/fireintens2/FireSprd.txt", header=T)
+sprd1 <- read.table("outputs/fire.intens1/FireSprd.txt", header=T)
+sprd2 <- read.table("outputs/fire.intens2/FireSprd.txt", header=T)
 sprd <- rbind(sprd1, sprd2)
-rm(sprd2)
-sprd.f <- filter(sprd, spp<14)
-summary(sprd.f$fi); hist(sprd.f$fi)
-sh <- filter(source1, spp==14)
-summary(sh$biom)
+sprdf <- filter(sprd, spp<14)
+sprdfs <- filter(sprd, spp<=14)
+summary(sprd1$fi); hist(sprd1$fi)
+summary(sprdf$fi); hist(sprdf$fi)
+summary(sprdfs$fi); hist(sprdfs$fi)
 
 
 
+clim <- read.table("outputs/Scn_NULL/ErrorSDMclim_8_20.txt", header=T)
+land <- read.table("outputs/Scn_NULL/ErrorSDMland_8_20.txt", header=T)
+a <- filter(clim, sdm==0)
+
+clim4 <- read.table("outputs/Scn_NULL/ErrorSDMclim_4_16.txt", header=T)
+land4 <- read.table("outputs/Scn_NULL/ErrorSDMland_4_16.txt", header=T)
+a <- filter(clim4, sdm==0)
+filter(land, cell.id %in% a$cell.id)
 
 write.track.lyrs <- function(scn.name, track.spread){
   

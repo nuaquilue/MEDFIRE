@@ -28,11 +28,11 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
                            aburnt.highintens=NA, aburnt.lowintens=NA, asupp.sprd=NA, asupp.fuel=NA)
   track.burnt.cells <- data.frame(fire.id=NA, cell.id=NA, igni=NA, fintensity=NA)
   # track.step <- data.frame(year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
-  track.sr <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
-                         nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
-  track.sr.source <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, spp=NA, biom=NA, age=NA, fuel=NA,
-                                source.id=NA, position=NA, dist=NA, windir=NA, nsupp.sprd=NA, nsupp.fuel=NA,
-                                elev.x=NA, elev.y=NA, dif.elev=NA, dif.wind=NA, slope=NA, wind=NA, sr=NA, fi=NA, pb=NA)
+  # track.sr <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
+  #                        nsource=NA, nsupp.sprd=NA, nsupp.fuel=NA, tosupp.sprd=NA, tosupp.fuel=NA, burn=NA)
+  # track.sr.source <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, spp=NA, biom=NA, age=NA, fuel=NA,
+  #                               source.id=NA, position=NA, dist=NA, windir=NA, nsupp.sprd=NA, nsupp.fuel=NA,
+  #                               elev.x=NA, elev.y=NA, dif.elev=NA, dif.wind=NA, slope=NA, wind=NA, sr=NA, fi=NA, pb=NA)
   fire.id <- 0
   visit.cells <- burnt.cells <- integer()
   annual.aburnt <- annual.asupp <- 0
@@ -304,9 +304,9 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         
         ## Compute probability of burnt
         sprd.rate$burn <- sprd.rate$pb >= runif(nrow(sprd.rate), pb.lower.th, pb.upper.th)
-        track.sr <- rbind(track.sr, data.frame(year=t, swc, clim.sever, sprd.rate))
-        if(any(sprd.rate.sources$fi>10))
-         track.sr.source <- rbind(track.sr.source, data.frame(year=t, swc, clim.sever, sprd.rate.sources))
+        # track.sr <- rbind(track.sr, data.frame(year=t, swc, clim.sever, sprd.rate))
+        # if(any(sprd.rate.sources$fi>10))
+        #  track.sr.source <- rbind(track.sr.source, data.frame(year=t, swc, clim.sever, sprd.rate.sources))
         
         ## Now compute actual burn state (T or F) according to pb and suppress:
         if(nrow(sprd.rate)!=sum(source.supp$cell.id %in% sprd.rate$cell.id)){
@@ -445,8 +445,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
     
   }  # 'all.swc
   
-  return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,], track.sr=track.sr[-1,],
-              track.sr.source=track.sr.source[-1,]))
+  return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,]))
+         # , track.sr=track.sr[-1,], track.sr.source=track.sr.source[-1,]))
               # track.step=track.step[-1,]))
 }
 

@@ -51,12 +51,12 @@ post.fire <- function(land, coord, orography, clim, sdm){
     ## add the number of forest spp in the neighbourhood
     burnt.cells <- left_join(burnt.cells, secondary.spp, by = c("spp", "sqi")) %>% left_join(sdm, by = "cell.id") %>% 
                    left_join(neigh.spp, by = "cell.id")
-  
+
     ## Select spp among available
     new.cohort <- data.frame(cell.id=burnt.cells$cell.id,
                              spp=apply(select(burnt.cells, phalepensis:shrub) * 
-                                         select(burnt.cells, sdm.phalepensis:sdm.shrub) * 
-                                         select(burnt.cells, X1:X14), 1, select.cohort), 
+                                       select(burnt.cells, sdm.phalepensis:sdm.shrub) * 
+                                       select(burnt.cells, X1:X14), 1, select.cohort), 
                              biom=0, sdm=1, age=1)
     
     ## Join climatic and orographic variables to compute sq and then sqi
