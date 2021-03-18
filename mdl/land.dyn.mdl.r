@@ -99,7 +99,7 @@ land.dyn.mdl <- function(scn.name){
   ## Tracking data.frames
   track.harvest <- data.frame(run=NA, year=NA, spp=NA, vol.sawlog=NA, vol.wood=NA)
   track.fire <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
-                            aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
+                           aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA, rem=NA)
   track.fire.spp <- data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
   # track.step <- data.frame(run=NA, year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   # track.sr <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
@@ -110,9 +110,9 @@ land.dyn.mdl <- function(scn.name){
   track.pb <- data.frame(run=NA, year=NA, clim.sever=NA, fire.id=NA, 
                           wind=NA, atarget=NA, aburnt.lowintens=NA)
   track.drougth <- data.frame(run=NA, year=NA, spp=NA, ha=NA)
-  track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
-  track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, Var2=NA, Freq=NA)
-  track.afforest <- data.frame(run=NA, year=NA, Var1=NA, Freq=NA)
+  track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
+  track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
+  track.afforest <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   
   
@@ -141,7 +141,7 @@ land.dyn.mdl <- function(scn.name){
                         data.frame(run=irun, year=0, aux.other))
     
     ## Start the discrete time sequence 
-    t <- 1
+    t <- 11
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
@@ -377,7 +377,9 @@ land.dyn.mdl <- function(scn.name){
           clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
           clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
           clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
-          track.post.fire <- rbind(track.post.fire, data.frame(run=irun, year=t, table(spp.out, aux$spp)))  
+          track <-  data.frame(table(spp.out, aux$spp))
+          names(track) <- c("spp.out", "spp.in", "ha")
+          track.post.fire <- rbind(track.post.fire, data.frame(run=irun, year=t, track))  
         }
         # Reset age of cells burnt in high intensity
         land$age[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens] & !is.na(land$spp) & land$spp<=14] <- 0
@@ -399,7 +401,9 @@ land.dyn.mdl <- function(scn.name){
         clim$spp[clim$cell.id %in% killed.cells] <- aux$spp
         clim$sdm[clim$cell.id %in% killed.cells] <- 1
         clim$sqi[clim$cell.id %in% killed.cells] <- aux$sqi
-        track.cohort <- rbind(track.cohort, data.frame(run=irun, year=t, table(spp.out, aux$spp)))
+        track <- data.frame(table(spp.out, aux$spp))
+        names(track) <- c("spp.out", "spp.in", "ha")
+        track.cohort <- rbind(track.cohort, data.frame(run=irun, year=t, track))
       }
       
       
@@ -414,7 +418,9 @@ land.dyn.mdl <- function(scn.name){
         clim$spp[clim$cell.id %in% aux$cell.id] <- aux$spp
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- aux$sqi
-        track.afforest <- rbind(track.afforest, data.frame(run=irun, year=t, table(aux$spp)))
+        track <- data.frame(table(aux$spp))
+        names(track) <- c("spp", "ha")
+        track.afforest <- rbind(track.afforest, data.frame(run=irun, year=t, track))
       }
       
       
@@ -440,7 +446,7 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      # Print maps every time step with ignition and low/high intenstiy burnt
+      ## Print maps every time step with ignition and low/high intenstiy burnt
       if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
         cat("... writing maps", "\n")
         MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
@@ -459,10 +465,28 @@ land.dyn.mdl <- function(scn.name){
         writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
-      # cat("\n")
-      
     } # time
   
+    ## Overwrite text outputs each run, at the end of the simulation period
+    ## To save some runs in case R closes before finishing all the runs
+    cat("... writing outputs", "\n")
+    write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
+    # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
+    # write.table(track.sr[-1,], paste0(out.path, "/FireSprd.txt"), quote=F, row.names=F, sep="\t")
+    # write.table(track.sr.source[-1,], paste0(out.path, "/FireSprdSource.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
+    # names(track.post.fire)[4:5] <- c("spp.in", "ha")
+    write.table(track.post.fire[-1,], paste0(out.path, "/PostFire.txt"), quote=F, row.names=F, sep="\t")
+    # names(track.cohort)[4:5] <- c("spp.in", "ha")
+    track.cohort <- filter(track.cohort, ha>0)
+    write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
+    # names(track.afforest)[3:4] <- c("spp", "ha")
+    write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
+    
     # Print maps at the end of the simulation period per each run
     if(write.maps){
       MAP <- MASK
@@ -472,23 +496,5 @@ land.dyn.mdl <- function(scn.name){
 
   } # run
   
-  cat("... writing outputs", "\n")
-  write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
-  track.fire$rem <- pmax(0, track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
-                           track.fire$asupp.fuel - track.fire$asupp.sprd)
-  write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
-  # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
-  # write.table(track.sr[-1,], paste0(out.path, "/FireSprd.txt"), quote=F, row.names=F, sep="\t")
-  # write.table(track.sr.source[-1,], paste0(out.path, "/FireSprdSource.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
-  names(track.post.fire)[4:5] <- c("spp.in", "ha")
-  write.table(track.post.fire[-1,], paste0(out.path, "/PostFire.txt"), quote=F, row.names=F, sep="\t")
-  names(track.cohort)[4:5] <- c("spp.in", "ha")
-  track.cohort <- filter(track.cohort, ha>0)
-  write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
-  names(track.afforest)[3:4] <- c("spp", "ha")
-  write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
-  write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
+
 }

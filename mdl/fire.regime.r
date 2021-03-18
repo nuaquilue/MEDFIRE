@@ -25,7 +25,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
   
   ## Reset TrackFires data frame each run and swc
   track.fire <- data.frame(year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
-                           aburnt.highintens=NA, aburnt.lowintens=NA, asupp.sprd=NA, asupp.fuel=NA)
+                           aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA)
   track.burnt.cells <- data.frame(fire.id=NA, cell.id=NA, igni=NA, fintensity=NA)
   # track.step <- data.frame(year=NA, fire.id=NA, step=NA, nneigh=NA, nneigh.in=NA, nburn=NA, nff=NA)
   # track.sr <- data.frame(year=NA, swc=NA, clim.sever=NA, cell.id=NA, fire.id=NA, spp=NA, age=NA, fi=NA, pb=NA,
@@ -415,7 +415,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       ## Write info about this fire
       track.fire <- rbind(track.fire, data.frame(year=t, swc, clim.sever, fire.id, fst=fire.spread.type, 
                                                  wind=fire.wind, atarget=fire.size.target, aburnt.highintens, 
-                                                 aburnt.lowintens, asupp.sprd, asupp.fuel))
+                                                 aburnt.lowintens, asupp.fuel, asupp.sprd))
       # cat(paste(" - aBurnt:", aburnt.lowintens+aburnt.highintens, "- aSupp:", asupp.sprd+asupp.fuel), "\n")
       
       ## Update annual burnt area
@@ -445,6 +445,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
     
   }  # 'all.swc
   
+  track.fire$rem <- pmax(0, track.fire$atarget-track.fire$aburnt.highintens-track.fire$aburnt.lowintens-
+                            track.fire$asupp.fuel - track.fire$asupp.sprd)
   return(list(track.fire=track.fire[-1,], track.burnt.cells=track.burnt.cells[-1,]))
          # , track.sr=track.sr[-1,], track.sr.source=track.sr.source[-1,]))
               # track.step=track.step[-1,]))

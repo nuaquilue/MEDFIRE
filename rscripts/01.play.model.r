@@ -29,14 +29,14 @@ land.dyn.mdl(scn.name)
 
 ############################################### RUN FACTORIAL SCN ################################################
 rm(list=ls())
-library(readxl)
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
-scenarios <- read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 14){
-  scn.name <- paste0(scenarios$scn.name[i])
+scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="Obj1")
+for(i in 19){
+  scn.name <- paste0(scenarios$scn.name[i], "_set04")
   define.scenario(scn.name)
   ## general
-  nrun <- scenarios$nrun[i]
+  # time.horizon <- 1
+  nrun <- 9 #scenarios$nrun[i]
   write.maps <- F
   spin.up <- as.logical(scenarios$spin.up[i])
   ## processes
