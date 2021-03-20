@@ -84,10 +84,8 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         area.target <- round(min(200000-(annual.aburnt+annual.asupp), 
                              max(10,rlnorm(1, aba.dist$meanlog[aba.dist$clim==clim.sever & aba.dist$swc==swc],
                                               aba.dist$sdlog[aba.dist$clim==clim.sever & aba.dist$swc==swc])))) 
-            # if(is.na(area.target)){
-            #   cat(paste("SWC", swc, "- clim.sever", clim.sever))
-            #   area.target <- 100
-            # }
+        if(swc==3) # but SWC regular max is 20.000 ha
+          area.target <- min(area.target, 20000)  
       }  
     }
     ## Find annual target area for prescribed burns
@@ -370,8 +368,11 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         }
         else{
           ratio.burnt <- (aburnt.lowintens+aburnt.highintens+asupp.sprd+asupp.fuel)/fire.size.target
-          z <- rdunif(1,mx.ncell.ff-5,mx.ncell.ff)
-          ncell.ff <- min(nburn*runif(1,0.5,0.7), z, na.rm=T)
+          # z <- rdunif(1,mx.ncell.ff-5,mx.ncell.ff)
+          # ncell.ff <- min(nburn*runif(1,0.5,0.7), z, na.rm=T)
+          ## %% clouding %%
+          z <- runif(1,mx.ncell.ff-5,mx.ncell.ff)
+          ncell.ff <- min(nburn*runif(1,0.5,0.7), round(z), na.rm=T)
           # si el nombre cell del ff coincideix amb el màxim  
           # o bé aleatòriament cap al final de l'incendi, forço compacitat.
           if(ncell.ff==z | (ratio.burnt>=thruky & runif(1,0,1)>=0.75)){

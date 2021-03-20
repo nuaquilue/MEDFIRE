@@ -6,14 +6,14 @@ land.dyn.mdl <- function(scn.name){
   
   ## Load required packages and functions 
   suppressPackageStartupMessages({
-    library(viridis)
     library(raster)  
     library(RANN)  
     library(Rcpp)
-    library(tidyverse)
+    library(dplyr, warn.conflicts=F)
+    options(dplyr.summarise.inform=F)
   })
-  source("mdl/auxiliars.r")
   source("mdl/afforestation.r")
+  source("mdl/auxiliars.r")
   source("mdl/cohort.establish.r")
   source("mdl/drought.r")
   source("mdl/fire.regime.r")
@@ -141,7 +141,6 @@ land.dyn.mdl <- function(scn.name){
                         data.frame(run=irun, year=0, aux.other))
     
     ## Start the discrete time sequence 
-    t <- 11
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
