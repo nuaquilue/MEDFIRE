@@ -31,12 +31,11 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 19){
-  scn.name <- paste0(scenarios$scn.name[i], "_set04")
+for(i in 20){
+  scn.name <- paste0(scenarios$scn.name[i], "_run01")
   define.scenario(scn.name)
   ## general
-  # time.horizon <- 1
-  nrun <- 9 #scenarios$nrun[i]
+  nrun <- 1
   write.maps <- F
   spin.up <- as.logical(scenarios$spin.up[i])
   ## processes
