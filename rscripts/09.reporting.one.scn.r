@@ -1,15 +1,32 @@
 play <- function(){
   rm(list=ls())  
-  # setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #N?Laptop
-  setwd("d:/MEDMOD/SpatialModelsR/MEDFIRE")   #CTFC
-  source("rscripts/03.reporting.r")
+  library(tidyverse)
+  source("rscripts/09.reporting.one.scn.r")
+
+  list.scn <- c("NULL", "LC", "WF", "WF_FS", "LC_WF", "LC_WF_FS",
+                 "CC", "CC_LC", "CC_WF", "CC_WF_FS", "CC_LC_WF", "CC_LC_WF_FS")
+  # scn.name <- "Scn_CC_WF"
+  for(scn.name in list.scn){
+    # plot.abundance(scn.name)
+    # plot.drought(scn.name)
+    plot.cohort(scn.name)
+    # plot.afforest(scn.name)
+      # plot.age.class(scn.name)
+    # plot.land.covers(scn.name)
+  } 
   
-  scn.name <- "Test.SDMplanfix.rcp45"
-  plot.abundance(scn.name)
-  plot.drought(scn.name)
-  plot.cohort(scn.name)
-  plot.afforest(scn.name)
-  
+  ##  t     |     year    |   decade
+  ##  0     |     2009
+  ##  1     |     2010    |   2010
+  ##  ...
+  ##  10    |     2019    |   2010
+  ##  11    |     2020    |   2020
+  ##  ...
+  ##  20    |     2029    |   2020
+  ##  ...
+  ##  81    |     2090    |   2090
+  ##  ...
+  ##  90    |     2099    |   2090
 }
 
 species.name.color <- function(){
@@ -24,6 +41,9 @@ species.name.color <- function(){
                         color.sort=c("royalblue4","red4", "purple3", "chartreuse2", "darkolivegreen1",
                                      "darkslategrey",  "seagreen1", "forestgreen", "grey10",   
                                      "darkorange2", "palegoldenrod", "gold", "saddlebrown", "grey70"),
+                        color.cohort=c("royalblue4", "red4", "chartreuse3",  "darkolivegreen1", "olivedrab4",
+                                       "darkseagreen", "forestgreen", "darkslategrey", "sienna2",
+                                       "palegoldenrod",  "gold", "saddlebrown", "purple3", "grey70"),
                         type=c("conifer", "conifer", "conifer", "conifer", "conifer",
                                "conifer", "conifer", "deciduous", "deciduous", "deciduous", "deciduous",
                                "deciduous", "deciduous", "shrub"))
@@ -35,30 +55,29 @@ species.name.color <- function(){
 
 plot.drought <- function(scn.name){
   
-  library(tidyverse)
   load("rscripts/ins/species.rdata")  
   
   ## Existences
-  dta.land <- read.table(paste0("outputs/", scn.name, "/Land.txt"), header=T)
-  dta.land <- mutate(dta.land, decade= ((dta.land$year-1) %/% 10)*10+2010) %>%
-              mutate(decade=ifelse(decade==2100,2090, decade)) %>%
-              group_by(decade, spp, run) %>% summarise(area=sum(vol))%>%
+  dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
+  dta.land <- filter(dta.land, year>10)
+  dta.land <- mutate(dta.land, decade=((dta.land$year-1) %/% 10)*10+2010) %>%
+              group_by(decade, spp, run) %>% summarise(area=sum(area))%>%
               group_by(decade, spp) %>% summarise(area=mean(area)) 
   ## Area and pctg killed by drought
-  dta.drought <- read.table(paste0("outputs/", scn.name, "/Drought.txt"), header=T)
+  dta.drought <- read.table(paste0("outputs/Scn_", scn.name, "/Drought.txt"), header=T)
+  dta.drought <- filter(dta.drought, year>10)
   dta.drought <- mutate(dta.drought, decade=((year-1) %/% 10)*10+2010) %>%
-                 mutate(decade=ifelse(decade==2100,2090, decade)) %>%
-                 group_by(decade, spp, run) %>% summarise(ha=sum(ha))%>%
+                 group_by(decade, spp, run) %>% summarise(ha=sum(ha)) %>%
                  group_by(decade, spp) %>% summarise(ha=mean(ha)) %>% 
                  left_join(dta.land, by=c("decade", "spp")) %>% 
                  left_join(select(species, spp, name), by="spp") %>%
                  mutate(pctg.kill=100*ha/area)
   ## Accumualted area and pctg killed by drought
-  dta.accum <- data.frame(decade=2010, spp=1:13)
-  dta.accum <- left_join(dta.accum, filter(dta.drought, decade==2010) %>% select(decade, spp, ha), by = c("decade", "spp")) %>%
+  dta.accum <- data.frame(decade=2020, spp=1:13)
+  dta.accum <- left_join(dta.accum, filter(dta.drought, decade==2020) %>% select(decade, spp, ha), by=c("decade", "spp")) %>%
                left_join(dta.land, by = c("decade", "spp"))
   dta.accum$ha[is.na(dta.accum$ha)] <- 0
-  for(d in seq(2020,2090,10)){
+  for(d in seq(2030,2090,10)){
     aux <- data.frame(decade=d, spp=1:13)
     aux <- left_join(aux,  filter(dta.drought, decade==d) %>% select(decade, spp, ha), by = c("decade", "spp"))%>%
            left_join(dta.land, by = c("decade", "spp"))
@@ -78,7 +97,7 @@ plot.drought <- function(scn.name){
   ## PLOT Pctg killed over existence by decade (%) 
   p2 <- ggplot(data=dta.drought, aes(x=as.factor(decade), y=pctg.kill, fill=name)) + geom_bar(stat="identity") +
         scale_fill_manual("Species", values=as.character(species$color.sort[idx])) + 
-        ggtitle("Pctg of actual area killed by drought per decade") + ylab("%") + xlab("period") +
+        ggtitle("Pctg of area killed (over current existences) by drought per decade") + ylab("%") + xlab("period") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   ## PLOT Accumulated area killed by decade (km2) 
   p3 <- ggplot(data=dta.accum, aes(x=as.factor(decade), y=ha/100, fill=name)) + geom_bar(stat="identity") +
@@ -86,25 +105,26 @@ plot.drought <- function(scn.name){
         ggtitle("Accumulated area killed by drought per decade") + ylab("km2") + xlab("period") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   ## PLOT Pctg killed over existence by decade (%) 
+  ## Aquest p4 no està ben calculat
   p4 <- ggplot(data=dta.accum, aes(x=as.factor(decade), y=pctg.kill, fill=name)) + geom_bar(stat="identity") +
         scale_fill_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Accumulated pctg of actual area killed by drought per decade") + ylab("%") + xlab("period") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   
   ## Save in tiff
-  tiff(paste0("rscripts/outs/DroughtKilled_", scn.name, ".tiff"), width=1200, height=800)
-  gridExtra::grid.arrange(p1,p2,p3,p4, nrow=2)
+  tiff(paste0("rscripts/outs/01.DroughtKilled_", scn.name, ".tiff"), width=1200, height=800)
+  gridExtra::grid.arrange(p1,p3,p2, nrow=2)
   dev.off()
 }
 
 
 plot.cohort <- function(scn.name){
   
-  library(tidyverse)
   load("rscripts/ins/species.rdata") 
   
   ## Area of species replaced after drought
-  dta.cohort <- read.table(paste0("outputs/", scn.name, "/cohort.txt"), header=T)
+  dta.cohort <- read.table(paste0("outputs/Scn_", scn.name, "/cohort.txt"), header=T)
+  dta.cohort <- filter(dta.cohort, year>10)
   dta.cohort <- group_by(dta.cohort, run, spp.out, spp.in) %>% summarise(ha=sum(ha)) %>%
                 group_by(spp.out, spp.in) %>% summarise(ha=mean(ha)) %>% 
                 left_join(select(species, spp, name), by=c("spp.out"="spp") ) %>%
@@ -112,23 +132,22 @@ plot.cohort <- function(scn.name){
                 left_join(select(species, spp, name), by=c("spp.in"="spp") ) %>%
                 mutate(name.in=name) %>% select(-name)
   all.out <- group_by(dta.cohort, spp.out) %>% summarise(tot.ha=sum(ha))
-  dta.cohort <- left_join(dta.cohort, all.out, by="spp.out") %>%
-                mutate(pctg=100*ha/tot.ha)
+  dta.cohort <- left_join(dta.cohort, all.out, by="spp.out") %>% mutate(pctg=100*ha/tot.ha)
     
   ##  PLOT area replaced by new spp / killed spp
-  select.color <- filter(species, name %in% unique(dta.cohort$name.in)) %>% select(color.sort)
+  select.color <- filter(species, name %in% unique(dta.cohort$name.in)) %>% select(color.cohort)
   p1 <- ggplot(data=dta.cohort, aes(x=name.out, y=ha/100, fill=name.in)) + geom_bar(stat="identity") +
-        scale_fill_manual("Species", values=as.character(select.color$color.sort) )+ 
+        scale_fill_manual("Species", values=as.character(select.color$color.cohort) )+ 
         ggtitle("Species replacement after drought") + ylab("km2") + xlab("species killed") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   ## PLOT pctg of area replaced by new spp / killed spp
   p2 <- ggplot(data=dta.cohort, aes(x=name.out, y=pctg, fill=name.in)) + geom_bar(stat="identity") +
-        scale_fill_manual("Species", values=as.character(select.color$color.sort) )+ 
+        scale_fill_manual("Species", values=as.character(select.color$color.cohort) )+ 
         ggtitle("Percentage of species replacement after drought") + ylab("%") + xlab("species killed") +
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
  
   ## Save in tiff
-  tiff(paste0("rscripts/outs/CohortReplace_", scn.name, ".tiff"), width=1200, height=500)
+  tiff(paste0("rscripts/outs/02.CohortReplace_", scn.name, ".tiff"), width=1200, height=500)
   gridExtra::grid.arrange(p1,p2, nrow=1)
   dev.off() 
 }
@@ -136,13 +155,12 @@ plot.cohort <- function(scn.name){
 
 plot.abundance <- function(scn.name){
   
-  library(tidyverse)
   load("rscripts/ins/species.rdata")  
   
   ## Existences
-  dta.land <- read.table(paste0("outputs/", scn.name, "/Land.txt"), header=T)
-  dta.land <- mutate(dta.land, year=year+2009)
-  dta.ini <- filter(dta.land, year==2010) %>% select(-year)
+  dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
+  dta.land <- filter(dta.land, year>10) %>% mutate(year=year+2009)
+  dta.ini <- filter(dta.land, year==2020) %>% select(-year)
   names(dta.ini)[3:6] <- paste0(names(dta.ini)[3:6], ".ini") 
   dta.land <- left_join(dta.land, dta.ini, by=c("run","spp")) %>%
               mutate(pctg.area=100*area/area.ini, pctg.vol=100*vol/vol.ini,
@@ -153,75 +171,75 @@ plot.abundance <- function(scn.name){
   
   ## PLOT Abundance area
   p1 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=area/100, colour=name)) +
-        geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) +facet_wrap(.~type) +  #
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Abundance - Area") + ylab("km2") + theme_bw()
   ## PLOT Abundance volume with bark
   p2 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=volbark/10^6, colour=name)) +
-        geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species",values=as.character(species$color.sort)) + 
         ggtitle("Abundance - Volume with bark") + ylab("m3/10^6") + theme_bw() 
   ## PLOT Abundance carbon
   p3 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=carbon/10^6, colour=name)) +
-        geom_smooth( method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Abundance - Carbon") + ylab("t/10^6") + theme_bw()
   ## PLOT Percentage area
   p4 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=pctg.area, colour=name)) +
-        geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Percentage - Area") + ylab("%") + theme_bw()
   ## PLOT Percentage volume with bark
   p5 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=pctg.volbark, colour=name)) +
-        geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species",values=as.character(species$color.sort)) + 
         ggtitle("Percentage - Volume with bark") + ylab("%") + theme_bw() 
   ## PLOT Percentage carbon
   p6 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=pctg.carbon, colour=name)) +
-        geom_smooth( method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Percentage - Carbon") + ylab("%") + theme_bw()
   ## PLOT Relative increment volume with bark
   p7 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=rel.volbark, colour=name)) +
-        geom_smooth(method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species",values=as.character(species$color.sort)) + 
         ggtitle("Relative abundance - Volume with bark") + ylab("m3/ha") + theme_bw() 
   ## PLOT Relative increment carbon
   p8 <- ggplot(data=filter(dta.land,spp<=13), aes(x=year, y=rel.carbon, colour=name)) +
-        geom_smooth( method = "loess", size=1.5) + facet_wrap(.~type) +
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + facet_wrap(.~type) +
         scale_color_manual("Species", values=as.character(species$color.sort)) + 
         ggtitle("Relative abundance - Carbon") + ylab("t/ha") + theme_bw()
   
   ## PLOTs for SHRUBS
   p9 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=area/100, colour=name)) +
-        geom_smooth(method = "loess", size=1.5) + 
+        geom_smooth(formula=y~x, method = "loess", size=1.5) + 
         scale_color_manual("Species", values=as.character(species$color.sort)[14]) + 
         ggtitle("Abundance - Area") + ylab("km2") + theme_bw()
   p10 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=vol/10^9, colour=name)) +
-         geom_smooth(method = "loess", size=1.5) + 
+         geom_smooth(formula=y~x, method = "loess", size=1.5) + 
          scale_color_manual("Species",values=as.character(species$color.sort)[14]) + 
          ggtitle("Abundance - Mass") + ylab("t/10^9") + theme_bw() 
   p11 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=pctg.area, colour=name)) +
-         geom_smooth(method = "loess", size=1.5) +
+         geom_smooth(formula=y~x, method = "loess", size=1.5) +
          scale_color_manual("Species", values=as.character(species$color.sort)[14]) + 
          ggtitle("Percentage - Area") + ylab("%") + theme_bw()
   p12 <- ggplot(data=filter(dta.land,spp==14), aes(x=year, y=pctg.vol, colour=name)) +
-         geom_smooth(method = "loess", size=1.5) + 
+         geom_smooth(formula=y~x, method = "loess", size=1.5) + 
          scale_color_manual("Species",values=as.character(species$color.sort)[14]) + 
          ggtitle("Percentage - Mass") + ylab("%") + theme_bw() 
   
   
   ## Save in tiff
-  tiff(paste0("rscripts/outs/Abundance_", scn.name, ".tiff"), width=1800, height=500)
+  tiff(paste0("rscripts/outs/03.Abundance_", scn.name, ".tiff"), width=1800, height=500)
   gridExtra::grid.arrange(p1,p2,p3, nrow=1)
   dev.off() 
-  tiff(paste0("rscripts/outs/AbundancePctg_", scn.name, ".tiff"), width=1800, height=500)
+  tiff(paste0("rscripts/outs/04.AbundancePctg_", scn.name, ".tiff"), width=1800, height=500)
   gridExtra::grid.arrange(p4,p5,p6, nrow=1)
   dev.off() 
-  tiff(paste0("rscripts/outs/AbundanceRel_", scn.name, ".tiff"), width=1200, height=500)
+  tiff(paste0("rscripts/outs/05.AbundanceRel_", scn.name, ".tiff"), width=1200, height=500)
   gridExtra::grid.arrange(p7,p8, nrow=1)
   dev.off() 
-  tiff(paste0("rscripts/outs/AbundanceShrub_", scn.name, ".tiff"), width=1200, height=500)
+  tiff(paste0("rscripts/outs/06.AbundanceShrub_", scn.name, ".tiff"), width=1200, height=500)
   gridExtra::grid.arrange(p9,p10,p11,p12, nrow=2)
   dev.off() 
   
@@ -231,13 +249,12 @@ plot.abundance <- function(scn.name){
 
 plot.afforest <- function(scn.name){
   
-  library(tidyverse)
   load("rscripts/ins/species.rdata") 
   
   ## Area of species replaced after drought
-  dta.afforest <- read.table(paste0("outputs/", scn.name, "/Afforestation.txt"), header=T)
+  dta.afforest <- read.table(paste0("outputs/Scn_", scn.name, "/Afforestation.txt"), header=T)
+  dta.afforest <- filter(dta.afforest, year>10)
   dta.afforest <- mutate(dta.afforest, decade=((year-1) %/% 10)*10+2010) %>%
-                  mutate(decade=ifelse(decade==2100,2090, decade)) %>%
                   group_by(decade, spp, run) %>% summarise(ha=sum(ha))%>%
                   group_by(decade, spp) %>% summarise(ha=mean(ha)) %>% 
                   left_join(select(species, spp, name), by="spp") #%>%
@@ -257,7 +274,52 @@ plot.afforest <- function(scn.name){
         theme_bw() + theme(axis.text.x = element_text(angle = 90)) 
   
   ## Save in tiff
-  tiff(paste0("rscripts/outs/Afforestation_", scn.name, ".tiff"), width=1200, height=500)
+  tiff(paste0("rscripts/outs/07.Afforestation_", scn.name, ".tiff"), width=1200, height=500)
   gridExtra::grid.arrange(p1,p2, nrow=1)
   dev.off() 
+}
+
+
+
+
+plot.land.covers <- function(scn.name){
+  
+  ## Existences
+  dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
+  dta.land <- filter(dta.land, year>10) %>% mutate(year=year+2009)
+  dta.ini <- filter(dta.land, year==2020) %>% select(run, spp, area) 
+  names(dta.ini)[3] <- paste0(names(dta.ini)[3], ".ini") 
+  dta.land <- select(dta.land, run, year, spp, area) %>% 
+              left_join( dta.ini, by=c("run","spp")) %>%
+              mutate(lc=ifelse(spp<=13, "forest", ifelse(spp==14, "shrub", ifelse(spp==15, "grass", 
+                        ifelse(spp<=17, "crop", ifelse(spp<=19, "other", "urban")))))) %>% 
+              group_by(run, year, lc) %>% summarise(area=sum(area), area.ini=sum(area.ini)) %>% 
+              mutate(pctg.area=100*area/area.ini)
+ 
+  p1 <- ggplot(data=filter(dta.land, lc!="other"), aes(x=year, y=pctg.area, colour=lc)) +
+    geom_smooth(formula=y~x, method = "loess", size=1.5) + 
+    scale_color_manual(values=c("gold", "forestgreen", "yellowgreen", "saddlebrown", "grey70")) + 
+    ggtitle("Percentage - Area") + ylab("%") + theme_bw()
+
+  tiff(paste0("rscripts/outs/08.AbundanceRelLandCover_", scn.name, ".tiff"), width=500, height=400)
+  gridExtra::grid.arrange(p1, nrow=1)
+  dev.off()
+
+}
+
+## @@@@@@@@@@@@@@ to be developed
+## a graph per species (with its colors) and 3 abundance lines (or relative abundances), one 
+## line per age class differenciated by the trace (solid, dashed, points)
+## Or use age.class as facet variable, and have a plot per age class with the (relative)
+## abundances of all species (each one with its color)
+plot.age.class <- function(scn.name){
+  
+  load("rscripts/ins/species.rdata")  
+  
+  ## Existences
+  dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
+  dta.land <- mutate(dta.land, year=year+2010)
+  dta.ini <- filter(dta.land, year==2010) %>% select(-year)
+  names(dta.ini)[3:6] <- paste0(names(dta.ini)[3:6], ".ini")  
+  
 }

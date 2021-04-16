@@ -113,7 +113,7 @@ land.dyn.mdl <- function(scn.name){
   track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
-  track.land <- data.frame(run=NA, year=NA, spp=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
+  track.land <- data.frame(run=NA, year=NA, spp=NA, age.class=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   
   
   ## Start the simulations   
@@ -126,17 +126,21 @@ land.dyn.mdl <- function(scn.name){
       load("inputlyrs/rdata/land.cover.changes.rdata")
     
     ## Land at time 0, at the initial stage
-    aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
+    aux.forest <- filter(land, spp<=13) %>% select(spp, age, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
                   mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
                   left_join(eq.ba.volbark, by="spp") %>% 
                   mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
                   left_join(eq.ba.carbon, by="spp") %>% 
-                  mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
+                  mutate(carbon=c*biom/10) %>% 
+                  mutate(age.class=ifelse(spp<=7 & age<=15, "young", ifelse(spp<=7 & age<=50, "mature",
+                         ifelse(spp<=7 & age>50, "old", ifelse(spp>7 & spp<=13 & age<=15, "young",
+                         ifelse(spp>7 & spp<=13 & age<=50, "mature", "old")))))) %>%       
+                  group_by(spp, age.class) %>% select(-c) %>%
                   summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
     aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
-                 summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
+                 summarise(age.class=NA, area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
     aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
-                 summarise(area=length(spp), vol=0, volbark=0, carbon=0)  
+                 summarise(age.class=NA, area=length(spp), vol=0, volbark=0, carbon=0)  
     track.land <- rbind(track.land, data.frame(run=irun, year=0, aux.forest), data.frame(run=irun, year=0, aux.shrub),
                         data.frame(run=irun, year=0, aux.other))
     
@@ -429,17 +433,21 @@ land.dyn.mdl <- function(scn.name){
         land$age <- pmin(land$age+1,600)
         land$tsdist <- pmin(land$tsdist+1,600)
         land$tscut <- pmin(land$tscut+1,600)
-        aux.forest <- filter(land, spp<=13) %>% select(spp, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
+        aux.forest <- filter(land, spp<=13) %>% select(spp, age, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
                       mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
                       left_join(eq.ba.volbark, by="spp") %>% 
                       mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
                       left_join(eq.ba.carbon, by="spp") %>% 
-                      mutate(carbon=c*biom/10) %>% group_by(spp) %>% select(-c) %>%
+                      mutate(carbon=c*biom/10) %>% 
+                      mutate(age.class=ifelse(spp<=7 & age<=15, "young", ifelse(spp<=7 & age<=50, "mature",
+                             ifelse(spp<=7 & age>50, "old", ifelse(spp>7 & spp<=13 & age<=15, "young",
+                             ifelse(spp>7 & spp<=13 & age<=50, "mature", "old")))))) %>%       
+                      group_by(spp, age.class) %>% select(-c) %>%
                       summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
-                     summarise(area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
+                     summarise(age.class=NA, area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
         aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
-                     summarise(area=length(spp), vol=0, volbark=0, carbon=0)  
+                     summarise(age.class=NA, area=length(spp), vol=0, volbark=0, carbon=0)  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux.forest), data.frame(run=irun, year=t, aux.shrub),
                             data.frame(run=irun, year=t, aux.other))
       }
@@ -454,14 +462,14 @@ land.dyn.mdl <- function(scn.name){
         writeRaster(MAP, paste0(out.path, "/lyr/Biom_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
         MAP <- MASK; MAP[!is.na(MASK[])] <- land$age
         writeRaster(MAP, paste0(out.path, "/lyr/Age_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-        MAP <- MASK
-        MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1, 
-                                      ifelse(land$typdist == "cut", 2, 
-                                             ifelse(land$typdist %in% c("highfire", "lowfire"), 3,   
-                                                    ifelse(land$typdist == "pb", 4,
-                                                           ifelse(land$typdist == "drght", 5,
-                                                                  ifelse(land$typdist == "afforest", 6, NA))))))
-        writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        # MAP <- MASK
+        # MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1, 
+        #                               ifelse(land$typdist == "cut", 2, 
+        #                                      ifelse(land$typdist %in% c("highfire", "lowfire"), 3,   
+        #                                             ifelse(land$typdist == "pb", 4,
+        #                                                    ifelse(land$typdist == "drght", 5,
+        #                                                           ifelse(land$typdist == "afforest", 6, NA))))))
+        # writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
     } # time
@@ -477,12 +485,9 @@ land.dyn.mdl <- function(scn.name){
     # write.table(track.sr.source[-1,], paste0(out.path, "/FireSprdSource.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.pb[-1,], paste0(out.path, "/PrescribedBurns.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.drougth[-1,], paste0(out.path, "/Drought.txt"), quote=F, row.names=F, sep="\t")
-    # names(track.post.fire)[4:5] <- c("spp.in", "ha")
     write.table(track.post.fire[-1,], paste0(out.path, "/PostFire.txt"), quote=F, row.names=F, sep="\t")
-    # names(track.cohort)[4:5] <- c("spp.in", "ha")
     track.cohort <- filter(track.cohort, ha>0)
     write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
-    # names(track.afforest)[3:4] <- c("spp", "ha")
     write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
     
