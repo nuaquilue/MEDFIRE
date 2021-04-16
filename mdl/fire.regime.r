@@ -99,9 +99,9 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       }
     }  
     cat(paste(" Annual target area:", area.target), "\n")
-    print.maps <- F
-    if(area.target>0 & write.maps)
-      print.maps <- T
+      # print.maps <- F
+      # if(area.target>0 & write.maps)
+      #   print.maps <- T
     
     
     ## Update prob.igni according to swc
@@ -433,16 +433,16 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       
     }  # while 'area.target'
     
-    if(print.maps){
-      # Data frame with 
-      save(map, file=paste0(out.path, "/Maps_r", irun, "t", t, "_swc", swc, ".rdata"))
-      # ## fire.ids
-      # MAP[!is.na(MASK[])] <- map$id
-      # writeRaster(MAP, paste0(out.path, "/lyr/FireIds_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
-      # ## fire.step
-      # MAP[!is.na(MASK[])] <- map$step
-      # writeRaster(MAP, paste0(out.path, "/lyr/FireStep_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
-    }
+    # if(print.maps){
+    #   # Data frame with 
+    #   save(map, file=paste0(out.path, "/Maps_r", irun, "t", t, "_swc", swc, ".rdata"))
+    #   # ## fire.ids
+    #   # MAP[!is.na(MASK[])] <- map$id
+    #   # writeRaster(MAP, paste0(out.path, "/lyr/FireIds_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
+    #   # ## fire.step
+    #   # MAP[!is.na(MASK[])] <- map$step
+    #   # writeRaster(MAP, paste0(out.path, "/lyr/FireStep_r", irun, "t", t, "swc", swc, ".tif"), format="GTiff", overwrite=T)
+    # }
     
   }  # 'all.swc
   
