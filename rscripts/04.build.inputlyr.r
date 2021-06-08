@@ -186,9 +186,9 @@ writeRaster(BA.1K, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/ToOriol_1km/Biomass_1k
 
 ############################# BIOPHYSIC VARIABLES: HEIGHT --> AGE ################################
 source("rscripts/05.forest.age.r")
-all.files <- list.files("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData")
+all.files <- list.files("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData")
 files.select <- all.files[seq(7,235,8)]
-HM <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", files.select[1]))
+HM <- raster(paste0("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", files.select[1]))
 HMall <- extend(HM, extent(c(250000, 540000, 4480000, 4766800)))
 for(sh in files.select[-1]){
   HMsheet <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", sh))
@@ -216,7 +216,7 @@ TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100
 AGE[LCFM[]==14] <- TSF[LCFM[]==14] 
 AGE[LCFM[]>14] <- NA
 # check
-dta <- data.frame(lcf=LCFM[], age=AGE[])
+dta <- data.frame(lcf=LCFM[], age=round(AGE[]))
 filter(dta, lcf<=14, is.na(age))
 writeRaster(AGE, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
@@ -460,6 +460,46 @@ writeRaster(ASPECT, "c:/work/MEDMOD/inputlayers_MEDFIRE_II/ToOriol_1km/Aspect_1k
 
 
 
+#################################### COMARQUES ####################################
+COMAR.100m <- raster("c:/work/MEDMOD/inputlayers_MEDFIRE_II/Comarques/Comarca_31N-ETRS89.asc")
+## Are there NAs in the COMARCA within CAT?
+dta <- data.frame(cell.id=1:ncell(COMAR.100m), m=MASK[], coordinates(COMAR.100m), z=COMAR.100m[]) %>%
+  filter(!is.na(m))
+na.var <- filter(dta, is.na(z))
+for(id in na.var$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>% select(x,y), 
+                searchtype="priority", k=9)
+  phago <- median(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+  print(which(na.var$cell.id==id))
+}
+na.var2 <- filter(na.var, is.na(z))
+for(id in na.var2$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=25)
+  phago <- median(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+  print(which(na.var$cell.id==id))
+}
+na.var3 <- filter(na.var, is.na(z))
+for(id in na.var3$cell.id){
+  neighs <- nn2(select(dta, x, y), filter(na.var, cell.id==id)%>%select(x,y), 
+                searchtype="priority", k=121)
+  phago <- median(dta$z[neighs$nn.idx], na.rm=T)
+  if(!is.na(phago))
+    na.var$z[na.var$cell.id==id] <- phago
+  print(which(na.var$cell.id==id))
+}
+na.var4 <- filter(na.var, is.na(z))
+dta$z[is.na(dta$z)] <- na.var$z
+COMARCA <- MASK
+COMARCA[!is.na(MASK[])] <- dta$z
+writeRaster(COMARCA, "c:/work/MEDMOD/spatialmodelsr/MEDFIRE/inputlyrs/asc/County_100m_31N-ETRS89.asc", 
+            format="ascii", overwrite=T, NAflag=-100)
+
+
 
 
 ###################################### FIRES 2010 to 2019 (to be burnt in the spin-in) ######################################
@@ -603,7 +643,7 @@ newcount18-count93
 
 
 
-################################################# PLOT inputs #################################################
+################################################# PLOT inputs ################################################
 ## Biomass
 BIOMASS <- raster("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc")
 BIOMASS@extent@xmin = BIOMASS@extent@xmin / 1000
@@ -632,3 +672,6 @@ ggplot(filter(land, spp<=13, age>10 & age<=20), aes(x=as.factor(age), y=biom)) +
   facet_wrap(.~as.factor(spp)) +
   stat_summary(fun.y=median, geom="point", size=2, color="black", shape="square")
 # 
+
+
+

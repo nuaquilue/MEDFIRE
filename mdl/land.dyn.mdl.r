@@ -456,12 +456,13 @@ land.dyn.mdl <- function(scn.name){
       ## Print maps every time step with ignition and low/high intenstiy burnt
       if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
         cat("... writing maps", "\n")
-        MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
-        writeRaster(MAP, paste0(out.path, "/lyr/Spp_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-        MAP <- MASK; MAP[!is.na(MASK[])] <- land$biom
-        writeRaster(MAP, paste0(out.path, "/lyr/Biom_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-        MAP <- MASK; MAP[!is.na(MASK[])] <- land$age
-        writeRaster(MAP, paste0(out.path, "/lyr/Age_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        save(land, file=paste0(out.path, "/land_r", irun, "t", t, ".rdata"))
+        # MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
+        # writeRaster(MAP, paste0(out.path, "/lyr/Spp_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        # MAP <- MASK; MAP[!is.na(MASK[])] <- land$biom
+        # writeRaster(MAP, paste0(out.path, "/lyr/Biom_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        # MAP <- MASK; MAP[!is.na(MASK[])] <- land$age
+        # writeRaster(MAP, paste0(out.path, "/lyr/Age_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
         # MAP <- MASK
         # MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1, 
         #                               ifelse(land$typdist == "cut", 2, 
@@ -492,11 +493,11 @@ land.dyn.mdl <- function(scn.name){
     write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
     
     # Print maps at the end of the simulation period per each run
-    if(write.maps){
-      MAP <- MASK
-      MAP[!is.na(MASK[])] <- land$tburnt
-      writeRaster(MAP, paste0(out.path, "/lyr/TimesBurnt_r", irun, ".tif"), format="GTiff", overwrite=T)
-    }
+    # if(write.maps){
+    #   MAP <- MASK
+    #   MAP[!is.na(MASK[])] <- land$tburnt
+    #   writeRaster(MAP, paste0(out.path, "/lyr/TimesBurnt_r", irun, ".tif"), format="GTiff", overwrite=T)
+    # }
 
   } # run
   

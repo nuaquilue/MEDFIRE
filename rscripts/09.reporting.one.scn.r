@@ -280,8 +280,6 @@ plot.afforest <- function(scn.name){
 }
 
 
-
-
 plot.land.covers <- function(scn.name){
   
   ## Existences

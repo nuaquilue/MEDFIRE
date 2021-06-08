@@ -6,21 +6,22 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "postfire"; define.scenario(scn.name)
+scn.name <- "harvesting"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
 time.horizon <- 10
-spin.up <- T
+spin.up <- F
+write.maps <- T
 is.climate.change <- F
 clim.scn <- NA
 file.pctg.hot.days <- "PctgHotDays_noCC"
 file.clim.severity <- "ClimaticSeverity_noCC"
 is.land.cover.change <- F
-is.harvest <- F
+is.harvest <- T
 is.wildfire <- T
 is.postfire <- T
 file.fire.suppression <- "FireSuppress"
-dump(c("nrun", "time.horizon", "spin.up", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
+dump(c("nrun", "time.horizon", "spin.up", "write.maps", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
        "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 land.dyn.mdl(scn.name)

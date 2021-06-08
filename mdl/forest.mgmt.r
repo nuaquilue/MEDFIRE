@@ -47,7 +47,7 @@ forest.mgmt <- function(land, harvest, clim, t, out.path, MASK){
   areas.mgmt <- group_by(suit.mgmt, spp) %>% summarise(suitable=length(spp))
   # plot cells suitable for mgmt
   dta <- data.frame(cell.id=1:ncell(MASK)) %>% left_join(select(suit.mgmt, cell.id, spp), by="cell.id")
-  MASK[] <- dta$spp
+  MASK[] <- dta$spp; plot(MASK, col=rainbow(12))
   writeRaster(MASK, paste0(out.path, "/lyr/suit.mgmt_t", t, ".tif"), format="GTiff", overwrite=T)
   
       # suit.mgmt <- left_join(select(subland, -typdist,-tsdist, -tburnt), harvest, by="cell.id") %>%
@@ -55,6 +55,14 @@ forest.mgmt <- function(land, harvest, clim, t, out.path, MASK){
       #   filter(enpe %notin% c(1,3,4,5)) 
       # writeRaster(MASK, paste0(out.path, "/lyr/suit.mgmt_NOPATH_t", t, ".tif"), format="GTiff", overwrite=T)
   
+  ## Find patches using a 8-neigbour rule, to have an idea of the size of patches that can be harvested
+  MASK[!is.na(MASK[])] <- 1
+  CLUSTER <- clump(MASK)
+  # plot(CLUSTER, col=plasma(max(CLUSTER[], na.rm=T)))
+  ## Build a data frame with cell coordinates and cluster id
+  df <- data.frame(cell.id=1:ncell(CLUSTER), coordinates(CLUSTER), clust=getValues(CLUSTER))
+  ptch <- filter(df, !is.na(clust)) %>% group_by(clust) %>% summarise(xm=mean(x), ym=mean(y), size=length(clust)) 
+  head(ptch)
   
   ## Find those forest cells that can be sustainably harvested
   sustain <- filter(subland, cell.id %in% suit.mgmt$cell.id) %>% select(-typdist,-tsdist, -tburnt) %>% 
