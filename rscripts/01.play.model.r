@@ -27,7 +27,6 @@ dump(c("nrun", "time.horizon", "spin.up", "write.maps", "is.climate.change", "cl
 land.dyn.mdl(scn.name)
 
 
-
 ############################################### RUN FACTORIAL SCN ################################################
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
