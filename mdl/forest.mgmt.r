@@ -41,7 +41,8 @@ forest.mgmt <- function(land, harvest, clim, t, out.path, MASK){
   suit.mgmt <- left_join(select(subland, -typdist,-tsdist, -tburnt), harvest, by="cell.id") %>%
                filter(slope.pctg <= 30) %>%                  # exclude by slope > 30%
                filter(enpe %notin% c(1,3,4,5)) %>%           # exclude 'parc nacional', 'paratge natural interès nacional', 'reserva natural fauna salvatge', and 'reseva natural integral'
-               mutate(ppath=exp(-dist.path*lambda))          # dist - ppath: 0 - 1, 100 - 0.6065, 141 - 0.493, 200 - 0.36788
+               mutate(ppath=exp(-dist.path*lambda))  %>%     # dist - ppath: 0 - 1, 100 - 0.6065, 141 - 0.493, 200 - 0.36788
+               mutate(pslope=ifelse(slope.pctg <= 30, 1, ifelse(slope.pctg <= 60, 0.4, 0)))
   suit.mgmt$access <- suit.mgmt$ppath >= runif(nrow(suit.mgmt), 0, 0)     ## with upper th 0.49, ~10% is not accessible
   suit.mgmt <- filter(suit.mgmt, access) 
   areas.mgmt <- group_by(suit.mgmt, spp) %>% summarise(suitable=length(spp))
