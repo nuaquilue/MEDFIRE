@@ -17,7 +17,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/cohort.establish.r")
   source("mdl/drought.r")
   source("mdl/fire.regime.r")
-  source("mdl/forest.mgmt.r")
+  source("mdl/sustainable.mgmt.r")
   source("mdl/growth.r")
   source("mdl/land.cover.change.r")
   source("mdl/post.fire.r")
@@ -25,7 +25,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/update.clim.r")
   source("mdl/update.interface.r")
   sourceCpp("mdl/is.in.cpp")
-  
+  `%notin%` <- Negate(`%in%`)
   
   ## Load scenario definition (global variables and scenario parameters)
   ## and customized scenario parameters
@@ -51,8 +51,8 @@ land.dyn.mdl <- function(scn.name){
   
   ## Set the directory for writing spatial outputs (create it, if it does not exist yet) 
   if(write.maps){      
-    if(!file.exists(paste0(out.path, "/lyr")))
-      dir.create(file.path(getwd(), out.path, "/lyr"), showWarnings = F) 
+    if(!file.exists(paste0(out.path, "/rdata")))
+      dir.create(file.path(getwd(), out.path, "/rdata"), showWarnings = F) 
   }
 
   
@@ -145,6 +145,7 @@ land.dyn.mdl <- function(scn.name){
                         data.frame(run=irun, year=0, aux.other))
     
     ## Start the discrete time sequence 
+    t <- 1
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
@@ -275,16 +276,41 @@ land.dyn.mdl <- function(scn.name){
       
       ## 3. FOREST MANAGEMENT (under development)
       if(is.harvest & t %in% mgmt.schedule){
-        cut.out <- forest.mgmt(land, harvest, clim, t, out.path, MASK)
-        land$typdist[land$cell.id %in% cut.out$cell.id] <- "cut"
-        land$tsdist[land$cell.id %in% cut.out$cell.id] <- 0
-        land$typcut[land$cell.id %in% cut.out$cell.id] <- cut.out$typcut
-        land$tscut[land$cell.id %in% cut.out$cell.id] <- 0
-        land$age[land$cell.id %in% cut.out$cell.id & land$typcut=="fin"] <- 0
-        land$biom[land$cell.id %in% cut.out$cell.id] <- 
-        land$biom[land$cell.id %in% cut.out$cell.id]-cut.out$ba.extract
+        cut.out <- sustainable.mgmt(land, harvest, clim, t)
+        sustain <- cut.out$sustain
+        extracted.sawlog <- cut.out$extracted.sawlog
+        extracted.wood <- cut.out$extracted.wood
+        # track the cells that have been cut
+        land$typdist[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- "cut"
+        land$tsdist[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- 
+          land$tscut[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- 0
+        # track the type of intervention (e.g. thinning, prep.cut, seed.cut, removal.cut)
+        land$typcut[land$cell.id %in% extracted.sawlog$cell.id] <- extracted.sawlog$todo
+        land$typcut[land$cell.id %in% extracted.wood$cell.id] <- extracted.wood$todo
+        # change the age of the cells after removal.cut.
+        # wood is extracted in quercus stands by clear.cut
+        land$age[land$cell.id %in% extracted.wood$cell.id] <- 0 
+        # sawlogs are extracted in conifer stands under a shelterwood sytem.
+        # after the removal.cut, the stand is in regeneration and it already has 10 years.
+        land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$spp %notin% c(8,10,11)]] <- 9 # sum 1 at the end of the year
+        land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$spp %in% c(8,10,11)]] <- 0 # quercus are clear cut
+        # change the basal area in harvested stands
+        land$biom[land$cell.id %in% extracted.sawlog$cell.id] <- 
+          land$biom[land$cell.id %in% extracted.sawlog$cell.id]-extracted.sawlog$ba.extract*10
+        land$biom[land$cell.id %in% extracted.wood$cell.id] <- 
+          land$biom[land$cell.id %in% extracted.wood$cell.id]-extracted.wood$ba.extract*10
+        # after removal.cut make explicity that basal area is 0
+        land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut"] ] <- 0
+        # but there's regeneration of 9 year old in areas harvested under shelterwood
+        for(i in 1:9)
+          land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$spp %notin% c(8,10,11)]] <- 
+              growth(land[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$spp %notin% c(8,10,11)],], clim, paste("Cohort age", i))
+        
+        # count the vol extracted per each spp
+        aux <- rbind(group_by(extracted.sawlog,spp) %>% summarize(vol.sawlog=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood)),
+                     group_by(extracted.wood,spp) %>% summarize(vol.sawlog=0, vol.wood=sum(vol.extract.sawlog+vol.extract.wood)))
         track.harvest <- rbind(track.harvest, data.frame(run=irun, year=t, 
-            group_by(cut.out, spp) %>% summarize(vol.sawlog=round(sum(vol.sawlog),1), vol.wood=round(sum(vol.wood),1))))
+          group_by(aux, spp) %>% summarize(vol.sawlog=round(sum(vol.sawlog),1), vol.wood=round(sum(vol.wood),1)) ))
       }
       
       
@@ -456,7 +482,7 @@ land.dyn.mdl <- function(scn.name){
       ## Print maps every time step with ignition and low/high intenstiy burnt
       if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
         cat("... writing maps", "\n")
-        save(land, file=paste0(out.path, "/land_r", irun, "t", t, ".rdata"))
+        save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
         # MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
         # writeRaster(MAP, paste0(out.path, "/lyr/Spp_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
         # MAP <- MASK; MAP[!is.na(MASK[])] <- land$biom
@@ -472,6 +498,8 @@ land.dyn.mdl <- function(scn.name){
         #                                                           ifelse(land$typdist == "afforest", 6, NA))))))
         # writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
+      
+      write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
       
     } # time
   

@@ -6,25 +6,27 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "harvesting"; define.scenario(scn.name)
+scn.name <- "harvesting10"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
 time.horizon <- 10
 spin.up <- F
 write.maps <- T
+write.freq <- 1
 is.climate.change <- F
 clim.scn <- NA
 file.pctg.hot.days <- "PctgHotDays_noCC"
 file.clim.severity <- "ClimaticSeverity_noCC"
 is.land.cover.change <- F
 is.harvest <- T
-is.wildfire <- T
-is.postfire <- T
+is.wildfire <- F
+is.postfire <- F
 file.fire.suppression <- "FireSuppress"
-dump(c("nrun", "time.horizon", "spin.up", "write.maps", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
+dump(c("nrun", "time.horizon", "spin.up", "write.maps", "write.freq", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
        "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 land.dyn.mdl(scn.name)
+
 
 
 ############################################### RUN FACTORIAL SCN ################################################
