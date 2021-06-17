@@ -18,6 +18,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/drought.r")
   source("mdl/fire.regime.r")
   source("mdl/sustainable.mgmt.r")
+  source("mdl/forest.areas.r")
   source("mdl/growth.r")
   source("mdl/land.cover.change.r")
   source("mdl/post.fire.r")
@@ -98,6 +99,16 @@ land.dyn.mdl <- function(scn.name){
     
   ## Tracking data.frames
   track.harvest <- data.frame(run=NA, year=NA, spp=NA, vol.sawlog=NA, vol.wood=NA)
+  track.forest.areas <- data.frame(run=NA, year=NA, forest=NA, spp.harvestable=NA, non.protect=NA,
+                                   national.park=NA, enpe=NA, no.park=NA, slope30.nopark=NA, slope30.nopark.distpaht1.5=NA,
+                                   slope30.nopark.distpaht2.2=NA, prep.cut_conif=NA, prep.cut_decid=NA, removal.cut_conif=NA, 
+                                   removal.cut_decid=NA, seed.cut_conif=NA, seed.cut_decid=NA, thinning_conif=NA, thinning_decid=NA)
+  track.volumes <- data.frame(run=NA, year=NA, vol.potential.extract.sawlog_conif=NA, vol.potential.extract.sawlog_decid=NA, 
+                              vol.potential.extract.wood_conif=NA, vol.potential.extract.wood_decid=NA,
+                              vol.extract.sawlog_conif=NA, vol.extract.sawlog_decid=NA, 
+                              vol.extract.wood_conif=NA, vol.extract.wood_decid=NA,
+                              pct.sawlog_conif=NA, pct.sawlog_decid=NA, pct.wood_conif=NA, pct.wood_decid=NA, 
+                              pct.conif_sawlog=NA, pct.conif_wood=NA, pct.decid_sawlog=NA, pct.decid_wood=NA) 
   track.fire <- data.frame(run=NA, year=NA, swc=NA, clim.sever=NA, fire.id=NA, fst=NA, wind=NA, atarget=NA, 
                            aburnt.highintens=NA, aburnt.lowintens=NA, asupp.fuel=NA, asupp.sprd=NA, rem=NA)
   track.fire.spp <- data.frame(run=NA, year=NA, fire.id=NA, spp=NA, aburnt=NA, bburnt=NA)
@@ -146,6 +157,7 @@ land.dyn.mdl <- function(scn.name){
     
     ## Start the discrete time sequence 
     t <- 1
+    t <- time.seq <- 1
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
@@ -277,14 +289,14 @@ land.dyn.mdl <- function(scn.name){
       ## 3. FOREST MANAGEMENT (under development)
       if(is.harvest & t %in% mgmt.schedule){
         cut.out <- sustainable.mgmt(land, harvest, clim, t)
-        sustain <- cut.out$sustain
         extracted.sawlog <- cut.out$extracted.sawlog
         extracted.wood <- cut.out$extracted.wood
-        # track the cells that have been cut
+        
+        # report the cells that have been cut
         land$typdist[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- "cut"
         land$tsdist[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- 
           land$tscut[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- 0
-        # track the type of intervention (e.g. thinning, prep.cut, seed.cut, removal.cut)
+        # report the type of intervention (e.g. thinning, prep.cut, seed.cut, removal.cut)
         land$typcut[land$cell.id %in% extracted.sawlog$cell.id] <- extracted.sawlog$todo
         land$typcut[land$cell.id %in% extracted.wood$cell.id] <- extracted.wood$todo
         # change the age of the cells after removal.cut.
@@ -306,11 +318,37 @@ land.dyn.mdl <- function(scn.name){
           land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$spp %notin% c(8,10,11)]] <- 
               growth(land[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$spp %notin% c(8,10,11)],], clim, paste("Cohort age", i))
         
-        # count the vol extracted per each spp
+        # track the vol extracted per each spp
         aux <- rbind(group_by(extracted.sawlog,spp) %>% summarize(vol.sawlog=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood)),
                      group_by(extracted.wood,spp) %>% summarize(vol.sawlog=0, vol.wood=sum(vol.extract.sawlog+vol.extract.wood)))
         track.harvest <- rbind(track.harvest, data.frame(run=irun, year=t, 
           group_by(aux, spp) %>% summarize(vol.sawlog=round(sum(vol.sawlog),1), vol.wood=round(sum(vol.wood),1)) ))
+        
+        # track the harvestable areas, the sustinably harvestable areas, and the volume extracted per product and forest type
+        cut.out$suit.mgmt$ftype <- ifelse(cut.out$suit.mgmt$spp<=7, "conif", "decid")
+        aux <- filter(cut.out$suit.mgmt, !is.na(todo)) %>% group_by(todo, ftype) %>% summarize(a=length(spp)) 
+        if( sum(aux$todo=="seed.cut" & aux$ftype=="decid") == 0)
+          aux <- rbind(data.frame(aux), data.frame(todo="seed.cut", ftype="decid", a=0))
+        aux <- aux %>% pivot_wider(names_from=c("todo", "ftype"), values_from=a, names_sort=T)
+        cut.out$sustain$ftype <- ifelse(cut.out$sustain$spp<=7, "conif", "decid")
+        aux2 <- group_by(cut.out$sustain, ftype) %>% 
+          summarize(vol.potential.extract.sawlog=sum(vol.extract.sawlog), vol.potential.extract.wood=sum(vol.extract.wood)) %>% 
+          pivot_wider(names_from=ftype, values_from=c("vol.potential.extract.sawlog", "vol.potential.extract.wood"))
+        extracted.sawlog$ftype <- ifelse(extracted.sawlog$spp<=7, "conif", "decid")
+        extracted.wood$ftype <- ifelse(extracted.wood$spp<=7, "conif", "decid")
+        aux3 <- group_by(rbind(extracted.sawlog, extracted.wood), ftype) %>% 
+          summarize(vol.extract.sawlog=sum(vol.extract.sawlog), vol.extract.wood=sum(vol.extract.wood)) %>% 
+          pivot_wider(names_from=ftype, values_from=c("vol.extract.sawlog", "vol.extract.wood"))
+        aux3$pct.sawlog_conif <- round(100*aux3$vol.extract.sawlog_conif/(aux3$vol.extract.sawlog_conif+aux3$vol.extract.sawlog_decid),1)
+        aux3$pct.sawlog_decid <- round(100*aux3$vol.extract.sawlog_decid/(aux3$vol.extract.sawlog_conif+aux3$vol.extract.sawlog_decid),1)
+        aux3$pct.wood_conif <- round(100*aux3$vol.extract.wood_conif/(aux3$vol.extract.wood_conif+aux3$vol.extract.wood_decid),1)
+        aux3$pct.wood_decid <- round(100*aux3$vol.extract.wood_decid/(aux3$vol.extract.wood_conif+aux3$vol.extract.wood_decid),1)
+        aux3$pct.conif_sawlog <- round(100*aux3$vol.extract.sawlog_conif/(aux3$vol.extract.sawlog_conif+aux3$vol.extract.wood_conif),1)
+        aux3$pct.conif_wood <- round(100*aux3$vol.extract.wood_conif/(aux3$vol.extract.sawlog_conif+aux3$vol.extract.wood_conif),1)
+        aux3$pct.decid_sawlog <- round(100*aux3$vol.extract.sawlog_decid/(aux3$vol.extract.sawlog_decid+aux3$vol.extract.wood_decid),1)
+        aux3$pct.decid_wood <- round(100*aux3$vol.extract.wood_decid/(aux3$vol.extract.sawlog_decid+aux3$vol.extract.wood_decid),1)
+        track.forest.areas <- rbind(track.forest.areas, data.frame(run=irun, year=t, forest.areas(land, harvest), aux))
+        track.volumes <- rbind(track.volumes, data.frame(run=irun, year=t, aux2, aux3))
       }
       
       
@@ -499,14 +537,18 @@ land.dyn.mdl <- function(scn.name){
         # writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
       
-      write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
+      write.table(track.harvest[-1,], paste0(out.path, "/HarvestSpp.txt"), quote=F, row.names=F, sep="\t")
+      write.table(track.forest.areas[-1,], paste0(out.path, "/ForestAreas.txt"), quote=F, row.names=F, sep="\t")
+      write.table(track.volumes[-1,], paste0(out.path, "/HarvestVolumes.txt"), quote=F, row.names=F, sep="\t")
       
     } # time
   
     ## Overwrite text outputs each run, at the end of the simulation period
-    ## To save some runs in case R closes before finishing all the runs
+    
+    .## To save some runs in case R closes before finishing all the runs
     cat("... writing outputs", "\n")
     write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.forest.areas[-1,], paste0(out.path, "/ForestAreas.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
     # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")

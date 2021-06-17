@@ -7,19 +7,16 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   `%notin%` <- Negate(`%in%`)
   
   ## Read (1) Harvesting rules, (2) Eq. of basal area to volume, and (3) Sawlog and Wood demands
-  rules <- read.table("inputfiles/MgmtORGEST.txt", header=T)# %>% select(-name, -orgest)
-  eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
-  # eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
+  rules <- read.table("inputfiles/MgmtORGEST.txt", header=T)
+  # eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
+  eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
   dmnd <- read.table(paste0("inputfiles/", file.dmnd.harvest, ".txt"), header=T)
   dmnd.sawlog <- dmnd$Sawlogs[t]
   dmnd.wood <- dmnd$Primary[t]
-  # dmnd.sawlog <- 500000; dmnd.wood <- 100000
   
   ## Track cut cells
   track.cut.cells <- data.frame(cut.id=NA, cell.id=NA, spp=NA, cut.sawlog=NA, typcut=NA, 
                                 pextract=NA, pwood=NA, vol.sawlog=NA, vol.wood=NA, ba.extract=NA)
-  cut.id <- 0
-  visit.cells <- integer()
   
   ## 8-neighbors neighbourhood used to compute the volume around each target cell
   default.neigh <- data.frame(x=c(-1,1,2900,-2900)) #,2899,-2901,2901,-2899))
@@ -36,15 +33,15 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   ## This is policy BAU
   lambda <- 1/2000
   suit.mgmt <- left_join(select(subland, -typdist,-tsdist, -tburnt), harvest, by="cell.id") %>%
-    filter(slope.pctg <= 50) %>%                  # exclude by slope > 50%
-    filter(enpe %notin% c(1,3,4,5)) %>%           # exclude 'parc nacional', 'paratge natural interès nacional', 'reserva natural fauna salvatge', and 'reseva natural integral'
-    mutate(ppath=ifelse(dist.path>2000, 0, exp(-dist.path*lambda)))  %>%     # dist - ppath: 0 - 1, 100 - 0.95, 500 - 0.77, 1000 - 0.6
+    filter(slope.pctg <= 30) %>%                  # exclude by slope > 30%
+    filter(enpe %notin% c(1)) %>%           # only exclude 'parc nacional', before also exclude 3-'paratge natural interès nacional', 4-'reserva natural fauna salvatge', and 5-reseva natural integral'
+    mutate(ppath=ifelse(dist.path>2200, 0, exp(-dist.path*lambda)))  %>%     # 2200=1500(terrestre)+700(cable aeri) dist - ppath: 0 - 1, 100 - 0.95, 500 - 0.77, 1000 - 0.6
     mutate(pslope=ifelse(slope.pctg <= 30, 1, 0.6)) %>% 
     mutate(psuit=pslope*ppath) %>% filter(psuit>0)
   
   ## Count stock (ha and volum) per species that is suitable for managment 
   suit.mgmt <- left_join(suit.mgmt, select(clim, cell.id, sqi), by="cell.id") %>% 
-               left_join(eq.ba.vol, by="spp") %>% mutate(vol=cx*biom/10+cx2*biom*biom/100) 
+               left_join(eq.ba.volbark, by="spp") %>% mutate(vol=cx*biom/10+cx2*biom*biom/100) 
   track.stock.area <- group_by(suit.mgmt, spp, sqi) %>% summarise(suitable=length(spp)) %>%
                       pivot_wider(names_from=sqi, values_from=suitable)
   track.stock.vol <- group_by(suit.mgmt, spp, sqi) %>% summarise(vol=sum(vol)) %>%
@@ -131,7 +128,7 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
               mutate(ba.extract=pmin((pctg.extract/100)*(biom/10), ifelse(is.na(remain.ba), biom/10, biom/10-remain.ba)),
                      vol.extract=cx*ba.extract+cx2*ba.extract) 
   
-  ## now determine the volume that mya go to sawlogs, and the volume that may go to wood
+  ## now determine the volume that may go to sawlogs, and the volume that may go to wood
   sustain$vol.extract.sawlog <- 0
   aux <- sustain$todo=="prep.cut"
   sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.65,0.85)  #0.65 - 0.85
@@ -165,12 +162,13 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
               left_join(sustain, by="cell.id") %>% group_by(source.id) %>% 
               summarise(vol.neigh=sum(vol.extract.sawlog, na.rm=T))
   ## Weight of the factors
-  w1 <- 0.3; w2 <- 0.3; w3 <- 0.005; w4 <- 4-w3
+  w1 <- 0.3; w2 <- 0.3; w3 <- 0.005; w4 <-0; w5 <- 0.4-w3
   sustain <- left_join(sustain, neigh.id, by=c("cell.id"="source.id")) %>% 
               mutate(f1=scales::rescale(pmin(vol.extract.sawlog, quantile(vol.extract.sawlog, p=0.9)), to=c(0,1)) ,
                     f2=scales::rescale(pmin(vol.neigh, quantile(vol.neigh, p=0.9)), to=c(0,1)) ,
-                    f3=scales::rescale(pmin(1/dist.industry, quantile(1/dist.industry, p=0.9)), to=c(0,1))) %>% 
-              mutate(p=w1*f1+w2*f2+w3*f3+w4*psuit)
+                    f3=scales::rescale(pmin(1/dist.industry, quantile(1/dist.industry, p=0.9)), to=c(0,1)),
+                    f4=ifelse(spp<=7,1,0)) %>% 
+              mutate(p=w1*f1+w2*f2+w3*f3+w4*f4+w5*psuit)
 
   
   ## Harvest sawlogs: filter locations with vol.extract.sawlog>0, sort by "p", and select 
@@ -191,8 +189,8 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
     cumulative.vol <- cumsum(extracted.wood$vol.extract.sawlog+extracted.wood$vol.extract.wood) # both volums go to wood
     extracted.wood <- extracted.wood[1:which(cumulative.vol>dmnd.wood)[1],]
   }
-  
-  return(list(sustain=sustain, extracted.sawlog=extracted.sawlog, extracted.wood=extracted.wood))
+
+  return(list(suit.mgmt=suit.mgmt, sustain=sustain, extracted.sawlog=extracted.sawlog, extracted.wood=extracted.wood))
   
 }
   

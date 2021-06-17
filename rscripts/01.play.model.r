@@ -11,7 +11,7 @@ scn.name <- "harvesting10"; define.scenario(scn.name)
 nrun <- 1
 time.horizon <- 10
 spin.up <- F
-write.maps <- T
+write.maps <- F
 write.freq <- 1
 is.climate.change <- F
 clim.scn <- NA
