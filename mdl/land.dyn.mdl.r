@@ -157,7 +157,6 @@ land.dyn.mdl <- function(scn.name){
     
     ## Start the discrete time sequence 
     t <- 1
-    t <- time.seq <- 1
     for(t in time.seq){
       
       ## Track scenario, replicate and time step
@@ -545,7 +544,7 @@ land.dyn.mdl <- function(scn.name){
   
     ## Overwrite text outputs each run, at the end of the simulation period
     
-    .## To save some runs in case R closes before finishing all the runs
+    ## To save some runs in case R closes before finishing all the runs
     cat("... writing outputs", "\n")
     write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.forest.areas[-1,], paste0(out.path, "/ForestAreas.txt"), quote=F, row.names=F, sep="\t")
