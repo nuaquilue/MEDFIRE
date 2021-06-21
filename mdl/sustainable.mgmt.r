@@ -137,7 +137,7 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   aux <- sustain$todo=="removal.cut" & sustain$spp %notin% c(8,10,11)
   sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.95,1)   #0.90 - 0.95
   aux <- sustain$todo=="removal.cut" & sustain$spp %in% c(8,10,11)
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.20,0.3)
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.10,0.2)
   # aux <- sustain$todo=="removal.cut" 
   # sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.95,1)   
   
@@ -184,7 +184,7 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   
   ## If there's still wood to extract, extract from Quercus 
   if(total.vol.extracted.wood<dmnd.wood){
-    extracted.wood <- filter(sustain,  spp %in% c(8,10,11))
+    extracted.wood <- filter(sustain, spp %in% c(8,10,11))
     extracted.wood <- extracted.wood[order(extracted.wood$p, decreasing=T),]
     cumulative.vol <- cumsum(extracted.wood$vol.extract.sawlog+extracted.wood$vol.extract.wood) # both volums go to wood
     extracted.wood <- extracted.wood[1:which(cumulative.vol>dmnd.wood)[1],]

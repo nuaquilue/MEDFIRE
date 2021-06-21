@@ -289,7 +289,9 @@ land.dyn.mdl <- function(scn.name){
       if(is.harvest & t %in% mgmt.schedule){
         cut.out <- sustainable.mgmt(land, harvest, clim, t)
         extracted.sawlog <- cut.out$extracted.sawlog
+        extracted.sawlog <- extracted.sawlog[order(extracted.sawlog$cell.id, decreasing=F),]
         extracted.wood <- cut.out$extracted.wood
+        extracted.wood <- extracted.wood[order(extracted.wood$cell.id, decreasing=F),]
         
         # report the cells that have been cut
         land$typdist[land$cell.id %in% c(extracted.sawlog$cell.id, extracted.wood$cell.id)] <- "cut"
@@ -299,12 +301,12 @@ land.dyn.mdl <- function(scn.name){
         land$typcut[land$cell.id %in% extracted.sawlog$cell.id] <- extracted.sawlog$todo
         land$typcut[land$cell.id %in% extracted.wood$cell.id] <- extracted.wood$todo
         # change the age of the cells after removal.cut.
-        # wood is extracted in quercus stands by clear.cut
-        land$age[land$cell.id %in% extracted.wood$cell.id] <- 0 
-        # sawlogs are extracted in conifer stands under a shelterwood sytem.
-        # after the removal.cut, the stand is in regeneration and it already has 10 years.
-        land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$spp %notin% c(8,10,11)]] <- 9 # sum 1 at the end of the year
-        land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$spp %in% c(8,10,11)]] <- 0 # quercus are clear cut
+        # wood is extracted in quercus stands by clear.cut, so age is reset at 0
+        land$age[land$cell.id %in% extracted.wood$cell.id[extracted.wood$pctg.extract == 100]] <- 0 
+        # most of the sawlogs are extracted in conifer stands under a shelterwood sytem.
+        # thus, after the removal.cut, the stand is in regeneration and it already has 10 years.
+        land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$pctg.extract < 100]] <- 9 # sum 1 at the end of the year
+        land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$pctg.extract == 100]] <- 0 # quercus, conif plantation and other.tress are clear cut
         # change the basal area in harvested stands
         land$biom[land$cell.id %in% extracted.sawlog$cell.id] <- 
           land$biom[land$cell.id %in% extracted.sawlog$cell.id]-extracted.sawlog$ba.extract*10
@@ -312,10 +314,13 @@ land.dyn.mdl <- function(scn.name){
           land$biom[land$cell.id %in% extracted.wood$cell.id]-extracted.wood$ba.extract*10
         # after removal.cut make explicity that basal area is 0
         land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut"] ] <- 0
+        land$biom[land$cell.id %in% extracted.wood$cell.id[extracted.wood$todo=="removal.cut"] ] <- 0
         # but there's regeneration of 9 year old in areas harvested under shelterwood
-        for(i in 1:9)
-          land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$spp %notin% c(8,10,11)]] <- 
-              growth(land[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$spp %notin% c(8,10,11)],], clim, paste("Cohort age", i))
+        if(sum(extracted.sawlog$todo=="removal.cut" & extracted.sawlog$pctg.extract < 100)>0){
+          for(i in 1:9)
+            land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$pctg.extract < 100]] <- 
+              growth(land[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut" & extracted.sawlog$pctg.extract < 100],], clim, paste("Cohort age", i))
+        }
         
         # track the vol extracted per each spp
         aux <- rbind(group_by(extracted.sawlog,spp) %>% summarize(vol.sawlog=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood)),
@@ -453,7 +458,7 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 8. COHORT ESTABLISHMENT
-      if(is.cohort.establish & t %in% cohort.schedule & length(killed.cells)>0){
+      if(is.cohort.establish & t %in% cohort.schedule & length(killed.cells)>0 & FALSE){
         aux <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp

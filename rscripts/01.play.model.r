@@ -6,10 +6,10 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "harvesting10"; define.scenario(scn.name)
+scn.name <- "harvesting20_0102_noCohort"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 10
+time.horizon <- 20
 spin.up <- F
 write.maps <- F
 write.freq <- 1
