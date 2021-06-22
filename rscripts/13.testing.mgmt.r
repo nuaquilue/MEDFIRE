@@ -173,5 +173,5 @@ track.land <- rbind(track.land, data.frame(run=irun, year=0, aux.forest), data.f
 
 ## Start the discrete time sequence 
 t <- 1
-time.seq <- 1:3
+time.seq <- 1:1
 

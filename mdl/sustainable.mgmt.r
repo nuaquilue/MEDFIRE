@@ -133,15 +133,12 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   aux <- sustain$todo=="prep.cut"
   sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.65,0.85)  #0.65 - 0.85
   aux <- sustain$todo=="seed.cut"
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.8,0.9)  #0.65 - 0.85
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.85,1)  #0.65 - 0.85
   aux <- sustain$todo=="removal.cut" & sustain$spp %notin% c(8,10,11)
   sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.95,1)   #0.90 - 0.95
   aux <- sustain$todo=="removal.cut" & sustain$spp %in% c(8,10,11)
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.10,0.2)
-  # aux <- sustain$todo=="removal.cut" 
-  # sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.95,1)   
-  
-  
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.1,0.2)
+
   ## ?thinnigs donen algo per sawlogs??
   sustain$vol.extract.wood <- sustain$vol.extract - sustain$vol.extract.sawlog
   
@@ -162,7 +159,9 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
               left_join(sustain, by="cell.id") %>% group_by(source.id) %>% 
               summarise(vol.neigh=sum(vol.extract.sawlog, na.rm=T))
   ## Weight of the factors
-  w1 <- 0.3; w2 <- 0.3; w3 <- 0.005; w4 <-0; w5 <- 0.4-w3
+  # w1 <- 0.3; w2 <- 0.3; w3 <- 0.005; w4 <-0; w5 <- 0.4-w3
+  # w1 <- 0.25; w2 <- 0.25; w3 <- 0.005; w4 <-0.1; w5 <- 0.4-w3
+  w1 <- 0.275; w2 <- 0.25; w3 <- 0.005; w4 <- 0.075; w5 <- 0.4-w3
   sustain <- left_join(sustain, neigh.id, by=c("cell.id"="source.id")) %>% 
               mutate(f1=scales::rescale(pmin(vol.extract.sawlog, quantile(vol.extract.sawlog, p=0.9)), to=c(0,1)) ,
                     f2=scales::rescale(pmin(vol.neigh, quantile(vol.neigh, p=0.9)), to=c(0,1)) ,

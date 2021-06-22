@@ -42,6 +42,11 @@ ptch <- filter(df, !is.na(clust)) %>% group_by(clust) %>% summarise(xm=mean(x), 
 head(ptch)
 
 
+vol <- read.table("outputs/harvesting_C_conif075/HarvestVolumes.txt", header=T)
+round(apply(vol, 2, mean),0)
+harvest <- read.table("outputs/harvesting_0102_conif05/HarvestSpp.txt", header=T)
+filter(harvest, spp==12); filter(harvest, spp==13)
+a <- group_by(harvest, year) %>% summarise(vol.sawlog=sum(vol.sawlog), vol.wood=sum(vol.wood))
 
 ################ Early june 2021 ################
 ## Existences

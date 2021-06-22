@@ -25,6 +25,36 @@ play <- function(){
   
 }
 
+write.tif <- function(list.scn, nrun=1, time.seq=10){
+  load("inputlyrs/rdata/mask.rdata")
+  for(scn in list.scn){
+    # create "tiff" direcotri
+    if(!file.exists(paste0("outputs/", scn.name, "/tiff")))
+      dir.create(file.path(getwd(), "outputs/", scn.name, "/tiff"), showWarnings = F) 
+    for(irun in 1:nrun){
+      for(t in time.seq){
+        load(paste0("outputs/", scn.name, "/rdata/land_r", irun, "t", t, ".rdata"))
+        MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
+        writeRaster(MAP, paste0(out.path, "/tiff/Spp_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP <- MASK; MAP[!is.na(MASK[])] <- land$biom
+        writeRaster(MAP, paste0(out.path, "/tiff/Biom_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP <- MASK; MAP[!is.na(MASK[])] <- land$age
+        writeRaster(MAP, paste0(out.path, "/tiff/Age_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+        MAP <- MASK
+        MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1,
+                                      ifelse(land$typdist == "cut", 2,
+                                             ifelse(land$typdist %in% c("highfire", "lowfire"), 3,
+                                                    ifelse(land$typdist == "pb", 4,
+                                                           ifelse(land$typdist == "drght", 5,
+                                                                  ifelse(land$typdist == "afforest", 6, NA))))))
+        writeRaster(MAP, paste0(out.path, "/tiff/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
+      }
+      MAP <- MASK; MAP[!is.na(MASK[])] <- land$tburnt
+      writeRaster(MAP, paste0(out.path, "/tiff/TimesBurnt_r", irun, ".tif"), format="GTiff", overwrite=T)   
+    }
+  }
+}
+
 
 plot.mfri <- function(list.scn){
   

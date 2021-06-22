@@ -65,13 +65,13 @@ define.scenario <- function(scn.name){
   pb.fage.th <- 30 ## minimum forest age to apply prescribed burns
   
   ## Scenario parameters
-  clim.scn <- "rcp45"
+  clim.scn <- NA #"rcp45", "rcp85"
   clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
   file.dmnd.lchg <- "DemandLChg"
   file.pattern.lchg  <- "PatternLChg"
   file.dmnd.harvest <- "DemandHarvest"
-  file.clim.severity <- "ClimaticSeverity_noCC"
-  file.pctg.hot.days <- "PctgHotDays_noCC"
+  file.clim.severity <- paste0("ClimaticSeverity_", ifelse(is.na(clim.scn), "noCC", clim.scn))
+  file.pctg.hot.days <- paste0("PctgHotDays_", ifelse(is.na(clim.scn), "noCC", clim.scn)) 
   file.fire.suppression <- "FireSuppress"
   file.sprd.weight <- "WeightSprdFactors"
   

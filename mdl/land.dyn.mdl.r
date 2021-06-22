@@ -9,7 +9,7 @@ land.dyn.mdl <- function(scn.name){
     library(raster)  
     library(RANN)  
     library(Rcpp)
-    library(dplyr, warn.conflicts=F)
+    library(tidyverse, warn.conflicts=F)
     options(dplyr.summarise.inform=F)
   })
   source("mdl/afforestation.r")
@@ -324,7 +324,7 @@ land.dyn.mdl <- function(scn.name){
         
         # track the vol extracted per each spp
         aux <- rbind(group_by(extracted.sawlog,spp) %>% summarize(vol.sawlog=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood)),
-                     group_by(extracted.wood,spp) %>% summarize(vol.sawlog=0, vol.wood=sum(vol.extract.sawlog+vol.extract.wood)))
+                     group_by(extracted.wood,spp) %>% summarize(vol.sawlog=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood)))
         track.harvest <- rbind(track.harvest, data.frame(run=irun, year=t, 
           group_by(aux, spp) %>% summarize(vol.sawlog=round(sum(vol.sawlog),1), vol.wood=round(sum(vol.wood),1)) ))
         
@@ -458,7 +458,7 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## 8. COHORT ESTABLISHMENT
-      if(is.cohort.establish & t %in% cohort.schedule & length(killed.cells)>0 & FALSE){
+      if(is.cohort.establish & t %in% cohort.schedule & length(killed.cells)>0){
         aux <- cohort.establish(land, coord, orography, clim, sdm)
         spp.out <- land$spp[land$cell.id %in% killed.cells]
         land$spp[land$cell.id %in% killed.cells] <- aux$spp
@@ -525,34 +525,16 @@ land.dyn.mdl <- function(scn.name){
       if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
         cat("... writing maps", "\n")
         save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
-        # MAP <- MASK; MAP[!is.na(MASK[])] <- land$spp
-        # writeRaster(MAP, paste0(out.path, "/lyr/Spp_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-        # MAP <- MASK; MAP[!is.na(MASK[])] <- land$biom
-        # writeRaster(MAP, paste0(out.path, "/lyr/Biom_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-        # MAP <- MASK; MAP[!is.na(MASK[])] <- land$age
-        # writeRaster(MAP, paste0(out.path, "/lyr/Age_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
-        # MAP <- MASK
-        # MAP[!is.na(MASK[])] <- ifelse(land$typdist %in% c("lchg.urb", "lchg.crp", "lchg.nat"), 1, 
-        #                               ifelse(land$typdist == "cut", 2, 
-        #                                      ifelse(land$typdist %in% c("highfire", "lowfire"), 3,   
-        #                                             ifelse(land$typdist == "pb", 4,
-        #                                                    ifelse(land$typdist == "drght", 5,
-        #                                                           ifelse(land$typdist == "afforest", 6, NA))))))
-        # writeRaster(MAP, paste0(out.path, "/lyr/TypeDist_r", irun, "t", t, ".tif"), format="GTiff", overwrite=T)
       }
-      
-      write.table(track.harvest[-1,], paste0(out.path, "/HarvestSpp.txt"), quote=F, row.names=F, sep="\t")
-      write.table(track.forest.areas[-1,], paste0(out.path, "/ForestAreas.txt"), quote=F, row.names=F, sep="\t")
-      write.table(track.volumes[-1,], paste0(out.path, "/HarvestVolumes.txt"), quote=F, row.names=F, sep="\t")
-      
     } # time
   
-    ## Overwrite text outputs each run, at the end of the simulation period
     
+    ## Overwrite text outputs each run, at the end of the simulation period
     ## To save some runs in case R closes before finishing all the runs
     cat("... writing outputs", "\n")
     write.table(track.harvest[-1,], paste0(out.path, "/Harvest.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.forest.areas[-1,], paste0(out.path, "/ForestAreas.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.volumes[-1,], paste0(out.path, "/HarvestVolumes.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.fire[-1,], paste0(out.path, "/Fires.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.fire.spp[-1,], paste0(out.path, "/BurntSpp.txt"), quote=F, row.names=F, sep="\t")
     # write.table(track.step[-1,], paste0(out.path, "/FiresStep.txt"), quote=F, row.names=F, sep="\t")
@@ -565,13 +547,6 @@ land.dyn.mdl <- function(scn.name){
     write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
-    
-    # Print maps at the end of the simulation period per each run
-    # if(write.maps){
-    #   MAP <- MASK
-    #   MAP[!is.na(MASK[])] <- land$tburnt
-    #   writeRaster(MAP, paste0(out.path, "/lyr/TimesBurnt_r", irun, ".tif"), format="GTiff", overwrite=T)
-    # }
 
   } # run
   

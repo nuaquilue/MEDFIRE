@@ -6,24 +6,24 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "harvesting20_0102_noCohort"; define.scenario(scn.name)
+scn.name <- "harvesting_C_conif075"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 20
-spin.up <- F
+time.horizon <- 90
+spin.up <- T
 write.maps <- F
 write.freq <- 1
 is.climate.change <- F
-clim.scn <- NA
-file.pctg.hot.days <- "PctgHotDays_noCC"
-file.clim.severity <- "ClimaticSeverity_noCC"
+clim.scn <- NA #"rcp85"  #NA
+file.clim.severity <- paste0("ClimaticSeverity_", ifelse(is.na(clim.scn), "noCC", clim.scn))
+file.pctg.hot.days <- paste0("PctgHotDays_", ifelse(is.na(clim.scn), "noCC", clim.scn)) 
 is.land.cover.change <- F
 is.harvest <- T
 is.wildfire <- F
 is.postfire <- F
 file.fire.suppression <- "FireSuppress"
-dump(c("nrun", "time.horizon", "spin.up", "write.maps", "write.freq", "is.climate.change", "clim.scn", "file.pctg.hot.days", "file.clim.severity",
-       "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
+dump(c("nrun", "time.horizon", "spin.up", "write.maps", "write.freq", "is.climate.change", "clim.scn", "file.clim.severity", 
+      "file.pctg.hot.days",  "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "file.fire.suppression"), 
      paste0("outputs/", scn.name, "/scn.custom.def.r"))
 land.dyn.mdl(scn.name)
 
@@ -33,13 +33,13 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 4){
-  scn.name <- paste0(scenarios$scn.name[i], "_run01")
-  # scn.name <- scenarios$scn.name[i]
+for(i in 6){
+  # scn.name <- paste0(scenarios$scn.name[i], "_run01")
+  scn.name <- scenarios$scn.name[i]
   define.scenario(scn.name)
   ## general
-  nrun <- 1 # scenarios$nrun[i]
-  write.maps <- T
+  nrun <- scenarios$nrun[i]
+  write.maps <- F
   spin.up <- as.logical(scenarios$spin.up[i])
   ## processes
   is.climate.change <- as.logical(scenarios$is.climate.change[i])
