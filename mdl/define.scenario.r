@@ -56,7 +56,7 @@ define.scenario <- function(scn.name){
   rpb <- 0.2
   pb.upper.th <- 0.8
   pb.lower.th <- -1
-  fire.intens.th <- 0.29  # high vs. low intensity fire, sr <= fire.intens.th
+  fire.intens.th <- 0.19  # high vs. low intensity fire, sr <= fire.intens.th
   pb.target.area <- NA  # if NA, then burnt as 7*pb.convenient.area, otherwise annually burnt pb.fix.area
   pb.convenient.area <- 400 ## should be 15.000 ha
   accum.burnt.area <- rep(pb.convenient.area,7)

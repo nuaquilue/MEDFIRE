@@ -356,8 +356,16 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
                                                                    igni=F, fintensity=sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]))
         
         ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
-        aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn  & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & sprd.rate$fi<=ifelse(swc<4,fire.intens.th,100))
-        aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & sprd.rate$fi>ifelse(swc<4,fire.intens.th,100))
+        ## In severe and extreme climatic years, everything, always, burn in high-intensity
+        ## In mild years, ~15% of the cells burn in low-intensity
+        if(clim.sever==0){
+          aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn  & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & sprd.rate$fi<=ifelse(swc<4,fire.intens.th,100))
+          aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & sprd.rate$fi>ifelse(swc<4,fire.intens.th,100))
+        }
+        else{
+          aburnt.lowintens <- aburnt.lowintens + sum(sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & swc==4)
+          aburnt.highintens <- aburnt.highintens + sum(sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel & swc<4)
+        }
         asupp.sprd <- asupp.sprd + sum(sprd.rate$burn & !sprd.rate$tosupp.fuel & sprd.rate$tosupp.sprd)
         asupp.fuel <- asupp.fuel + sum(sprd.rate$burn & sprd.rate$tosupp.fuel)
         
