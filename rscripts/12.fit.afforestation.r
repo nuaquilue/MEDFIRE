@@ -1,6 +1,6 @@
-scn <- "NULL"
-aff <- read.table(paste0("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/outputs/Scn_",scn, "/Afforestation.txt"), header=T)
-land <- read.table(paste0("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/outputs/Scn_", scn,"/Land.txt"), header=T)
+scn <- "CC"
+aff <- read.table(paste0("outputs/Scn_",scn, "/Afforestation.txt"), header=T)
+land <- read.table(paste0("outputs/Scn_", scn,"/Land.txt"), header=T)
 forest <- land %>% filter(spp<=13, year>0) %>% group_by(year, run) %>% summarise(area=sum(area))
 shrub <- land %>% filter(spp==14, year>0) %>% group_by(year, run) %>% summarise(area=sum(area)) 
 a <- group_by(aff, year, run) %>% summarise(ha=sum(ha)) 

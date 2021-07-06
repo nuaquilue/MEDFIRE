@@ -2,7 +2,7 @@
 ##
 ######################################################################################
 
-afforestation <- function(land, orography, clim, sdm, utm){
+afforestation <- function(land, coord, orography, clim, sdm, utm){
   
   ## Tracking
   cat("Afforestation", "\n") 
@@ -83,8 +83,7 @@ afforestation <- function(land, orography, clim, sdm, utm){
          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
                   c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
              mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
-             select(cell.id, spp, sqi) %>% mutate(biom=0, age=0, sdm=1)
-  
+             select(cell.id, spp, sqi) 
   
   return(res)
 }

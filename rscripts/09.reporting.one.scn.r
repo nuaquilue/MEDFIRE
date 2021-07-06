@@ -5,7 +5,7 @@ play <- function(){
 
   list.scn <- c("NULL", "LC", "WF", "WF_FS", "LC_WF", "LC_WF_FS",
                  "CC", "CC_LC", "CC_WF", "CC_WF_FS", "CC_LC_WF", "CC_LC_WF_FS")
-  # scn.name <- "Scn_CC_WF"
+  scn.name <- "NULL"
   for(scn.name in list.scn){
     # plot.abundance(scn.name)
     # plot.drought(scn.name)
@@ -304,6 +304,48 @@ plot.land.covers <- function(scn.name){
   dev.off()
 
 }
+
+
+plot.sqi <- function(scn.name){
+  
+  load("rscripts/ins/species.rdata")  
+  
+  ## Existences a nivell d'espècie
+  dta.land.spp <- read.table(paste0("outputs/Scn_", scn.name, "/LandSQI.txt"), header=T) %>% 
+                  mutate(year=year+2010, sqi=ifelse(sqi==1, "1.low", ifelse(sqi==2, "2.high", "3.optimal"))) 
+  dta.t_1.spp <- filter(dta.land.spp, year<2100) %>% mutate(area_1=area, vol_1=vol, volbark_1=volbark, year=year+1) %>% 
+                 select(-area, -vol, -volbark)
+  dta.t.spp <- filter(dta.land.spp, year>2010) %>% left_join(dta.t_1.spp, by=c("run", "year", "spp", "sqi")) %>% 
+                mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)                                                    
+  dta.land.spp <- dta.land.spp %>% mutate(ratio=vol/area, ratiobark=volbark/area)                 
+  
+  ## Existències totals
+  dta.land <- dta.land.spp %>% group_by(run, year, sqi) %>% 
+              summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark)) %>% 
+              mutate(ratio=vol/area, ratiobark=volbark/area)  %>% group_by(year, sqi) %>% 
+              summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark), ratio=mean(ratio), ratiobark=mean(ratiobark))
+  dta.t <- dta.t.spp %>% group_by(run, year, sqi) %>% 
+           summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark),
+                     area_1=sum(area_1, na.rm=T), vol_1=sum(vol_1, na.rm=T), volbark_1=sum(volbark_1, na.rm=T)) %>% 
+           mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)  %>% filter(year>2011)                                                  
+  
+  
+  p1 <- ggplot(dta.land, aes(x=year, y=area/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+        scale_fill_viridis(discrete = T)+theme_classic()
+  p2 <- ggplot(dta.land, aes(x=year, y=volbark/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+theme_classic()
+  p3 <- ggplot(dta.t, aes(x=year, y=inc.area, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+theme_classic()
+  p4 <- ggplot(dta.t, aes(x=year, y=inc.volbark, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+theme_classic()
+  gridExtra::grid.arrange(p1,p2,p3,p4, nrow=2)
+  
+  ggplot(dta.land.spp, aes(x=year, y=vol/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+theme_classic() + facet_wrap(.~spp)
+  
+  
+}
+
 
 ## @@@@@@@@@@@@@@ to be developed
 ## a graph per species (with its colors) and 3 abundance lines (or relative abundances), one 

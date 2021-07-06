@@ -1,10 +1,7 @@
-update.interface <- function(land){
+update.interface <- function(land, utm){
   
   ## Traking
   cat("Update interfaces", "\n")
-  
-  ## UTM df
-  load("inputlyrs/rdata/utm.rdata")
   
   ## Join utm info to land
   land.utm <- left_join(land, utm, by="cell.id") 

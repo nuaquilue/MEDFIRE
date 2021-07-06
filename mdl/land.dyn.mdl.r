@@ -126,6 +126,7 @@ land.dyn.mdl <- function(scn.name){
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, age.class=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
+  track.sqi <- data.frame(run=NA, year=NA, spp=NA, sqi=NA, area=NA, vol=NA, volbark=NA)
   
   
   ## Start the simulations   
@@ -156,6 +157,7 @@ land.dyn.mdl <- function(scn.name){
     track.land <- rbind(track.land, data.frame(run=irun, year=0, aux.forest), data.frame(run=irun, year=0, aux.shrub),
                         data.frame(run=irun, year=0, aux.other))
     
+
     ## Start the discrete time sequence 
     t <- 1
     for(t in time.seq){
@@ -173,7 +175,6 @@ land.dyn.mdl <- function(scn.name){
         clim <- update.clim(land, orography, decade, clim.scn, clim.mdl)
         load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
       }
-
       
       ## 2. LAND-COVER CHANGE
       if(spin.up & t<=10){
@@ -282,7 +283,7 @@ land.dyn.mdl <- function(scn.name){
         }
         
         # Update interface values
-        interface <- update.interface(land)
+        interface <- update.interface(land, utm)
       }
       
       
@@ -481,7 +482,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 9. AFFORESTATION
       if(is.afforestation & t %in% afforest.schedule){
-        aux  <- afforestation(land, coord, orography, clim, sdm)
+        aux  <- afforestation(land, coord, orography, clim, sdm, utm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- 0
         land$age[land$cell.id %in% aux$cell.id] <- 0
@@ -519,6 +520,14 @@ land.dyn.mdl <- function(scn.name){
                      summarise(age.class=NA, area=length(spp), vol=0, volbark=0, carbon=0)  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux.forest), data.frame(run=irun, year=t, aux.shrub),
                             data.frame(run=irun, year=t, aux.other))
+        aux.forest <- filter(land, spp<=13) %>% select(cell.id, spp, age, biom) %>% 
+                      left_join(eq.ba.vol, by="spp") %>% 
+                      mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+                      left_join(eq.ba.volbark, by="spp") %>% 
+                      mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+                      left_join(select(clim, cell.id, sqi), by="cell.id") %>% group_by(spp, sqi) %>% 
+                      summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark))
+        track.sqi <- rbind(track.sqi, data.frame(run=irun, year=t, aux.forest)) 
       }
       
       
@@ -548,7 +557,8 @@ land.dyn.mdl <- function(scn.name){
     write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
-
+    write.table(track.sqi[-1,], paste0(out.path, "/LandSQI.txt"), quote=F, row.names=F, sep="\t")
+    
   } # run
   
 
