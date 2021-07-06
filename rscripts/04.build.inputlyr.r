@@ -535,6 +535,33 @@ group_by(lct.burnt, lct) %>% summarise(area=sum(n), pct=round(100*area/tot,1))
 
 
 
+
+###################################### FIRES 1987 to 2017 to be used in Afforestation fitting. 
+#                                      To discard burnt areas in the period 1987-2017 ######################################
+load("inputlyrs/rdata/mask.rdata")
+aux <- data.frame(cell.id=1:ncell(MASK))
+wildfires <- data.frame(cell.id=aux[!is.na(MASK[]),])
+i <- 1
+for(y in c(1987:2017)){
+  PERIM <- rgdal::readOGR(paste0("c:/WORK/MEDMOD/FIRES/IncendisSHP_1986-2019_31N.ETRS89/incendis", y, ".shp"))
+  FIRE <- rasterize(PERIM, MASK, 'GRID_CODE')
+  FIRE[!is.na(FIRE[])] <- 1
+  fire <- FIRE[]
+  wildfires <- cbind(wildfires, fire[!is.na(MASK[])])
+  i = i + 1
+  names(wildfires)[i] <- paste0("y", y)
+}
+rm(FIRE); rm(MASK); rm(PERIM); rm(aux); rm(fire); gc()
+save(wildfires, file="inputlyrs/rdata/wildfires87-17.rdata")
+a <- apply(wildfires[,2:10], 1, sum, na.rm=T)
+b <- apply(wildfires[,11:20], 1, sum, na.rm=T)
+c <- apply(wildfires[,21:32], 1, sum, na.rm=T)
+wildfires$times.burnt <- a+b+c
+recurrent <- select(wildfires, cell.id, times.burnt)
+save(recurrent, file="inputlyrs/rdata/fire.recurrence_87-17.rdata")
+
+
+
 ############################ Test inputlyrs ############################
 
 rm(list=ls())

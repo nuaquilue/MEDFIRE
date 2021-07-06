@@ -46,6 +46,7 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
   load("inputlyrs/rdata/pfst.pwind.rdata")
+  load("inputlyrs/rdata/utm.rdata")
   if(spin.up)
     load("inputlyrs/rdata/wildfires.rdata")
   
@@ -165,7 +166,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 1. CLIMATE CHANGE  
       if(!is.climate.change & t==1){
-        load(paste0("inputlyrs/rdata/clim_hist_", clim.mdl, ".rdata"))
+        load(paste0("inputlyrs/rdata/clim_hist_", clim.mdl, ".rdata"))  # en comptes d'això, utilitzar hist.clim()
         load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
       }
       if(is.climate.change & t %in% clim.schedule){

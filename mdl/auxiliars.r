@@ -13,16 +13,11 @@ select.cohort <- function(x){
 
 
 ############ Used in afforestation.r ############
-exist.forest <- function(x){
-  return(any(x>0, na.rm=T))
-}
-
 select.spp <- function(x){
-  return(sample(1:13, 1, replace=F, prob=x))
-}
-
-count.forest <- function(x){
-  return(sum(x<=13, na.rm=T))
+  if(sum(x)==0)
+    return(NA)
+  else
+    return(sample(1:13, 1, replace=F, prob=x))
 }
 
 count.spp.narm <- function(x){
