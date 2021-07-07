@@ -19,3 +19,4 @@ inputfiles/sources
 *.ini
 scenarios.xlsx
 *.xlsx
+inputlyrs/rdata/fire*
