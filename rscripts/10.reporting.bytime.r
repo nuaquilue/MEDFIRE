@@ -421,3 +421,33 @@ plot.ab.at <- function(list.scn){
 
 
 
+plot.kkruta <- function(){
+  rm(list = ls())
+  load("rscripts/ins/species.rdata")  
+  scn.name <- "CC_noSPIN"
+  dta.land.spp <- read.table(paste0("outputs/Scn_", scn.name, "/LandSQI.txt"), header=T) %>% 
+    mutate(year=year+2010, sqi=ifelse(sqi==1, "1.low", ifelse(sqi==2, "2.high", "3.optimal"))) %>% 
+    left_join(select(species, spp, name), by="spp") %>% mutate(scn="CC")
+  scn.name <- "NULL_noSPIN"
+  aux <- read.table(paste0("outputs/Scn_", scn.name, "/LandSQI.txt"), header=T) %>% 
+    mutate(year=year+2010, sqi=ifelse(sqi==1, "1.low", ifelse(sqi==2, "2.high", "3.optimal"))) %>% 
+    left_join(select(species, spp, name), by="spp") %>% mutate(scn="NULL")
+  dta.land.spp <- rbind(dta.land.spp, aux)
+  
+  
+  dta.land <- dta.land.spp %>% group_by(scn, run, year, sqi) %>% 
+    summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark)) %>% 
+    group_by(scn, year, sqi) %>% 
+    summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark))
+  
+  dta.year <- dta.land %>%  group_by(scn, year) %>% 
+    summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark))
+  
+  p1 <- ggplot(dta.year, aes(x=year, y=area/10^3, group=scn)) + 
+    geom_line(aes(color=scn), size=2) + theme_classic()
+  p2 <- ggplot(dta.year, aes(x=year, y=volbark/10^6, group=scn)) + 
+    geom_line(aes(color=scn), size=2) + theme_classic()
+  gridExtra::grid.arrange(p1,p2, nrow=1)
+  
+  
+}
