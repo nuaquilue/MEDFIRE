@@ -33,21 +33,40 @@ table(dta.cover$chg)
 table(dta.cover$coberta87, dta.cover$coberta17)
 rm(USOS87); rm(USOS17); gc()
 
+# data
 load("inputlyrs/rdata/dta.cover.rdata")
 load("inputlyrs/rdata/fire.recurrence_87-17.rdata")
 load("inputlyrs/rdata/orography.rdata")
 load("inputlyrs/rdata/land.rdata")
-load("inputlyrs/rdata/oldforest.rdata")
-# climate standarized as in medfire
+
+# climate standarized as in medfire 
 clim.mdl <- "SMHI-RCA4_MOHC-HadGEM2-ES"
-load(paste0("inputlyrs/rdata/climate_hist_", clim.mdl, ".rdata"))
+load(paste0("inputlyrs/rdata/clim_hist_", clim.mdl, ".rdata"))
+load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
+
+# old forest
+load("inputlyrs/rdata/utm.rdata")
+## Join utm and sdm info to land
+land.utm <- land %>% select(cell.id, spp, biom, age) %>% 
+  left_join(select(clim, cell.id, sdm), by="cell.id") %>% 
+  left_join(utm, by="cell.id") 
+## Calculate the percentage of old forest within its climatic niche per utm cell
+utm.forest <- group_by(land.utm, utm) %>% summarise(nneigh=length(utm), old.neigh=sum(spp<=13 & age>=15 & sdm==1)) %>% 
+  mutate(pct=old.neigh/nneigh)
+old.forest <- land.utm %>% select(cell.id, utm) %>% left_join(select(utm.forest, utm, pct), by="utm") %>% 
+  select(-utm)
+
+
 
 # all variables
 dta.aff <- dta.cover %>% filter(!is.na(chg)) %>% left_join(recurrent, by="cell.id") %>% 
   filter(times.burnt==0) %>% left_join(orography, by="cell.id") %>% 
-  left_join(clim, by="cell.id") %>% left_join(oldforest, by="cell.id") %>% filter(!is.na(elev)) 
+  left_join(clim, by="cell.id") %>% left_join(old.forest, by="cell.id") %>% filter(!is.na(elev)) 
 table(dta.aff$chg)
 summary(dta.aff)
+rm(clim); rm(sdm); rm(old.forest); rm(recurrent); rm(dta.cover); 
+rm(land); rm(land.utm); rm(orography); rm(utm); rm(utm.forest); gc()
+
 
 # explanatory variables: histogram 
 ggplot(dta.aff, aes(x=elev)) + 
@@ -71,7 +90,7 @@ round(res, 2)
 dta.aff$rand <- runif(nrow(dta.aff),0,1)
 dta.fit <- filter(dta.aff, rand<=0.4)
 # all variables, linear terms
-mylogit <- glm(chg ~ elev + slope + precip + temp + pct, data = dta.fit, family = "binomial")
+mylogit <- glm(chg ~ elev + slope + precip + pct, data = dta.fit, family = "binomial")
 summary(mylogit)
 # all variables with quadratic terms
 full.model <- glm(chg ~ elev + slope + precip + pct + 
@@ -88,7 +107,7 @@ subset(results.affor , delta <10)
 subset(results.affor, delta ==0) #millor model
   #   Model selection table 
   # (Intrc)      elev     elev^2    pct pct^2    precp    precp^2   slope   slope^2 df    logLik     AICc delta weight
-  # 256  -2.278 0.0005294 -7.225e-07 0.7493 2.182 0.001565 -2.538e-07 0.01614 0.0001455  9 -229946.6 459911.2     0      1
+  # 256  -1.347 0.0005468 -7.333e-07 0.7309 2.207 0.262 -0.01139 0.0154 0.0001677  9 -229598 459213.9     0      1
   # Models ranked by AICc(x)
 MuMIn::importance(results.affor)
   # elev I(elev^2) pct I(pct^2) precip I(precip^2) slope I(slope^2)

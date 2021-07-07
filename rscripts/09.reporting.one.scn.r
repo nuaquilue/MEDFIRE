@@ -5,14 +5,14 @@ play <- function(){
 
   list.scn <- c("NULL", "LC", "WF", "WF_FS", "LC_WF", "LC_WF_FS",
                  "CC", "CC_LC", "CC_WF", "CC_WF_FS", "CC_LC_WF", "CC_LC_WF_FS")
-  scn.name <- "NULL"
+  scn.name <- "CC_noSPIN"
   for(scn.name in list.scn){
-    # plot.abundance(scn.name)
-    # plot.drought(scn.name)
+    plot.abundance(scn.name)
+    plot.drought(scn.name)
     plot.cohort(scn.name)
-    # plot.afforest(scn.name)
-      # plot.age.class(scn.name)
-    # plot.land.covers(scn.name)
+    plot.afforest(scn.name)
+    plot.age.class(scn.name)
+    plot.land.covers(scn.name)
   } 
   
   ##  t     |     year    |   decade
@@ -161,7 +161,7 @@ plot.abundance <- function(scn.name){
   dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
   dta.land <- filter(dta.land, year>10) %>% mutate(year=year+2009)
   dta.ini <- filter(dta.land, year==2020) %>% select(-year)
-  names(dta.ini)[3:6] <- paste0(names(dta.ini)[3:6], ".ini") 
+  names(dta.ini)[4:7] <- paste0(names(dta.ini)[4:7], ".ini") 
   dta.land <- left_join(dta.land, dta.ini, by=c("run","spp")) %>%
               mutate(pctg.area=100*area/area.ini, pctg.vol=100*vol/vol.ini,
                      pctg.volbark=100*volbark/volbark.ini,
@@ -312,10 +312,11 @@ plot.sqi <- function(scn.name){
   
   ## Existences a nivell d'espècie
   dta.land.spp <- read.table(paste0("outputs/Scn_", scn.name, "/LandSQI.txt"), header=T) %>% 
-                  mutate(year=year+2010, sqi=ifelse(sqi==1, "1.low", ifelse(sqi==2, "2.high", "3.optimal"))) 
+                  mutate(year=year+2010, sqi=ifelse(sqi==1, "1.low", ifelse(sqi==2, "2.high", "3.optimal"))) %>% 
+                  left_join(select(species, spp, name), by="spp")
   dta.t_1.spp <- filter(dta.land.spp, year<2100) %>% mutate(area_1=area, vol_1=vol, volbark_1=volbark, year=year+1) %>% 
                  select(-area, -vol, -volbark)
-  dta.t.spp <- filter(dta.land.spp, year>2010) %>% left_join(dta.t_1.spp, by=c("run", "year", "spp", "sqi")) %>% 
+  dta.t.spp <- filter(dta.land.spp, year>2010) %>% left_join(dta.t_1.spp, by=c("run", "year", "name", "sqi")) %>% 
                 mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)                                                    
   dta.land.spp <- dta.land.spp %>% mutate(ratio=vol/area, ratiobark=volbark/area)                 
   
@@ -323,14 +324,16 @@ plot.sqi <- function(scn.name){
   dta.land <- dta.land.spp %>% group_by(run, year, sqi) %>% 
               summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark)) %>% 
               mutate(ratio=vol/area, ratiobark=volbark/area)  %>% group_by(year, sqi) %>% 
-              summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark), ratio=mean(ratio), ratiobark=mean(ratiobark))
+              summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark), 
+                        ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% filter(year>2020)
   dta.t <- dta.t.spp %>% group_by(run, year, sqi) %>% 
            summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark),
                      area_1=sum(area_1, na.rm=T), vol_1=sum(vol_1, na.rm=T), volbark_1=sum(volbark_1, na.rm=T)) %>% 
-           mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)  %>% filter(year>2011)                                                  
+           mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)  %>% filter(year>2020)
   
   
-  p1 <- ggplot(dta.land, aes(x=year, y=area/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+  ## area and volum per sqi, and increments per sqi
+  p1 <- ggplot(dta.land, aes(x=year, y=area/10^3, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
         scale_fill_viridis(discrete = T)+theme_classic()
   p2 <- ggplot(dta.land, aes(x=year, y=volbark/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+theme_classic()
@@ -338,11 +341,17 @@ plot.sqi <- function(scn.name){
     scale_fill_viridis(discrete = T)+theme_classic()
   p4 <- ggplot(dta.t, aes(x=year, y=inc.volbark, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+theme_classic()
+  gridExtra::grid.arrange(p1,p2, nrow=1)
   gridExtra::grid.arrange(p1,p2,p3,p4, nrow=2)
-  
-  ggplot(dta.land.spp, aes(x=year, y=vol/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
-    scale_fill_viridis(discrete = T)+theme_classic() + facet_wrap(.~spp)
-  
+
+  ## area and volum per sqi and species  
+  ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=area/10^3, fill=sqi)) +
+    geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+ theme_classic() + facet_wrap(.~name, scales = "free")
+  ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=volbark/10^6, fill=sqi)) +
+    geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+ theme_classic() + facet_wrap(.~name, scales = "free")
+
   
 }
 

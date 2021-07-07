@@ -17,3 +17,6 @@ inputfiles/sources
 *.docx
 *.tex
 *.ini
+scenarios.xlsx
+*.xlsx
+inputlyrs/rdata/fire*
