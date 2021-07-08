@@ -20,3 +20,5 @@ inputfiles/sources
 scenarios.xlsx
 *.xlsx
 inputlyrs/rdata/fire*
+inputlyrs/rdata/wildfires87*
+inputlyrs/rdata/dta.cover*

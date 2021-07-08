@@ -107,7 +107,7 @@ subset(results.affor , delta <10)
 subset(results.affor, delta ==0) #millor model
   #   Model selection table 
   # (Intrc)      elev     elev^2    pct pct^2    precp    precp^2   slope   slope^2 df    logLik     AICc delta weight
-  # 256  -1.347 0.0005468 -7.333e-07 0.7309 2.207 0.262 -0.01139 0.0154 0.0001677  9 -229598 459213.9     0      1
+  # 256   -1.33 0.0005573 -7.392e-07 0.6058 2.316 0.2619 -0.01144 0.0149 0.0001734  9 -229774.9 459567.7     0      1
   # Models ranked by AICc(x)
 MuMIn::importance(results.affor)
   # elev I(elev^2) pct I(pct^2) precip I(precip^2) slope I(slope^2)
