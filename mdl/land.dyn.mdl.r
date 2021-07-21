@@ -535,6 +535,7 @@ land.dyn.mdl <- function(scn.name){
       if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
         cat("... writing maps", "\n")
         save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
+        save(clim, file=paste0(out.path, "/rdata/clim_r", irun, "t", t, ".rdata"))
       }
     } # time
   
