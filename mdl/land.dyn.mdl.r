@@ -16,6 +16,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/auxiliars.r")
   source("mdl/cohort.establish.r")
   source("mdl/drought.r")
+  source("mdl/encroachment.r")
   source("mdl/fire.regime.r")
   source("mdl/sustainable.mgmt.r")
   source("mdl/forest.areas.r")
@@ -87,6 +88,7 @@ land.dyn.mdl <- function(scn.name){
   post.fire.schedule <- 
   cohort.schedule <- 
   afforest.schedule <- 
+  encroach.schedule <- 
   growth.schedule <- seq(1, time.horizon, time.step)
   if(spin.up & time.horizon>10){
     lchg.schedule <- seq(11, time.horizon, time.step)
@@ -125,6 +127,7 @@ land.dyn.mdl <- function(scn.name){
   track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
+  track.encroach <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, age.class=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   track.sqi <- data.frame(run=NA, year=NA, spp=NA, sqi=NA, area=NA, vol=NA, volbark=NA)
   
@@ -191,13 +194,13 @@ land.dyn.mdl <- function(scn.name){
         shrub.cells <- sample(unlist(filter(land.cover.changes, code==1614) %>% select(cell.id)), 6340, replace=F)
         ## Apply the changes in "land" and "clim
         land$spp[land$cell.id %in% urban.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 20 
-        land$spp[land$cell.id %in% water.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 19
-        land$spp[land$cell.id %in% grass.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 15
-        land$spp[land$cell.id %in% shrub.cells] <- clim$spp[clim$cell.id %in% urban.cells] <- 14
+        land$spp[land$cell.id %in% water.cells] <- clim$spp[clim$cell.id %in% water.cells] <- 19
+        land$spp[land$cell.id %in% grass.cells] <- clim$spp[clim$cell.id %in% grass.cells] <- 15
+        land$spp[land$cell.id %in% shrub.cells] <- clim$spp[clim$cell.id %in% shrub.cells] <- 14
         land$biom[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
         land$biom[land$cell.id %in% shrub.cells] <- 0
-        land$age[land$cell.id %in% c(urban.cells, water.cells, grass.cells)] <- NA
-        land$age[land$cell.id %in% shrub.cells] <- 0
+        land$age[land$cell.id %in% c(urban.cells, water.cells)] <- NA
+        land$age[land$cell.id %in% grass.cells] <- land$age[land$cell.id %in% shrub.cells] <- 0
         land$tsdist[land$cell.id %in% c(urban.cells, water.cells)] <- NA
         land$tsdist[land$cell.id %in% c(grass.cells, shrub.cells)] <- 0
         land$typdist[land$cell.id %in% grass.cells] <- "lchg.agri"
@@ -456,6 +459,16 @@ land.dyn.mdl <- function(scn.name){
         }
         # Reset age of cells burnt in high intensity
         land$age[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens] & !is.na(land$spp) & land$spp<=14] <- 0
+        # Reset age of burnt grass
+        land$age[land$cell.id %in% burnt.cells$cell.id & !is.na(land$spp) & land$spp==15] <- 0
+        ## Transition of burnt shublands in high-mountain (>1500m) to grasslands
+        burnt.shrub <- land %>% filter(spp==14, tsdist==0, typdist %in% c("lowfire", "highfire")) %>% 
+          left_join(select(orography, cell.id, elev), by="cell.id") %>% filter(elev>1500)
+        land$spp[land$cell.id %in% burnt.shrub$cell.id] <- 15
+        land$age[land$cell.id %in% burnt.shrub$cell.id] <- 0
+        clim$spp[clim$cell.id %in% burnt.shrub$cell.id] <- 15
+        clim$sdm[clim$cell.id %in% burnt.shrub$cell.id] <- NA
+        clim$sqi[clim$cell.id %in% burnt.shrub$cell.id] <- NA
       }
       
       
@@ -497,7 +510,22 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      ## 10. GROWTH
+      ## 10. ENCROACHMENT
+      if(is.encroachment & t %in% encroach.schedule){
+        aux  <- encroachment(land, coord, orography)
+        land$spp[land$cell.id %in% aux$cell.id] <- 14
+        land$biom[land$cell.id %in% aux$cell.id] <- 0
+        land$age[land$cell.id %in% aux$cell.id] <- 0
+        land$tsdist[land$cell.id %in% aux$cell.id] <- 0
+        land$typdist[land$cell.id %in% aux$cell.id] <- "encroach"
+        clim$spp[clim$cell.id %in% aux$cell.id] <- 14
+        clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
+        clim$sqi[clim$cell.id %in% aux$cell.id] <- 1
+        track.encroach <- rbind(track.encroach, data.frame(run=irun, year=t, spp=14, ha=nrow(aux)))
+      }
+      
+      
+      ## 11. GROWTH
       if(is.growth & t %in% growth.schedule){
         land$biom <- growth(land, clim, "Species")
         land$age <- pmin(land$age+1,600)
@@ -535,6 +563,7 @@ land.dyn.mdl <- function(scn.name){
       if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
         cat("... writing maps", "\n")
         save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
+        save(clim, file=paste0(out.path, "/rdata/clim_r", irun, "t", t, ".rdata"))
       }
     } # time
   
@@ -556,6 +585,7 @@ land.dyn.mdl <- function(scn.name){
     track.cohort <- filter(track.cohort, ha>0)
     write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.encroach[-1,], paste0(out.path, "/Encroachment.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.sqi[-1,], paste0(out.path, "/LandSQI.txt"), quote=F, row.names=F, sep="\t")
     

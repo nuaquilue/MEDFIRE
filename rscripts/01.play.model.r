@@ -36,13 +36,13 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 4){
-  scn.name <- scenarios$scn.name[i]
+for(i in 1){
+  scn.name <- paste0(scenarios$scn.name[i], "_noSPIN")
   define.scenario(scn.name)
   ## general
-  nrun <- scenarios$nrun[i]-1
+  nrun <- 1 #scenarios$nrun[i]
   write.maps <- F
-  spin.up <- as.logical(scenarios$spin.up[i])
+  spin.up <- F# as.logical(scenarios$spin.up[i])
   ## processes
   is.climate.change <- as.logical(scenarios$is.climate.change[i])
   is.land.cover.change <- as.logical(scenarios$is.land.cover.change[i])

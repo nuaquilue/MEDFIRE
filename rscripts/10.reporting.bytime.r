@@ -5,8 +5,10 @@ play <- function(){
   library(tidyverse)
   library(viridis)
   source("rscripts/10.reporting.bytime.r")
-  list.scn <- c("NULL", "LC", "WF", "LC_WF", "WF_FS", "LC_WF_FS",
-                "CC", "CC_LC", "CC_WF",  "CC_LC_WF",  "CC_WF_FS","CC_LC_WF_FS")
+  list.scn <- c("NULL", "LC", "FM", "WF", "WF_FS", "FM_WF", "FM_WF_FS",
+                "LC_FM", "LC_WF",  "LC_WF_FS", "LC_FM_WF", "LC_FM_WF_FS",
+                "CC", "CC_LC", "CC_FM", "CC_WF", "CC_WF_FS", "CC_FM_WF", "CC_FM_WF_FS",
+                "CC_LC_FM", "CC_LC_WF", "CC_LC_WF_FS", "CC_LC_FM_WF", "CC_LC_FM_WF_FS")
   # plot outputs
   plot.agb(list.scn)
   taxo.rich(list.scn)
@@ -14,48 +16,51 @@ play <- function(){
   plot.carbon.burnt()
   plot.spp.burnt()
   plot.ab.at()
+  
 }
 
 
 plot.agb <- function(list.scn){
   
-  options(warn=-1)
   rm(dta.all); rm(dta.all.ft)
   for(scn in list.scn){
     ## Existences
     dta.land <- read.table(paste0("outputs/Scn_", scn, "/Land.txt"), header=T)
     order.scn <- which(scn==list.scn)
-    order.scn <- ifelse(order.scn<=6, order.scn, order.scn-6)
+    order.scn <- ifelse(order.scn<=12, order.scn, order.scn-12)
+    order.scn <- ifelse(order.scn<10, paste0("0", order.scn), order.scn)
     dta.land$scn <- paste0(order.scn, ".", ifelse(scn=="CC", "NULL", sub("CC_", "", scn)))
+    print(unique(dta.land$scn))
     dta.land$year <- dta.land$year+2009
     dta.land$clim <- ifelse(length(grep("CC", scn))==0, "current", "rcp8.5")
+    dta.land$land.chg <- ifelse(length(grep("LC", scn))==0, "NO", "YES")
     dta.land$ftype <- ifelse(dta.land$spp<=7, "conif", ifelse(dta.land$spp<=13, "decid", NA))
     ## from 2020 to 2099
-    dta.land <- filter(dta.land, year>=2020)
+    dta.land <- filter(dta.land, year>=2020)  %>% filter(spp<13)
     ## mean (Total / year)
     if(exists("dta.all")){
-      aux <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year) %>% 
+      aux <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, land.chg) %>% 
         summarise(area=sum(area), volbark=sum(volbark), carbon=sum(carbon)) 
       dta.all <- rbind(dta.all, aux)
     }
     else
-      dta.all <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year) %>% 
+      dta.all <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, land.chg) %>% 
                  summarise(area=sum(area), volbark=sum(volbark), carbon=sum(carbon)) 
     ## mean (Total / forest type / year)
     if(exists("dta.all.ft")){
-      aux <- filter(dta.land, !is.na(ftype)) %>% group_by(scn, clim, ftype, run, year) %>% 
+      aux <- filter(dta.land, !is.na(ftype)) %>% group_by(scn, clim, ftype, run, year, land.chg) %>% 
         summarise(area=sum(area), volbark=sum(volbark), carbon=sum(carbon)) 
       dta.all.ft <- rbind(dta.all.ft, aux)
     }
     else
-      dta.all.ft <- filter(dta.land, !is.na(ftype)) %>% group_by(scn, clim, ftype, run, year) %>% 
+      dta.all.ft <- filter(dta.land, !is.na(ftype)) %>% group_by(scn, clim, ftype, run, year, land.chg) %>% 
       summarise(area=sum(area), volbark=sum(volbark), carbon=sum(carbon)) 
   }
   rm(aux)
   
   ## means
-  dta <- group_by(dta.all, scn, clim, year) %>% summarise(area=mean(area), volbark=mean(volbark), carbon=mean(carbon))
-  dta.ft <- group_by(dta.all.ft, scn, clim, ftype, year) %>% summarise(area=mean(area), volbark=mean(volbark), carbon=mean(carbon))
+  dta <- group_by(dta.all, scn, clim, year, land.chg) %>% summarise(area=mean(area), volbark=mean(volbark), carbon=mean(carbon))
+  dta.ft <- group_by(dta.all.ft, scn, clim, ftype, year, land.chg) %>% summarise(area=mean(area), volbark=mean(volbark), carbon=mean(carbon))
   
   
   #####
@@ -63,43 +68,71 @@ plot.agb <- function(list.scn){
   ## is so small that the reguib gets overlapped
   #####
   ## Evol plot - AGB
-  p1 <- ggplot(filter(dta, scn %in% c("1.NULL", "3.WF", "5.WF_FS")), aes(x=year, y=volbark, col=scn, linetype=clim)) + 
+  p1 <- ggplot(filter(dta, scn %in% c("01.NULL", "04.WF", "05.WF_FS", "06.FM_WF", "07.FM_WF_FS")), 
+               aes(x=year, y=volbark/10^6, col=scn, linetype=clim)) + 
         geom_line(aes(colour=scn, linetype=clim), size=1.5) +
-        scale_color_viridis_d(option="plasma") + theme_classic() + ggtitle("Aboveground biomass")
-  p2 <- ggplot(filter(dta, scn %in% c("1.NULL", "3.WF", "5.WF_FS")), aes(x=year, y=volbark/area, col=scn, linetype=clim)) + 
+        # scale_color_viridis_d(option="magma") + 
+    scale_color_manual(values=c("black", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme_classic() + ggtitle("Aboveground biomass")
+  p1
+  p2 <- ggplot(filter(dta, scn %in% c("01.NULL", "04.WF", "05.WF_FS", "06.FM_WF", "07.FM_WF_FS")), 
+               aes(x=year, y=volbark/area, col=scn, linetype=clim)) + 
     geom_line(aes(colour=scn, linetype=clim), size=1.5) +
-    scale_color_viridis_d(option="plasma") + theme_classic() + ggtitle("Aboveground biomass / area")
+    scale_color_manual(values=c("black", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme_classic() + ggtitle("Aboveground biomass / area")
+  p2
   gridExtra::grid.arrange(p1,p2, nrow=1)
   ## Evol plot - AGB / forest type  
-  p3 <- ggplot(filter(dta.ft, scn %in% c("1.NULL", "3.WF", "5.WF_FS")), 
-               aes(x=year, y=volbark, col=scn, linetype=clim)) + 
-    geom_line(aes(colour=scn, linetype=clim), size=1.5) + facet_wrap(~ftype) +
-    scale_color_viridis_d(option="plasma") + theme_classic() + ggtitle("Aboveground biomass")
-  p4 <- ggplot(filter(dta.ft, scn %in% c("1.NULL", "3.WF", "5.WF_FS")), 
+  p3 <- ggplot(filter(dta.ft, scn %in% c("01.NULL", "04.WF", "05.WF_FS", "06.FM_WF", "07.FM_WF_FS")), 
+               aes(x=year, y=volbark/10^6, col=scn, linetype=clim)) + 
+    geom_line(aes(colour=scn, linetype=clim), size=1.5) + facet_wrap(~ftype, scales="free") + #,  scales = "free") + 
+    scale_color_manual(values=c("black", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+      theme_classic() + ggtitle("Aboveground biomass") + theme(legend.position = "none")
+  p3
+  p4 <- ggplot(filter(dta.ft, scn %in% c("01.NULL", "04.WF", "05.WF_FS", "06.FM_WF", "07.FM_WF_FS")), 
                aes(x=year, y=volbark/area, col=scn, linetype=clim)) + 
     geom_line(aes(colour=scn, linetype=clim), size=1.5) + facet_wrap(~ftype) +
-    scale_color_viridis_d(option="plasma") + theme_classic() + ggtitle("Aboveground biomass / area")
+    scale_color_manual(values=c("black", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme_classic() + ggtitle("Aboveground biomass / area")
+  p4
   gridExtra::grid.arrange(p3,p4, nrow=1)
   
-  set.name <- "135"
-  tiff(paste0("rscripts/outs/09.AGB-ftype_", set.name, ".tiff"), width=800, height=700)
-  gridExtra::grid.arrange(p1,p2,p3,p4, nrow=2)
+  set.name <- "14567"
+  tiff(paste0("rscripts/outs/10.AGB-ftype.all_", set.name, ".tiff"), width=1000, height=500)
+  gridExtra::grid.arrange(p1,p3, nrow=1)
   dev.off()
   
   
   ## Difference at the end of the period 
-  p5 <- ggplot(filter(dta.all, year==2099), aes(x=scn, y=volbark/10^6, fill=scn)) + 
-    geom_boxplot(notch=F) + facet_grid(~clim) + 
-    theme_classic() + scale_fill_viridis(option="plasma", discrete=T) +  ggtitle("AGB 2100") #geom_violin()
-  p6 <- ggplot(filter(dta.all, year==2099), aes(x=scn, y=volbark/area, fill=scn)) + 
-    geom_boxplot(notch=F) + facet_grid(~clim) + 
-    theme_classic() + scale_fill_viridis(option="plasma", discrete=T) +  ggtitle("AGB/area 2100") #geom_violin()
-  # ggplot(filter(dta.all.ft, year==2099), aes(x=scn, y=volbark, fill=scn)) + 
-  #   geom_boxplot(notch=F) + facet_grid(ftype~clim) + 
-  #   theme_classic() + scale_fill_viridis(option="plasma", discrete=T) +  ggtitle("AGB 2100") #geom_violin()
-    set.name <- "135"
-  tiff(paste0("rscripts/outs/10.AGB2100_", set.name, ".tiff"), width=800, height=400)
-  gridExtra::grid.arrange(p5,p6, nrow=1)
+  ## change the name of the scenarios with LC for plotting purposes
+  dta.all$scn.lc <- ifelse(dta.all$scn=="02.LC", "01.NULL",
+                      ifelse(dta.all$scn=="08.LC_FM", "03.FM",
+                        ifelse(dta.all$scn=="09.LC_WF", "04.WF",
+                          ifelse(dta.all$scn=="10.LC_WF_FS", "05.WF_FS",       
+                            ifelse(dta.all$scn=="11.LC_FM_WF", "06.FM_WF",       
+                              ifelse(dta.all$scn=="12.LC_FM_WF_FS", "07.FM_WF_FS", dta.all$scn))))))
+  p5 <- ggplot(filter(dta.all, year==2099), aes(x=scn.lc, y=volbark/10^6, color=scn.lc)) + 
+    geom_boxplot() + facet_grid(land.chg~clim) + ggtitle("AGB in  2100") +
+    scale_color_manual(values=c("black", "chartreuse3", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme(axis.text.x = element_blank())
+  p5
+  p6 <- ggplot(filter(dta.all, year==2099), aes(x=scn.lc, y=volbark/area, color=scn.lc)) + 
+    geom_boxplot(notch=F) + facet_grid(land.chg~clim) +  ggtitle("AGB/Area in 2100") +
+    scale_color_manual(values=c("black", "chartreuse3", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme(axis.text.x = element_blank())
+  p6
+  p7 <- ggplot(filter(dta.all, year==2099), aes(x=land.chg, y=volbark/10^6, color=scn.lc)) + 
+    geom_boxplot(position="dodge") + facet_wrap(~clim,  scales = "free") + ggtitle("AGB in 2100") +
+    scale_color_manual(values=c("black", "chartreuse3", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme_classic()
+  p7
+  p8 <- ggplot(filter(dta.all, year==2099), aes(x=land.chg, y=volbark/area, color=scn.lc)) + 
+    geom_boxplot(position="dodge") + facet_wrap(~clim) + ggtitle("AGB/Area in  2100") +
+    scale_color_manual(values=c("black", "chartreuse3", "red3", "darkslateblue", "orange2", "darkturquoise")) +
+    theme_classic()
+  p8
+  tiff("rscripts/outs/10.AGBarea2100.tiff", width=800, height=500)
+  gridExtra::grid.arrange(p8, nrow=1)
   dev.off()
   
   
@@ -219,43 +252,49 @@ taxo.rich <- function(list.scn){
 
 plot.age <- function(list.scn){
   
-  options(warn=-1)
   rm(dta.all); rm(dta.tot)
   for(scn in list.scn){
     ## Existences
-    dta.land <- read.table(paste0("outputs/spatial/Scn_", scn, "/Land.txt"), header=T)
+    dta.land <- read.table(paste0("outputs/Scn_", scn, "/Land.txt"), header=T)
     order.scn <- which(scn==list.scn)
-    order.scn <- ifelse(order.scn<=6, order.scn, order.scn-6)
+    order.scn <- ifelse(order.scn<=12, order.scn, order.scn-12)
+    order.scn <- ifelse(order.scn<10, paste0("0", order.scn), order.scn)
     dta.land$scn <- paste0(order.scn, ".", ifelse(scn=="CC", "NULL", sub("CC_", "", scn)))
+    print(unique(dta.land$scn))
     dta.land$year <- dta.land$year+2009
     dta.land$clim <- ifelse(length(grep("CC", scn))==0, "current", "rcp8.5")
+    dta.land$land.chg <- ifelse(length(grep("LC", scn))==0, "NO", "YES")
     # dta.land$ftype <- ifelse(dta.land$spp<=7, "conif", ifelse(dta.land$spp<=13, "decid", NA))
     ## from 2020 to 2099
-    dta.land <- filter(dta.land, year>=2020)
+    dta.land <- filter(dta.land, year>=2020) %>% filter(spp<13)
     ## mean (Total / year)
     if(exists("dta.all")){
-      aux <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, age.class) %>% 
+      aux <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, age.class, land.chg) %>% 
         summarise(area=sum(area), volbark=sum(volbark)) 
       dta.all <- rbind(dta.all, aux)
-      aux <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year) %>% 
+      aux <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, land.chg) %>% 
         summarise(area=sum(area), volbark=sum(volbark)) 
       dta.tot <- rbind(dta.tot, aux)
     }
     else{
-      dta.all <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, age.class) %>%   # spp>7 &
+      dta.all <- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, age.class, land.chg) %>%   # spp>7 &
         summarise(area=sum(area), volbark=sum(volbark)) 
-      dta.tot<- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year) %>% 
+      dta.tot<- filter(dta.land, spp<=13) %>% group_by(scn, clim, run, year, land.chg) %>% 
         summarise(area=sum(area), volbark=sum(volbark)) 
     }
   }
   rm(aux); rm(order.scn); rm(dta.land)
   
   ## Pct each age class
-  names(dta.tot)[5:6] <- paste0(names(dta.tot)[5:6], ".tot")
-  dta <- left_join(dta.all, dta.tot, by=c("scn", "clim", "run", "year")) %>% 
+  names(dta.tot)[6:7] <- paste0(names(dta.tot)[6:7], ".tot")
+  dta <- left_join(dta.all, dta.tot, by=c("scn", "clim", "run", "year", "land.chg")) %>% 
     mutate(pct.area=area/area.tot, pct.volbark=volbark/volbark.tot) %>% 
-    group_by(scn, clim, year, age.class) %>% summarise(area=mean(area), volbark=mean(volbark),
-    pct.area=mean(pct.area), pct.volbark=mean(pct.volbark))
+    group_by(scn, clim, year, age.class, land.chg) %>% summarise(area=mean(area), volbark=mean(volbark),
+    pct.area=mean(pct.area), pct.volbark=mean(pct.volbark)) 
+    
+  dta$age.class= ifelse(dta$age.class=="young", paste0("1.", dta$age.class),
+                        ifelse(dta$age.class=="mature", paste0("2.", dta$age.class), 
+                               paste0("3.", dta$age.class)))
   
   ## chart plot
   ggplot(dta, aes(x=year, y=pct.area, fill=age.class)) + 
@@ -263,7 +302,7 @@ plot.age <- function(list.scn){
     facet_grid(clim~scn) + theme_classic() + theme(legend.position="bottom") + ggtitle("all species - area")
 
   ## flower plot - 2100
-  ggplot(filter(dta, year==2099), aes(x=age.class, y=pct.area, fill=age.class)) + 
+  ggplot(filter(dta, year==2099, land.chg=="NO"), aes(x=age.class, y=pct.area, fill=age.class)) + 
     geom_col() + facet_grid(clim~scn) + coord_polar()+ theme_classic() + 
     scale_fill_viridis(discrete = T) +  theme(legend.position="bottom") 
     # scale_fill_manual(values=c("forestgreen", "gold2", "saddlebrown", "darksalmon"))
@@ -321,46 +360,52 @@ plot.carbon.burnt <- function(list.scn){
 
 plot.spp.burnt <- function(list.scn){
   
-  options(warn=-1); rm(dta.all)
+  rm(dta.all)
   for(scn in list.scn){
     ## Burnt per species
     dta.burnt <- read.table(paste0("outputs/Scn_", scn, "/BurntSpp.txt"), header=T)
     if(nrow(dta.burnt)>0){
       order.scn <- which(scn==list.scn)
-      order.scn <- ifelse(order.scn<=6, order.scn, order.scn-6)
+      order.scn <- ifelse(order.scn<=12, order.scn, order.scn-12)
+      order.scn <- ifelse(order.scn<10, paste0("0", order.scn), order.scn)
       dta.burnt$scn <- paste0(order.scn, ".", ifelse(scn=="CC", "NULL", sub("CC_", "", scn)))
+      print(unique(dta.burnt$scn))
       dta.burnt$year <- dta.burnt$year+2009
       dta.burnt$clim <- ifelse(length(grep("CC", scn))==0, "current", "rcp8.5")
+      dta.burnt$land.chg <- ifelse(length(grep("LC", scn))==0, "NO", "YES")
+      dta.burnt$supp <- ifelse(length(grep("FS", scn))==0, "NO", "YES")
+      dta.burnt$mgmt <- ifelse(length(grep("FM", scn))==0, "NO", "YES")
       if(exists("dta.all")){
         aux <- filter(dta.burnt, spp<=17) %>% mutate(cover=ifelse(spp<=7, "conif",
                ifelse(spp<=13, "decid", ifelse(spp==14, "shrub", ifelse(spp %in% c(16,17), "crop", "grass" ))))) %>% 
-                group_by(run, year, scn, clim, cover) %>% summarise(aburnt=sum(aburnt))
+                group_by(run, year, scn, clim, cover, land.chg, supp, mgmt) %>% summarise(aburnt=sum(aburnt))
         dta.all <- rbind(dta.all, aux)
       }
       else{
         dta.all <- filter(dta.burnt, spp<=17) %>% mutate(cover=ifelse(spp<=7, "conif",
                    ifelse(spp<=13, "decid", ifelse(spp==14, "shrub", ifelse(spp %in% c(16,17), "crop", "grass"))))) %>%
-                   group_by(run, year, scn, clim, cover) %>% summarise(aburnt=sum(aburnt))
+                   group_by(run, year, scn, clim, cover, land.chg, supp, mgmt) %>% summarise(aburnt=sum(aburnt))
       }
       rm(aux)
     }
   } # list.scn
   
   ## mean per year
-  dta <- group_by(dta.all, scn, clim, year, clim, cover) %>% summarise(aburnt=mean(aburnt)) %>% 
-        filter(cover!="grass")
+  dta <- group_by(dta.all, scn, clim, year, cover, mgmt, supp, land.chg) %>% 
+         summarise(aburnt=mean(aburnt)) %>% filter(cover!="grass")
   ## evolution area burnt over time per scenario
   ggplot(dta, aes(x=year, y=aburnt/100, col=scn, linetype=clim))  +
     geom_line(aes(colour=scn, linetype=clim), size=1) + 
     geom_smooth(formula=y~x, method="loess", size=1.5) + facet_wrap(~cover, scales="free_y") +
     scale_color_viridis(option="plasma", discrete = T) + theme_classic() + ggtitle("Area burnt / cover")
   ## total area burnt during all the period (boxplot)
-  dta.period <- group_by(dta.all, scn, clim, run, cover) %>% summarise(aburnt=sum(aburnt)) %>% filter(cover!="grass") 
-  ggplot(dta.period, aes(x=scn, y=aburnt/100, fill=scn)) + geom_boxplot(notch=T) + facet_grid(cover~clim, scales="free_y") + 
+  dta.period <- group_by(dta.all, scn, clim, run, cover, land.chg, mgmt, supp) %>% summarise(aburnt=sum(aburnt)) %>% filter(cover!="grass") 
+  ggplot(dta.period, aes(x=scn, y=aburnt/100, fill=scn)) + geom_boxplot(notch=F) + facet_grid(cover~clim, scales="free_y") + 
     theme_classic() + scale_fill_viridis(option="plasma", discrete=T) +  ggtitle("LC burnt") 
   ## mean total area burnt during all the period (flowerplot)
-  dta.period.mean <- group_by(dta.period, scn, clim, cover) %>% summarise(aburnt=mean(aburnt))  
-  ggplot(dta.period.mean, aes(x=cover, y=aburnt/10^6, fill=cover)) + 
+  dta.period.mean <- group_by(dta.period, scn, clim, cover, mgmt, land.chg, supp) %>% 
+    summarise(aburnt=mean(aburnt))  
+  ggplot(filter(dta.period.mean, supp=="NO"), aes(x=cover, y=aburnt/10^6, fill=cover)) + 
     geom_col() + facet_grid(clim~scn) + coord_polar()+ theme_classic() + 
     scale_fill_manual(values=c("forestgreen", "gold2", "saddlebrown", "darksalmon")) 
   
@@ -369,53 +414,118 @@ plot.spp.burnt <- function(list.scn){
 
 plot.ab.at <- function(list.scn){
 
-  options(warn=-1); rm(dta.all)
+  rm(dta.all)
   for(scn in list.scn){
-    ## Burnt per species
+    ## Burnt 
     dta.burnt <- read.table(paste0("outputs/Scn_", scn, "/Fires.txt"), header=T)
     if(nrow(dta.burnt)>0){
       order.scn <- which(scn==list.scn)
-      order.scn <- ifelse(order.scn<=6, order.scn, order.scn-6)
+      order.scn <- ifelse(order.scn<=12, order.scn, order.scn-12)
+      order.scn <- ifelse(order.scn<10, paste0("0", order.scn), order.scn)
       dta.burnt$scn <- paste0(order.scn, ".", ifelse(scn=="CC", "NULL", sub("CC_", "", scn)))
+      print(unique(dta.burnt$scn))
       dta.burnt$year <- dta.burnt$year+2009
       dta.burnt$clim <- ifelse(length(grep("CC", scn))==0, "current", "rcp8.5")
+      dta.burnt$land.chg <- ifelse(length(grep("LC", scn))==0, "NO", "YES")
+      dta.burnt$supp <- ifelse(length(grep("FS", scn))==0, "NO", "YES")
+      dta.burnt$mgmt <- ifelse(length(grep("FM", scn))==0, "NO", "YES")
       
       if(exists("dta.all")){
-        aux <- group_by(dta.burnt, run, year, scn, clim) %>% summarise(aburnt=sum(aburnt.highintens+aburnt.lowintens), 
-                 aburnt.high=sum(aburnt.highintens), asupp=sum(asupp.fuel+asupp.sprd), atarget=sum(atarget))
+        aux <- group_by(dta.burnt, run, year, scn, clim, land.chg, supp, mgmt) %>% 
+               summarise(sever=max(clim.sever), aburnt=sum(aburnt.highintens+aburnt.lowintens), 
+                         aburnt.high=sum(aburnt.highintens), 
+                         asupp=sum(asupp.fuel+asupp.sprd), atarget=sum(atarget))
         dta.all <- rbind(dta.all, aux)
       }
       else{
-        dta.all <- group_by(dta.burnt, run, year, scn, clim) %>% summarise(aburnt=sum(aburnt.highintens+aburnt.lowintens), 
-                    aburnt.high=sum(aburnt.highintens), asupp=sum(asupp.fuel+asupp.sprd), atarget=sum(atarget))
+        dta.all <- group_by(dta.burnt, run, year, scn, clim, land.chg, supp, mgmt) %>% 
+                   summarise(sever=max(clim.sever), aburnt=sum(aburnt.highintens+aburnt.lowintens), 
+                             aburnt.high=sum(aburnt.highintens),
+                             asupp=sum(asupp.fuel+asupp.sprd), atarget=sum(atarget))
       }
-      rm(aux)
     }
   } # list.scn
   
   ## Pctg burnt and suppress per year
   dta.all$pct.ab <- dta.all$aburnt/dta.all$atarget
   dta.all$pct.as <- dta.all$asupp/dta.all$atarget
-  dta.all$pct.abh <- dta.all$aburnt.high/dta.all$atarget
+  dta.all$pct.abh <- dta.all$aburnt.high/dta.all$aburnt
+  
+  
+  ## Number of sever years
+  dta.all %>% group_by(run, scn, clim, land.chg, supp, mgmt) %>% summarise(nsever=sum(sever)) %>% 
+    group_by(scn, clim, land.chg, supp, mgmt) %>% summarise(nsever=round(mean(nsever)))
+  
   
   ## Pctg burnt and suppress in the period
-  dta.period <- group_by(dta.all, scn, clim, run) %>% summarise(aburnt=sum(aburnt), aburnt.high=sum(aburnt.high),
-                    asupp=sum(asupp), atarget=sum(atarget)) %>% mutate(pct.ab=aburnt/atarget, pct.as=asupp/atarget,
-                    pct.abh=aburnt.high/atarget)
-                                                                
+  load("inputlyrs/rdata/mask.rdata")
+  dta.period <- group_by(dta.all, scn, clim, run, land.chg, supp, mgmt) %>% 
+                summarise(aburnt=sum(aburnt), aburnt.high=sum(aburnt.high),
+                          asupp=sum(asupp), atarget=sum(atarget)) %>% 
+                mutate(pct.ab=aburnt/atarget, pct.as=asupp/atarget, pct.abh=aburnt.high/aburnt,
+                       fri=ncell(MASK)*80/aburnt)
+  
+  # mod <- glm(fri~clim+mgmt+land.chg+supp, dta.period, family = "gaussian")
+  # summary(mod)
+  # MuMIn::r.squaredGLMM(mod, null, enviar = parent.frame(), pj2014 = FALSE)
+  mod <- lm(fri~clim+mgmt+land.chg+supp, dta.period)
+  summary(mod)
+  mod <- lm(pct.abh~clim+mgmt+land.chg+supp, dta.period)
+  summary(mod)
+  
+  
+  ## Mean fire return interval
+  dta.period %>% group_by(scn, clim, land.chg) %>% summarise(aburnt=mean(aburnt)) %>% 
+    mutate(mfri=ncell(MASK)*80/aburnt) %>% dplyr::select(-aburnt) %>%  
+    pivot_wider(names_from = clim, values_from=mfri)
+  
+  ## Area burnt
+  dta.period %>% group_by(scn, clim, land.chg) %>% summarise(aburnt=mean(aburnt)/10^6) %>% 
+    pivot_wider(names_from = clim, values_from=aburnt) %>% mutate(dif=rcp8.5-current)
   
   
   ## evolution percentage area burnt over time per scenario
-  ggplot(dta.all, aes(x=year, y=pct.abh, col=scn, linetype=clim))  +
-    geom_line(aes(colour=scn, linetype=clim), size=1) + geom_smooth(formula=y~x, method="loess", size=1.5) + 
-    scale_color_viridis(option="plasma", discrete = T) + theme_classic() + ggtitle("Pct burnt area")
-  ## total area burnt during all the period (boxplot)
-  ggplot(dta.period, aes(x=scn, y=pct.abh, fill=scn)) + geom_boxplot(notch=F) + facet_grid(~clim) + 
-    theme_classic() + scale_fill_viridis(option="plasma", discrete=T) +  ggtitle("% high-intensity burnt") 
+  # ggplot(filter(dta.all, land.chg=="NO"), aes(x=year, y=pct.abh, col=scn, linetype=clim))  +
+  #   geom_line(aes(colour=scn, linetype=clim), size=1) + geom_smooth(formula=y~x, method="loess", size=1.5) + 
+  #   scale_color_viridis(option="plasma", discrete = T) + theme_classic() + ggtitle("Pct burnt area")
   
-
-  ggplot(dta.period, aes(x=scn, y=aburnt/10^6, fill=scn)) + geom_boxplot(notch=F) + facet_grid(~clim) + 
-    theme_classic() + scale_fill_viridis(option="plasma", discrete=T) +  ggtitle("Burnt area") 
+  
+  ## total area burnt during all the period (boxplot)
+  p1 <- ggplot(filter(dta.period, land.chg=="NO"), aes(x=scn, y=aburnt/10^6, fill=scn)) + 
+    geom_boxplot(notch=F) + facet_grid(land.chg~clim) + theme_classic() + 
+    theme(axis.text.x = element_blank()) +
+    scale_fill_manual(values=c( "red3", "darkslateblue", "orange2", "darkturquoise")) +  ggtitle("Burnt area") 
+  p1
+  p2 <- ggplot(filter(dta.period, land.chg=="YES"), aes(x=scn, y=aburnt/10^6, fill=scn)) + 
+    geom_boxplot(notch=F) + facet_grid(land.chg~clim) + theme_classic() + 
+    theme(axis.text.x = element_blank()) +
+    scale_fill_manual(values=c( "red3", "darkslateblue", "orange2", "darkturquoise")) +  ggtitle("Burnt area") 
+  p2
+  gridExtra::grid.arrange(p1,p2, nrow=1)
+  
+  
+  dta.period$scn.lc <- ifelse(dta.period$scn=="09.LC_WF", "04.WF",
+                        ifelse(dta.period$scn=="10.LC_WF_FS", "05.WF_FS",       
+                          ifelse(dta.period$scn=="11.LC_FM_WF", "06.FM_WF",       
+                            ifelse(dta.period$scn=="12.LC_FM_WF_FS", "07.FM_WF_FS", dta.period$scn))))
+  ggplot(dta.period, aes(x=scn.lc, y=aburnt/10^6, fill=scn.lc)) + 
+    geom_boxplot(notch=F) + facet_wrap(land.chg~clim) + theme_classic() + 
+    theme(axis.text.x = element_blank()) +  ggtitle("Burnt area") +
+    scale_fill_manual(values=rep(c("red3", "darkslateblue", "orange2", "darkturquoise"),2)) 
+  
+  
+  ## % burnt in high intensity
+  ggplot(dta.period, aes(x=scn.lc, y=pct.abh, fill=scn.lc)) + 
+    geom_boxplot(notch=F) + facet_wrap(land.chg~clim) + theme_classic() + 
+    theme(axis.text.x = element_blank()) +  ggtitle("% high intensity") +
+    scale_fill_manual(values=rep(c("red3", "darkslateblue", "orange2", "darkturquoise"),2)) 
+  
+  ## % Area burnt in HIGH INTESNITY
+  dta.period %>% group_by(scn, clim, land.chg) %>% summarise(aburnt=mean(pct.abh)) %>% 
+    pivot_wider(names_from = clim, values_from=aburnt) %>% mutate(dif=rcp8.5-current)
+  mod <- lm(pct.abh~clim+mgmt+land.chg+supp, dta.period)
+  summary(mod)
+  
   
 }
 

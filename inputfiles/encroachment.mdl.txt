@@ -1,0 +1,2 @@
+intrc	elev	slope	radsol	nneighforest	grassage
+16.048	-0.007	-0.092	-0.006	0.676	0.168

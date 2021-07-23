@@ -30,9 +30,10 @@ read.static.vars <- function(){
   ELEVATION <- raster("inputlyrs/asc/DEM_100m_31N-ETRS89.asc")
   ASPECT <- raster("inputlyrs/asc/Aspect_100m_31N-ETRS89.asc")
   SLOPE <- raster("inputlyrs/asc/SlopeDegree_100m_31N-ETRS89.asc")
+  RAD <- raster("inputlyrs/asc/SummerRad_100m_31N-ETRS89.asc") 
   ROAD <- raster("inputlyrs/asc/DensRoad_100m_31N-ETRS89.asc")
   ROAD[is.na(ROAD[])] <- 0  ## why there are so many NA is ROAD layer?
-  orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], road=ROAD[])
+  orography <- data.frame(cell.id=1:ncell(MASK), elev=ELEVATION[], aspect=ASPECT[], slope=SLOPE[], radsol=RAD[], road=ROAD[])
   orography <- orography[!is.na(MASK[]),]
   slope.st <- c(cellStats(SLOPE,'mean'), cellStats(SLOPE,'sd'))
   orography$slope.stand <- (orography$slope-slope.st[1])/slope.st[2]

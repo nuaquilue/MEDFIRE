@@ -22,7 +22,8 @@ play <- function(){
   dta <- land.metrics(list.scn)
   save(dta, file="rscripts/outs/15.landmetrics.rdata")
   
-  
+  ## SQI and elevation of mountain spp
+  scn.name <- "Scn_CC_sp"; irun <- 1; time <- 10
 }
 
 write.tif <- function(list.scn, nrun=1, time.seq=10){
@@ -112,6 +113,49 @@ plot.mfri <- function(list.scn){
   return(dta.cat[-1,])
 }
 
+
+sqi.elevation <- function(scn.name, nrun=1, time.seq=10){
+  load("inputlyrs/rdata/orography.rdata")
+  load("rscripts/ins/species.rdata")  
+  
+  res <-data.frame(spp=NA, sqi=NA, area.km2=NA, mn.elev=NA, mx.elev=NA, decade=NA)
+  for(irun in 1:nrun){
+    for(time in time.seq){
+      # load(paste0("outputs/", scn.name, "/rdata/land_r", irun, "t", time, ".rdata"))
+      load(paste0("outputs/Scn_", scn.name, "/rdata/clim_r", irun, "t", time, ".rdata"))
+      clim.elev <- cbind(clim, select(orography, elev))
+      aux <- clim.elev %>% group_by(spp, sqi) %>% summarise(area.km2=length(spp)/100, 
+              mn.elev=mean(elev), mx.elev=max(elev)) %>% 
+        filter(!is.na(sqi)) %>% mutate(decade=time+2010)
+      res <- rbind(res, as.data.frame(aux))
+    }
+  }
+  res <- filter(res, spp<13) 
+  res$SQI=ifelse(res$sqi==1, "1.low", ifelse(res$sqi==2, "2.high", "3.optimal"))
+  res <- left_join(res, species, by="spp")
+  
+  p1 <- ggplot(res, aes(x=decade,y=mx.elev, colour=SQI)) +
+    geom_line( size=1.5) +facet_wrap(.~name, scales="free") +
+    scale_color_viridis(discrete = T)+theme_classic()
+
+    
+  tiff(paste0("rscripts/outs/11.ElevationSQI_", scn.name, ".tiff"), width=800, height=600)
+  gridExtra::grid.arrange(p1, nrow=1)
+  dev.off()
+  
+  tot <- res %>% group_by(name, decade) %>% summarise(area.km2=sum(area.km2))
+  filter(tot, name=="puncinata")
+}
+
+
+prats <- function(){
+  load("inputlyrs/rdata/orography.rdata")
+  load("inputlyrs/rdata/land.rdata")
+  land <- cbind(land, select(orography, -cell.id))
+  grass <- filter(land, spp==15)
+  hist(grass$elev)  
+  
+}
 
 land.metrics <- function(list.scn){
   

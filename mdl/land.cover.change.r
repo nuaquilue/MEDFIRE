@@ -5,6 +5,12 @@
 
 land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells){
   
+  ## Retrive target demand and initialize area changed
+  dmnd.lchg <- read.table(paste0("inputfiles/", file.dmnd.lchg, ".txt"), header=T)
+  trgt.dmnd <- dmnd.lchg[t, lc.trans+1]
+  if(trgt.dmnd==0)
+    return(numeric())
+  
   cat(paste0("Land-cover transition: ", 
              ifelse(lc.trans==1, "Urbanization.", 
                     ifelse(lc.trans==2, "Agriculture conversion.", 
@@ -16,9 +22,7 @@ land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells
 
   
   ## Read input data
-  dmnd.lchg <- read.table(paste0("inputfiles/", file.dmnd.lchg, ".txt"), header=T)
   pattern.lchg <- read.table(paste0("inputfiles/", file.pattern.lchg, ".txt"), header=T)  
-  
   
   ## Join land-cover/spp info to coordinates to preselect coordinates of those cells that may
   ## undergo change per each land-cover transition
@@ -42,12 +46,6 @@ land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells
     lc.source <- land$spp>=16 & land$spp<=17
     coord.land <- filter(coord.land, spp>=16 & spp<=17) %>% select(-spp)
   }
-  
-  
-  ## Retrive target demand and initialize area changed
-  trgt.dmnd <- dmnd.lchg[t, lc.trans+1]
-  if(trgt.dmnd==0)
-    return(numeric())
   
   ## Idem for parameters driving spatial aggregation of change
   ligni <- pattern.lchg[lc.trans,2]

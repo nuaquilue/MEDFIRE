@@ -1,18 +1,26 @@
 play <- function(){
   rm(list=ls())  
   library(tidyverse)
+  options(dplyr.summarise.inform=F)
   source("rscripts/09.reporting.one.scn.r")
 
-  list.scn <- c("NULL", "LC", "WF", "WF_FS", "LC_WF", "LC_WF_FS",
-                 "CC", "CC_LC", "CC_WF", "CC_WF_FS", "CC_LC_WF", "CC_LC_WF_FS")
-  scn.name <- "CC_noSPIN"
+  list.scn <- c("NULL", "LC", "WF", "CC", "FM", "WF_FS")
+  #               "WF_FS", "LC_WF", "LC_WF_FS",
+  #                "CC", "CC_LC", "CC_WF", "CC_WF_FS", "CC_LC_WF", "CC_LC_WF_FS")
+  
+  scn.name <- "CC_LC_FM_WF_FS"
+  scn.name <- "NULL_1run"
+  
   for(scn.name in list.scn){
     plot.abundance(scn.name)
     plot.drought(scn.name)
     plot.cohort(scn.name)
     plot.afforest(scn.name)
-    plot.age.class(scn.name)
+    # plot.age.class(scn.name)
     plot.land.covers(scn.name)
+    # plot.harvest(scn.name)
+    plot.burnt(scn.name)
+    plot.sqi(scn.name)
   } 
   
   ##  t     |     year    |   decade
@@ -159,9 +167,12 @@ plot.abundance <- function(scn.name){
   
   ## Existences
   dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
-  dta.land <- filter(dta.land, year>10) %>% mutate(year=year+2009)
-  dta.ini <- filter(dta.land, year==2020) %>% select(-year)
+  dta.land <- dta.land %>% filter(year>10) %>% mutate(year=year+2009) %>% 
+              group_by(run, year, spp) %>% 
+              summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))
+  dta.ini <- filter(dta.land, year==2020) 
   names(dta.ini)[4:7] <- paste0(names(dta.ini)[4:7], ".ini") 
+  dta.ini <- dta.ini[, c(1,3:7)]
   dta.land <- left_join(dta.land, dta.ini, by=c("run","spp")) %>%
               mutate(pctg.area=100*area/area.ini, pctg.vol=100*vol/vol.ini,
                      pctg.volbark=100*volbark/volbark.ini,
@@ -281,26 +292,34 @@ plot.afforest <- function(scn.name){
 
 
 plot.land.covers <- function(scn.name){
-  
+
   ## Existences
   dta.land <- read.table(paste0("outputs/Scn_", scn.name, "/Land.txt"), header=T)
-  dta.land <- filter(dta.land, year>10) %>% mutate(year=year+2009)
-  dta.ini <- filter(dta.land, year==2020) %>% select(run, spp, area) 
-  names(dta.ini)[3] <- paste0(names(dta.ini)[3], ".ini") 
-  dta.land <- select(dta.land, run, year, spp, area) %>% 
-              left_join( dta.ini, by=c("run","spp")) %>%
+  dta.land <- filter(dta.land, year>10) %>% mutate(year=year+2009)  %>%    
+              group_by(run, year, spp) %>% summarise(area=sum(area), volbark=sum(volbark))
+  dta.ini <- filter(dta.land, year==2020) 
+  dta.ini <- dta.ini[,-2]
+  names(dta.ini)[3:4] <- paste0(names(dta.ini)[3:4], ".ini") 
+  dta.lc <- dta.land %>% left_join(dta.ini, by=c("run","spp")) %>%
               mutate(lc=ifelse(spp<=13, "forest", ifelse(spp==14, "shrub", ifelse(spp==15, "grass", 
                         ifelse(spp<=17, "crop", ifelse(spp<=19, "other", "urban")))))) %>% 
-              group_by(run, year, lc) %>% summarise(area=sum(area), area.ini=sum(area.ini)) %>% 
-              mutate(pctg.area=100*area/area.ini)
- 
-  p1 <- ggplot(data=filter(dta.land, lc!="other"), aes(x=year, y=pctg.area, colour=lc)) +
+              group_by(run, year, lc) %>% summarise(area=sum(area), area.ini=sum(area.ini),
+                                                    volbark=sum(volbark), volbark.ini=sum(volbark.ini)) %>% 
+              mutate(pctg.area=100*area/area.ini, pctg.volbark=100*volbark/volbark.ini)
+  dta.plot <- dta.lc %>% filter(lc!="other") %>% filter(lc!="urban")
+  
+  p1 <- ggplot(data=dta.plot, aes(x=year, y=pctg.area, colour=lc)) +
     geom_smooth(formula=y~x, method = "loess", size=1.5) + 
     scale_color_manual(values=c("gold", "forestgreen", "yellowgreen", "saddlebrown", "grey70")) + 
     ggtitle("Percentage - Area") + ylab("%") + theme_bw()
+  
+  p2 <- ggplot(data=filter(dta.plot, lc=="forest"), aes(x=year, y=pctg.volbark, colour=lc)) +
+    geom_smooth(formula=y~x, method = "loess", size=1.5) + 
+    scale_color_manual(values="forestgreen") + 
+    ggtitle("Percentage - VolBark") + ylab("%") + theme_bw()
 
-  tiff(paste0("rscripts/outs/08.AbundanceRelLandCover_", scn.name, ".tiff"), width=500, height=400)
-  gridExtra::grid.arrange(p1, nrow=1)
+  tiff(paste0("rscripts/outs/08.AbundanceRelLandCover_", scn.name, ".tiff"), width=1000, height=400)
+  gridExtra::grid.arrange(p1, p2, nrow=1)
   dev.off()
 
 }
@@ -318,22 +337,26 @@ plot.sqi <- function(scn.name){
                  select(-area, -vol, -volbark)
   dta.t.spp <- filter(dta.land.spp, year>2010) %>% left_join(dta.t_1.spp, by=c("run", "year", "name", "sqi")) %>% 
                 mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)                                                    
-  dta.land.spp <- dta.land.spp %>% mutate(ratio=vol/area, ratiobark=volbark/area)                 
+  dta.land.spp <- dta.land.spp %>% mutate(ratio=vol/area, ratiobark=volbark/area) %>% 
+                  group_by(year, spp, sqi, name) %>% 
+                  summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark),
+                    ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% mutate(area.km2=area*0.01)
   
   ## Existències totals
-  dta.land <- dta.land.spp %>% group_by(run, year, sqi) %>% 
+  dta.land <- dta.land.spp %>% group_by(year, sqi) %>% 
               summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark)) %>% 
               mutate(ratio=vol/area, ratiobark=volbark/area)  %>% group_by(year, sqi) %>% 
               summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark), 
-                        ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% filter(year>2020)
-  dta.t <- dta.t.spp %>% group_by(run, year, sqi) %>% 
+                        ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% filter(year>2020) %>% 
+              mutate(area.km2=area*0.01)
+  dta.t <- dta.t.spp %>% group_by(year, sqi) %>% 
            summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark),
                      area_1=sum(area_1, na.rm=T), vol_1=sum(vol_1, na.rm=T), volbark_1=sum(volbark_1, na.rm=T)) %>% 
-           mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)  %>% filter(year>2020)
-  
+           mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)  %>% filter(year>2020) %>% 
+           group_by(year, sqi) %>% summarise(inc.area=mean(inc.area), inc.vol=mean(inc.vol), inc.volbark=mean(inc.volbark)) 
   
   ## area and volum per sqi, and increments per sqi
-  p1 <- ggplot(dta.land, aes(x=year, y=area/10^3, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+  p1 <- ggplot(dta.land, aes(x=year, y=area.km2, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
         scale_fill_viridis(discrete = T)+theme_classic()
   p2 <- ggplot(dta.land, aes(x=year, y=volbark/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+theme_classic()
@@ -341,13 +364,17 @@ plot.sqi <- function(scn.name){
     scale_fill_viridis(discrete = T)+theme_classic()
   p4 <- ggplot(dta.t, aes(x=year, y=inc.volbark, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+theme_classic()
+  tiff(paste0("rscripts/outs/09.SQI_", scn.name, ".tiff"), width=1000, height=400)
   gridExtra::grid.arrange(p1,p2, nrow=1)
-  gridExtra::grid.arrange(p1,p2,p3,p4, nrow=2)
+  dev.off()
+  # gridExtra::grid.arrange(p1,p2,p3,p4, nrow=2)
 
   ## area and volum per sqi and species  
-  ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=area/10^3, fill=sqi)) +
+  tiff(paste0("rscripts/outs/09.SQIspp_", scn.name, ".tiff"), width=1000, height=800)
+  ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=area.km2, fill=sqi)) +
     geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+ theme_classic() + facet_wrap(.~name, scales = "free")
+  dev.off()
   ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=volbark/10^6, fill=sqi)) +
     geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+ theme_classic() + facet_wrap(.~name, scales = "free")
@@ -355,6 +382,55 @@ plot.sqi <- function(scn.name){
   
 }
 
+
+plot.harvest <- function(scn.name){
+  
+  load("rscripts/ins/species.rdata")  
+  
+  ## Harvest
+  dta.harvest <- read.table(paste0("outputs/Scn_", scn.name, "/Harvest.txt"), header=T)
+  dta.harvest <- dta.harvest %>% mutate(year=year+2010) %>% left_join(species, by="spp")
+  
+  ## Group per forest type
+  dta.all <-  dta.harvest %>% group_by(run, year, type) %>% 
+              summarise(vol.sawlog=sum(vol.sawlog), vol.wood=sum(vol.wood)) %>% 
+              group_by(year, type) %>% 
+              summarise(vol.sawlog=mean(vol.sawlog), vol.wood=mean(vol.wood)) %>% 
+              pivot_longer(cols=c("vol.sawlog", "vol.wood"),   values_to="volume") %>% 
+              mutate(what=paste0(type, substr(name,4,20)))
+  
+  ggplot(dta.all, aes(x=year, y=volume/10^3, fill=what)) +
+    geom_area(alpha=1, size=0.5, colour="grey70") +
+    scale_fill_viridis(discrete = T)+ theme_classic()  #+ facet_wrap(.~name, scales = "free")
+  
+}
+
+
+plot.burnt <- function(scn.name){
+  
+  load("rscripts/ins/species.rdata")  
+  
+  ## Harvest
+  dta.burnt <- read.table(paste0("outputs/Scn_", scn.name, "/BurntSpp.txt"), header=T)
+  dta.burnt <- dta.burnt %>% mutate(year=year+2010) %>% left_join(species, by="spp")
+  
+  ## Group per forest type
+  dta.all <-  dta.burnt %>% group_by(run, year, spp) %>% 
+    summarise(aburnt=sum(aburnt), bburnt=sum(bburnt)) %>% 
+    group_by(year, spp) %>% summarise(aburnt=mean(aburnt), bburnt=mean(bburnt)) %>% 
+    filter(spp<=14) 
+  dta.year <- dta.all %>% group_by(year) %>%  
+    summarise(tot.aburnt=sum(aburnt), tot.bburnt=sum(bburnt))
+  dta.pct <- dta.all %>% left_join(dta.year, by="year") %>% 
+    mutate(pcta=aburnt/tot.aburnt, pctb=bburnt/tot.bburnt)
+  
+  ggplot(dta.pct, aes(x=year, y=pcta, fill=as.factor(spp))) + 
+    geom_area() + theme_classic() + 
+    scale_fill_manual(values=species$color.sort) 
+  
+  
+  
+}
 
 ## @@@@@@@@@@@@@@ to be developed
 ## a graph per species (with its colors) and 3 abundance lines (or relative abundances), one 

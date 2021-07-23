@@ -211,13 +211,14 @@ writeRaster(HM, "c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeig
 ## Height has to be transformed to age!!
 HM <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoHeight10_100m_31N-ETRS89.asc")
 AGE <- forest.age(LCFM, HM)
-## Age of Shrubs is TSF!
+## Age of Shrubs and Grass is TSF!
 TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
-AGE[LCFM[]==14] <- TSF[LCFM[]==14] 
-AGE[LCFM[]>14] <- NA
+AGE[LCFM[]==14] <- TSF[LCFM[]==14]
+AGE[LCFM[]==15] <- TSF[LCFM[]==15] 
+AGE[LCFM[]>15] <- NA
 # check
 dta <- data.frame(lcf=LCFM[], age=round(AGE[]))
-filter(dta, lcf<=14, is.na(age))
+filter(dta, lcf<=15, is.na(age))
 writeRaster(AGE, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/ForestAge_100m_31N-ETRS89.asc",
             format="ascii", NAflag=-1, overwrite=T)
 
