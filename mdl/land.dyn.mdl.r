@@ -127,6 +127,7 @@ land.dyn.mdl <- function(scn.name){
   track.cohort <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
+  track.encroach <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
   track.land <- data.frame(run=NA, year=NA, spp=NA, age.class=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
   track.sqi <- data.frame(run=NA, year=NA, spp=NA, sqi=NA, area=NA, vol=NA, volbark=NA)
   
@@ -458,6 +459,13 @@ land.dyn.mdl <- function(scn.name){
         }
         # Reset age of cells burnt in high intensity
         land$age[land$cell.id %in% burnt.cells$cell.id[burnt.cells$intens] & !is.na(land$spp) & land$spp<=14] <- 0
+        ## Transition of burnt shublands in high-mountain (>1500m) to grasslands
+        burnt.shrub <- land %>% filter(spp==14, tsdist==0, typdist %in% c("lowfire", "highfire")) %>% 
+          left_join(select(orography, cell.id, elev), by="cell.id") %>% filter(elev>1500)
+        land$spp[land$cell.id %in% burnt.shrub$cell.id] <- 15
+        clim$spp[clim$cell.id %in% burnt.shrub$cell.id] <- 15
+        clim$sdm[clim$cell.id %in% burnt.shrub$cell.id] <- NA
+        clim$sqi[clim$cell.id %in% burnt.shrub$cell.id] <- NA
       }
       
       
@@ -502,14 +510,15 @@ land.dyn.mdl <- function(scn.name){
       ## 10. ENCROACHMENT
       if(is.encroachment & t %in% encroach.schedule){
         aux  <- encroachment(land, coord, orography)
-        land$spp[land$cell.id %in% aux$cell.id] <- "shrub"
+        land$spp[land$cell.id %in% aux$cell.id] <- 14
         land$biom[land$cell.id %in% aux$cell.id] <- 0
         land$age[land$cell.id %in% aux$cell.id] <- 0
         land$tsdist[land$cell.id %in% aux$cell.id] <- 0
         land$typdist[land$cell.id %in% aux$cell.id] <- "encroach"
-        clim$spp[clim$cell.id %in% aux$cell.id] <- "shrub"
+        clim$spp[clim$cell.id %in% aux$cell.id] <- 14
         clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
         clim$sqi[clim$cell.id %in% aux$cell.id] <- 1
+        track.encroach <- rbind(track.encroach, data.frame(run=irun, year=t, spp=14, ha=nrow(aux)))
       }
       
       
@@ -573,6 +582,7 @@ land.dyn.mdl <- function(scn.name){
     track.cohort <- filter(track.cohort, ha>0)
     write.table(track.cohort[-1,], paste0(out.path, "/Cohort.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.afforest[-1,], paste0(out.path, "/Afforestation.txt"), quote=F, row.names=F, sep="\t")
+    write.table(track.encroach[-1,], paste0(out.path, "/Encroachment.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.land[-1,], paste0(out.path, "/Land.txt"), quote=F, row.names=F, sep="\t")
     write.table(track.sqi[-1,], paste0(out.path, "/LandSQI.txt"), quote=F, row.names=F, sep="\t")
     
