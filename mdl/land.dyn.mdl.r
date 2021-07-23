@@ -16,6 +16,7 @@ land.dyn.mdl <- function(scn.name){
   source("mdl/auxiliars.r")
   source("mdl/cohort.establish.r")
   source("mdl/drought.r")
+  source("mdl/encroachment.r")
   source("mdl/fire.regime.r")
   source("mdl/sustainable.mgmt.r")
   source("mdl/forest.areas.r")
@@ -87,6 +88,7 @@ land.dyn.mdl <- function(scn.name){
   post.fire.schedule <- 
   cohort.schedule <- 
   afforest.schedule <- 
+  encroach.schedule <- 
   growth.schedule <- seq(1, time.horizon, time.step)
   if(spin.up & time.horizon>10){
     lchg.schedule <- seq(11, time.horizon, time.step)
@@ -497,7 +499,21 @@ land.dyn.mdl <- function(scn.name){
       }
       
       
-      ## 10. GROWTH
+      ## 10. ENCROACHMENT
+      if(is.encroachment & t %in% encroach.schedule){
+        aux  <- encroachment(land, coord, orography)
+        land$spp[land$cell.id %in% aux$cell.id] <- "shrub"
+        land$biom[land$cell.id %in% aux$cell.id] <- 0
+        land$age[land$cell.id %in% aux$cell.id] <- 0
+        land$tsdist[land$cell.id %in% aux$cell.id] <- 0
+        land$typdist[land$cell.id %in% aux$cell.id] <- "encroach"
+        clim$spp[clim$cell.id %in% aux$cell.id] <- "shrub"
+        clim$sdm[clim$cell.id %in% aux$cell.id] <- 1
+        clim$sqi[clim$cell.id %in% aux$cell.id] <- 1
+      }
+      
+      
+      ## 11. GROWTH
       if(is.growth & t %in% growth.schedule){
         land$biom <- growth(land, clim, "Species")
         land$age <- pmin(land$age+1,600)

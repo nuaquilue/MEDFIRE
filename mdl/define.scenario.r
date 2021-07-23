@@ -39,6 +39,7 @@ define.scenario <- function(scn.name){
   is.postfire <- T
   is.cohort.establish <- T
   is.afforestation <- T
+  is.encroachment <- F
   is.growth <- T
   
   ## Processes frequency (in years) 

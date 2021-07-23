@@ -9,7 +9,7 @@ play <- function(){
   #                "CC", "CC_LC", "CC_WF", "CC_WF_FS", "CC_LC_WF", "CC_LC_WF_FS")
   
   scn.name <- "CC_LC_FM_WF_FS"
-  scn.name <- "CC"
+  scn.name <- "NULL_1run"
   
   for(scn.name in list.scn){
     plot.abundance(scn.name)
