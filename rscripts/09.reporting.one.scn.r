@@ -339,23 +339,24 @@ plot.sqi <- function(scn.name){
                 mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)                                                    
   dta.land.spp <- dta.land.spp %>% mutate(ratio=vol/area, ratiobark=volbark/area) %>% 
                   group_by(year, spp, sqi, name) %>% 
-    summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark),
-              ratio=mean(ratio), ratiobark=mean(ratiobark))
+                  summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark),
+                    ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% mutate(area.km2=area*0.01)
   
   ## Existències totals
-  dta.land <- dta.land.spp %>% group_by(run, year, sqi) %>% 
+  dta.land <- dta.land.spp %>% group_by(year, sqi) %>% 
               summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark)) %>% 
               mutate(ratio=vol/area, ratiobark=volbark/area)  %>% group_by(year, sqi) %>% 
               summarise(area=mean(area), vol=mean(vol), volbark=mean(volbark), 
-                        ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% filter(year>2020)
-  dta.t <- dta.t.spp %>% group_by(run, year, sqi) %>% 
+                        ratio=mean(ratio), ratiobark=mean(ratiobark)) %>% filter(year>2020) %>% 
+              mutate(area.km2=area*0.01)
+  dta.t <- dta.t.spp %>% group_by(year, sqi) %>% 
            summarise(area=sum(area), vol=sum(vol), volbark=sum(volbark),
                      area_1=sum(area_1, na.rm=T), vol_1=sum(vol_1, na.rm=T), volbark_1=sum(volbark_1, na.rm=T)) %>% 
            mutate(inc.area=area-area_1, inc.vol=vol-vol_1, inc.volbark=volbark-volbark_1)  %>% filter(year>2020) %>% 
-           group_by(year, sqi) %>% summarise(inc.area=mean(inc.area), inc.vol=mean(inc.vol), inc.volbark=mean(inc.volbark))
+           group_by(year, sqi) %>% summarise(inc.area=mean(inc.area), inc.vol=mean(inc.vol), inc.volbark=mean(inc.volbark)) 
   
   ## area and volum per sqi, and increments per sqi
-  p1 <- ggplot(dta.land, aes(x=year, y=area/10^3, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
+  p1 <- ggplot(dta.land, aes(x=year, y=area.km2, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
         scale_fill_viridis(discrete = T)+theme_classic()
   p2 <- ggplot(dta.land, aes(x=year, y=volbark/10^6, fill=sqi)) + geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+theme_classic()
@@ -370,7 +371,7 @@ plot.sqi <- function(scn.name){
 
   ## area and volum per sqi and species  
   tiff(paste0("rscripts/outs/09.SQIspp_", scn.name, ".tiff"), width=1000, height=800)
-  ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=area/10^3, fill=sqi)) +
+  ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=area.km2, fill=sqi)) +
     geom_area(alpha=1, size=0.5, colour="grey70") +
     scale_fill_viridis(discrete = T)+ theme_classic() + facet_wrap(.~name, scales = "free")
   dev.off()
