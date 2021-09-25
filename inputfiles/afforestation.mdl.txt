@@ -1,4 +1,2 @@
-intrc	elev	elev2	pct	pct2	precip	precip2	slope	slope2
--1.33 0.0005573 -7.392e-07 0.6058 2.316 0.2619 -0.01144 0.0149 0.0001734
-
-
+intercept	elev	slope	precip	pct	tmin	elev_pct	slope_pct	precip_pct	tmin_pct
+-0.073050	-0.002729	0.012030	0.112000	1.665000	-1.239000	0.002237	0.017140	0.330000	1.425000

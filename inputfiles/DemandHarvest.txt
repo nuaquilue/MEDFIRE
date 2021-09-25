@@ -1,4 +1,4 @@
-Year	Sawlogs	Primary
+year	sawlog	wood
 1	532000	153000
 2	532000	153000
 3	532000	153000

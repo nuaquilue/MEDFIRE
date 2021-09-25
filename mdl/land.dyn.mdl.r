@@ -47,7 +47,6 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
   load("inputlyrs/rdata/pfst.pwind.rdata")
-  load("inputlyrs/rdata/utm.rdata")
   if(spin.up)
     load("inputlyrs/rdata/wildfires.rdata")
   
@@ -165,13 +164,15 @@ land.dyn.mdl <- function(scn.name){
     t <- 1
     for(t in time.seq){
       
-      ## Track scenario, replicate and time step
+      ## Print replicate and time step
       cat(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon), "\n")
+      
+      ## Compute decade
       decade=(1+floor((t-1)/10))*10
       
       ## 1. CLIMATE CHANGE  
       if(!is.climate.change & t==1){
-        load(paste0("inputlyrs/rdata/clim_hist_", clim.mdl, ".rdata"))  # en comptes d'això, utilitzar hist.clim()
+        clim = hist.clim(land, orography, clim.mdl) 
         load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
       }
       if(is.climate.change & t %in% clim.schedule){
@@ -212,10 +213,10 @@ land.dyn.mdl <- function(scn.name){
         ## Update sdm and sqi for shrublands
         clim$sdm[clim$cell.id %in% shrub.cells] <- 1
         if(length(shrub.cells)>0){
-          sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, temp, precip) %>% 
-                       mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                              aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                              aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+          sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, tmin, precip) %>% 
+                       mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                              aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                              aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                               sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) %>% 
                        mutate(sqest.brolla=sq.brolla/max(sq.brolla), sqest.maquia=sq.maquia/max(sq.maquia), sqest.boix=sq.boix/max(sq.boix),
                               sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
@@ -265,10 +266,10 @@ land.dyn.mdl <- function(scn.name){
         land$tsdist[land$cell.id %in% chg.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         clim$sdm[clim$cell.id %in% chg.cells] <- 1
-        sqi.shrub <- filter(clim, cell.id %in% chg.cells) %>% select(spp, temp, precip) %>% 
-                     mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                            aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                            aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+        sqi.shrub <- filter(clim, cell.id %in% chg.cells) %>% select(spp, tmin, precip) %>% 
+                     mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                            aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                            aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                             sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) #%>% 
         if(is.infinite(max(sqi.shrub$sq.brolla)) | is.infinite(max(sqi.shrub$sq.maquia))  | is.infinite(max(sqi.shrub$sq.boix)) ){
           write.table(sqi.shrub, paste0(out.path, "/ErrorSQIshrub.txt"), quote=F, row.names=F, sep="\t")
@@ -286,7 +287,7 @@ land.dyn.mdl <- function(scn.name){
         }
         
         # Update interface values
-        interface <- update.interface(land, utm)
+        interface <- update.interface(land, orography)
       }
       
       
@@ -495,7 +496,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 9. AFFORESTATION
       if(is.afforestation & t %in% afforest.schedule){
-        aux  <- afforestation(land, coord, orography, clim, sdm, utm)
+        aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- 0
         land$age[land$cell.id %in% aux$cell.id] <- 0
@@ -560,11 +561,14 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## Print maps every time step with ignition and low/high intenstiy burnt
-      if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
-        cat("... writing maps", "\n")
-        save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
-        save(clim, file=paste0(out.path, "/rdata/clim_r", irun, "t", t, ".rdata"))
+      if(time.horizon>=write.freq){
+        if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
+          cat("... writing maps", "\n")
+          save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
+          save(clim, file=paste0(out.path, "/rdata/clim_r", irun, "t", t, ".rdata"))
+        }  
       }
+      
     } # time
   
     

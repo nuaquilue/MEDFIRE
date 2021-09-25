@@ -1,2 +1,2 @@
-spp	c0_brolla	c_temp_brolla	c_temp2_brolla	c_precip_brolla	c_precip2_brolla	c0_maquia	c_temp_maquia	c_temp2_maquia	c_precip_maquia	c_precip2_maquia	c0_boix	c_temp_boix	c_temp2_boix	c_precip_boix	c_precip2_boix
-14	-1.4848809	2.0015637	-1.6135357	-0.5289799	-0.7308674	-1.2662937	0.2727501	-0.7497006	0.7021384	-0.4370542	-2.3104	-3.601842	-2.466994	1.967818	-0.661099
+c0_brolla	c_temp_brolla	c_temp2_brolla	c_precip_brolla	c_precip2_brolla	c0_maquia	c_temp_maquia	c_temp2_maquia	c_precip_maquia	c_precip2_maquia	c0_boix	c_temp_boix	c_temp2_boix	c_precip_boix	c_precip2_boix
+-1.4848809	2.0015637	-1.6135357	-0.5289799	-0.7308674	-1.2662937	0.2727501	-0.7497006	0.7021384	-0.4370542	-2.3104	-3.601842	-2.466994	1.967818	-0.661099

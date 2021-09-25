@@ -1,26 +1,25 @@
 library(raster)
-library(viridis)
 library(tidyverse)
 
 ############################################ RUN A SCN ##################################################
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "NULL_noSPIN"; define.scenario(scn.name)
+scn.name <- "joqse"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 90
+time.horizon <- 2
 spin.up <- F
 write.maps <- F
-is.climate.change <- F
-clim.scn <- NA #"rcp85"
+is.climate.change <- T
+clim.scn <- "rcp85"
 file.clim.severity <- paste0("ClimaticSeverity_", ifelse(is.na(clim.scn), "noCC", clim.scn))
 file.pctg.hot.days <- paste0("PctgHotDays_", ifelse(is.na(clim.scn), "noCC", clim.scn)) 
 is.land.cover.change <- F
-is.harvest <- F
-is.wildfire <- F
-is.postfire <- F
-is.drought <- F
+is.harvest <- T
+is.wildfire <- T
+is.postfire <- T
+is.drought <- T
 is.cohort.establish <- F
 is.afforestation <- F
 file.fire.suppression <- "FireSuppress"
@@ -98,4 +97,17 @@ writeRaster(INTERFACE, "C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/Inte
             format="ascii", NAflag=-1, overwrite=T)
 
 
-
+################### climate ###################
+library(tidyverse)
+source("mdl/update.clim.r")
+load("inputlyrs/rdata/land.rdata")
+load("inputlyrs/rdata/orography.rdata")
+## Build clim df with sqi and sdm
+for(clim.mdl in c("KNMI-RACMO22E_ICHEC-EC-EARTH",
+                  "KNMI-RACMO22E_MOHC-HadGEM2-ES",
+                  "SMHI-RCA4_CNRM-CERFACS-CNRM-CM5",
+                  "SMHI-RCA4_MPI-M-MPI-ESM-LR",
+                  "SMHI-RCA4_MOHC-HadGEM2-ES"))
+{
+  hist.clim(land, orography, clim.mdl)
+}

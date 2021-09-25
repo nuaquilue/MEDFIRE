@@ -2,7 +2,7 @@
 ##
 ######################################################################################
 
-afforestation <- function(land, coord, orography, clim, sdm, utm){
+afforestation <- function(land, coord, orography, clim, sdm){
   
   ## Tracking
   cat("Afforestation", "\n") 
@@ -17,7 +17,7 @@ afforestation <- function(land, coord, orography, clim, sdm, utm){
   
   ## Join utm and sdm info to land
   land.utm <- land %>% select(cell.id, spp, biom, age) %>% left_join(select(clim, cell.id, sdm), by="cell.id") %>% 
-              left_join(utm, by="cell.id") 
+              left_join(select(orography, cell.id, utm), by="cell.id") 
   
   ## Calculate the percentage of old forest within its climatic niche per utm cell
   utm.forest <- group_by(land.utm, utm) %>% summarise(nneigh=length(utm), old.neigh=sum(spp<=13 & age>=15 & sdm==1)) %>% 
@@ -29,14 +29,15 @@ afforestation <- function(land, coord, orography, clim, sdm, utm){
   ## Put together all explanatory variables of the afforestation model
   dta <- select(land.utm, cell.id, spp) %>% filter(spp==14) %>% 
           left_join(select(orography, cell.id, elev, slope), by="cell.id") %>% 
-          left_join(select(clim, cell.id, temp, precip), by="cell.id") %>% 
+          left_join(select(clim, cell.id, tmin, precip), by="cell.id") %>% 
           left_join(old.forest, by="cell.id")
   
   ## Apply the afforestation model
-  dta$z <- afforest.mdl$intrc + afforest.mdl$elev*dta$elev + afforest.mdl$slope*dta$slope +
-            afforest.mdl$precip*dta$precip + afforest.mdl$pct*dta$pct +
-            afforest.mdl$elev2*(dta$elev^2) + afforest.mdl$slope2*(dta$slope^2) + 
-            afforest.mdl$precip2*(dta$precip^2) + afforest.mdl$pct2*(dta$pct^2) 
+  dta$z <- afforest.mdl$intercept + afforest.mdl$elev*dta$elev + afforest.mdl$slope*dta$slope +
+           afforest.mdl$precip*dta$precip + afforest.mdl$tmin*dta$tmin +
+           afforest.mdl$pct*dta$pct +
+           afforest.mdl$elev_pct*dta$elev*dta$pct + afforest.mdl$slope_pct*dta$slope*dta$pct + 
+           afforest.mdl$precip_pct*dta$precip*dta$pct + afforest.mdl$tmin_pct*dat$tmin*dta$pct
   dta$p <- 1/(1+exp(-1*dta$z))
   dta$p <- 1-(1-dta$p)^(1/30)  # 30y period of obs, from 1987 to 2017
   dta$z <- runif(nrow(dta), 0, 1) <= dta$p
@@ -80,7 +81,7 @@ afforestation <- function(land, coord, orography, clim, sdm, utm){
   ## Join climatic and orographic variables to compute sq and then sqi
   res <- dta %>% left_join(select(orography, cell.id, aspect, slope.stand), by = "cell.id") %>%
          left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-         mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+         mutate(aux=c0+c_mnan*tmin+c2_mnan*tmin*tmin+c_plan*precip+c2_plan*precip*precip+
                   c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
              mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
              select(cell.id, spp, sqi) 

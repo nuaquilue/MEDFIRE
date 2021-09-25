@@ -1,10 +1,10 @@
-update.interface <- function(land, utm){
+update.interface <- function(land, orography){
   
   ## Traking
   cat("Update interfaces", "\n")
   
   ## Join utm info to land
-  land.utm <- left_join(land, utm, by="cell.id") 
+  land.utm <- left_join(land, select(orography, cell.id, utm), by="cell.id") 
   
   ## Count each land type per utm, compute percentages
   landtype <- aggregate(list(tot=land.utm$spp>0,
