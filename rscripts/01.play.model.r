@@ -34,14 +34,15 @@ land.dyn.mdl(scn.name)
 ############################################### RUN FACTORIAL SCN ################################################
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
-scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="Obj1")
+scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="GCM5")
+i=1
 for(i in 1){
-  scn.name <- paste0(scenarios$scn.name[i], "_noSPIN")
+  scn.name <- paste0(scenarios$scn.name[i], "_SPIN")
   define.scenario(scn.name)
   ## general
   nrun <- 1 #scenarios$nrun[i]
   write.maps <- F
-  spin.up <- F# as.logical(scenarios$spin.up[i])
+  spin.up <- T# as.logical(scenarios$spin.up[i])
   ## processes
   is.climate.change <- as.logical(scenarios$is.climate.change[i])
   is.land.cover.change <- as.logical(scenarios$is.land.cover.change[i])
@@ -56,7 +57,7 @@ for(i in 1){
     file.clim.severity <- "ClimaticSeverity_rcp85"
   }
   if(!is.climate.change){  
-    clim.scn <- NA
+    clim.scn <- "rcp85"
     file.pctg.hot.days <- "PctgHotDays_noCC"
     file.clim.severity <- "ClimaticSeverity_noCC"
   }

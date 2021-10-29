@@ -174,7 +174,8 @@ forest.mgmt <- function(land, harvest, clim, t, out.path, MASK){
     ## Decide if harvesting for Sawlog or for Wood  (I think I'll have to adjust these thresholds)
     cut.sawlog <- T
     if(more.wood)
-       cut.sawlog <- ifelse(aux$spp<=7, runif(1, 0, 1)<=runif(1, 0.75, 0.9), runif(1, 0, 1)<=runif(1, 0.1, 0.25))
+       cut.sawlog <- ifelse(aux$spp<=7, runif(1, 0, 1)<=runif(1, 0.75, 0.9), 
+                            runif(1, 0, 1)<=runif(1, 0.1, 0.25))
       # cut.sawlog <- ifelse(aux$spp<=7, TRUE, runif(1, 0, 1)<=runif(1, 0.1, 0.25))
     
     ## If harvesting for sawlogs, 

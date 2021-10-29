@@ -9,7 +9,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
   
   ## Read species afforestation model
   afforest.mdl <- read.table("inputfiles/afforestation.mdl.txt", header=T)
-  seed.pressure <- unlist(read.table("inputfiles/SppSeedPressure.txt", header=T))
+  seed.pressure <- read.table("inputfiles/SppSeedPressure.txt", header=T)
   
   ## Read coefficients of site quality models
   site.quality.spp <- read.table("inputfiles/SiteQualitySpp.txt", header=T)
@@ -37,7 +37,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
            afforest.mdl$precip*dta$precip + afforest.mdl$tmin*dta$tmin +
            afforest.mdl$pct*dta$pct +
            afforest.mdl$elev_pct*dta$elev*dta$pct + afforest.mdl$slope_pct*dta$slope*dta$pct + 
-           afforest.mdl$precip_pct*dta$precip*dta$pct + afforest.mdl$tmin_pct*dat$tmin*dta$pct
+           afforest.mdl$precip_pct*dta$precip*dta$pct + afforest.mdl$tmin_pct*dta$tmin*dta$pct
   dta$p <- 1/(1+exp(-1*dta$z))
   dta$p <- 1-(1-dta$p)^(1/30)  # 30y period of obs, from 1987 to 2017
   dta$z <- runif(nrow(dta), 0, 1) <= dta$p
@@ -67,7 +67,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
   ## Count the presence of each species, mask its presence if the species is out the climatic niche in
   ## the target location, and give double weight to conifers
   count.neigh.spp <- t(apply(neigh.spp, 1, count.spp.narm)) * 
-                     matrix(seed.pressure, nrow=nrow(neigh.id), ncol=13, byrow=T) *
+                     matrix(seed.pressure$x, nrow=nrow(neigh.spp), ncol=13, byrow=T) *
                      matrix(c(sdm[neigh.id[,1],1+1], sdm[neigh.id[,1],1+2], sdm[neigh.id[,1],1+3],
                               sdm[neigh.id[,1],1+4], sdm[neigh.id[,1],1+5], sdm[neigh.id[,1],1+6],
                               sdm[neigh.id[,1],1+7], sdm[neigh.id[,1],1+8], sdm[neigh.id[,1],1+9],
