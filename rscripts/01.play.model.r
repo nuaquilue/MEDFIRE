@@ -1,28 +1,29 @@
+library(sp)
 library(raster)
-library(viridis)
 library(tidyverse)
 
 ############################################ RUN A SCN ##################################################
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "NULL_noSPIN"; define.scenario(scn.name)
+scn.name <- "joqse"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 90
-spin.up <- F
+time.horizon <- 2
+spin.up <- T
 write.maps <- F
-is.climate.change <- F
-clim.scn <- NA #"rcp85"
+is.climate.change <- T
+clim.scn <- "rcp85"
 file.clim.severity <- paste0("ClimaticSeverity_", ifelse(is.na(clim.scn), "noCC", clim.scn))
 file.pctg.hot.days <- paste0("PctgHotDays_", ifelse(is.na(clim.scn), "noCC", clim.scn)) 
-is.land.cover.change <- F
-is.harvest <- F
-is.wildfire <- F
-is.postfire <- F
-is.drought <- F
-is.cohort.establish <- F
-is.afforestation <- F
+is.land.cover.change <- T
+is.harvest <- T
+is.wildfire <- T
+is.postfire <- T
+is.drought <- T
+is.cohort.establish <- T
+is.afforestation <- T
+is.encroachment = T
 file.fire.suppression <- "FireSuppress"
 dump(c("nrun", "time.horizon", "spin.up", "write.maps",  "is.climate.change", "clim.scn", "file.clim.severity", 
       "file.pctg.hot.days",  "is.land.cover.change", "is.harvest", "is.wildfire", "is.postfire", "is.drought",
@@ -35,14 +36,14 @@ land.dyn.mdl(scn.name)
 ############################################### RUN FACTORIAL SCN ################################################
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
-scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="Obj1")
-for(i in 1){
-  scn.name <- paste0(scenarios$scn.name[i], "_noSPIN")
+scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="GCM5")
+for(i in 19){
+  scn.name <- paste0(scenarios$scn.name[i], "_D")
   define.scenario(scn.name)
   ## general
-  nrun <- 1 #scenarios$nrun[i]
+  nrun <- 11 #scenarios$nrun[i]
   write.maps <- F
-  spin.up <- F# as.logical(scenarios$spin.up[i])
+  spin.up <- as.logical(scenarios$spin.up[i])
   ## processes
   is.climate.change <- as.logical(scenarios$is.climate.change[i])
   is.land.cover.change <- as.logical(scenarios$is.land.cover.change[i])
@@ -51,13 +52,12 @@ for(i in 1){
   is.postfire <- as.logical(scenarios$is.wildfire[i])
   ## scenario parameters
   file.fire.suppression <- scenarios$fire.suppression[i]
+  clim.scn <- "rcp85"
   if(is.climate.change){
-    clim.scn <- "rcp85"
     file.pctg.hot.days <- "PctgHotDays_rcp85"
     file.clim.severity <- "ClimaticSeverity_rcp85"
   }
   if(!is.climate.change){  
-    clim.scn <- NA
     file.pctg.hot.days <- "PctgHotDays_noCC"
     file.clim.severity <- "ClimaticSeverity_noCC"
   }
@@ -98,4 +98,17 @@ writeRaster(INTERFACE, "C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputlyrs/asc/Inte
             format="ascii", NAflag=-1, overwrite=T)
 
 
-
+################### climate ###################
+library(tidyverse)
+source("mdl/update.clim.r")
+load("inputlyrs/rdata/land.rdata")
+load("inputlyrs/rdata/orography.rdata")
+## Build clim df with sqi and sdm
+for(clim.mdl in c("KNMI-RACMO22E_ICHEC-EC-EARTH",
+                  "KNMI-RACMO22E_MOHC-HadGEM2-ES",
+                  "SMHI-RCA4_CNRM-CERFACS-CNRM-CM5",
+                  "SMHI-RCA4_MPI-M-MPI-ESM-LR",
+                  "SMHI-RCA4_MOHC-HadGEM2-ES"))
+{
+  hist.clim(land, orography, clim.mdl)
+}

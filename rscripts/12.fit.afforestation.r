@@ -17,9 +17,9 @@ round(100*table(usos$Usos_56_Si)/nrow(usos))
 
 library(raster)
 library(tidyverse)
-class <- read.table("C:/WORK/CARTO-DATA/UsosCobertes/Tesaurus/reclass_covers.txt", header=T)
-USOS87 <- raster("C:/WORK/CARTO-DATA/UsosCobertes/RastersCoherents_Multibanda/UsSol_1987_100m.asc")
-USOS17 <- raster("C:/WORK/CARTO-DATA/UsosCobertes/RastersCoherents_Multibanda/UsSol_2017_100m.asc")
+class <- read.table("C:/WORK/onedrive - ctfc.cat/CARTO-DATA/UsosCobertes/Tesaurus/reclass_covers.txt", header=T)
+USOS87 <- raster("C:/WORK/onedrive - ctfc.cat/CARTO-DATA/UsosCobertes/RastersCoherents_Multibanda/UsSol_1987_100m.asc")
+USOS17 <- raster("C:/WORK/onedrive - ctfc.cat/CARTO-DATA/UsosCobertes/RastersCoherents_Multibanda/UsSol_2017_100m.asc")
 dta <- data.frame(cell.id=1:ncell(USOS87), usos87=USOS87[], usos17=USOS17[])
 dta <- filter(dta, !is.na(usos87)) %>% filter(!is.na(usos17))
 dta.cover <- dta %>% left_join(class, by=c("usos87"="codi")) %>% mutate(coberta87=coberta) %>% select(-coberta, -usos87)  %>% 
@@ -83,23 +83,46 @@ ggplot(dta.aff, aes(x=pct)) +
   geom_histogram(binwidth=0.1, color="black", fill="white") +facet_grid(.~chg)
 
 # explanatory variables: correlation matix
-res <- cor(select(dta.aff, elev, slope, temp, precip, pct))
+res <- cor(select(dta.aff, elev, slope, tmin, tmax, precip, pct))
 round(res, 2)
 
 # logistic regression
 dta.aff$rand <- runif(nrow(dta.aff),0,1)
 dta.fit <- filter(dta.aff, rand<=0.4)
 # all variables, linear terms
-mylogit <- glm(chg ~ elev + slope + precip + pct, data = dta.fit, family = "binomial")
+mylogit <- glm(chg ~ elev + slope + precip + tmin + tmax + pct, data = dta.fit, family = "binomial")
 summary(mylogit)
 # all variables with quadratic terms
-full.model <- glm(chg ~ elev + slope + precip + pct + 
-                    I(elev^2) + I(slope^2) + I(precip^2) + I(pct^2), 
+full.model <- glm(chg ~ elev + slope + precip + pct + tmin + tmax +
+                    I(elev^2) + I(slope^2) + I(precip^2) + I(pct^2) +I(tmin^2) + I(tmax^2) , 
                   data = dta.fit, family = "binomial",  na.action = "na.fail")  
 summary(full.model)
+# all variables with interactions
+inter.model <- glm(chg ~ elev + slope + precip + pct + tmin + # tmax + 
+                      elev*pct +  slope*pct + precip*pct + tmin*pct, # + tmax*pct, 
+                   data = dta.fit, family = "binomial")
+summary(inter.model)
+# 
+pupurri.model <- glm(chg ~ elev + slope + precip + pct + 
+                        I(elev^2) + I(slope^2) + I(precip^2) + I(pct^2) +
+                       elev*slope + elev*pct + slope*precip + slope*pct + precip*pct, 
+                     data = dta.fit, family = "binomial")
+summary(pupurri.model)
+ 
 
+library(BMA)
+# si poso tmax, la precip no surt significativa
+# prefereixo tenir una temp i una precip, que no les 2 temperatures
+# amb elev, slope, precip, tmin, pct i les interaccions pct amb la resta (4), 
+# totes les variables surten significatives en el millor model
+output <- bic.glm(chg ~ elev + slope + precip + tmin + pct +  # tmax*pct +  tmax +
+                     elev*pct + slope*pct + precip*pct + tmin*pct,  #elev*slope +  slope*precip 
+                  data = dta.fit, glm.family = "binomial", maxCol=14)
+summary(output)
+                    
+                    
 # variable selection with step AIC 
-step.model <- full.model %>% MASS::stepAIC(trace = FALSE)
+step.model <- pupurri.model %>% MASS::stepAIC(trace = FALSE)
 summary(step.model)
 # variable selection with dredge.
 results.affor <- MuMIn::dredge(full.model)

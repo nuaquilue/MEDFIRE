@@ -47,7 +47,6 @@ land.dyn.mdl <- function(scn.name){
   load("inputlyrs/rdata/harvest.rdata")
   load("inputlyrs/rdata/interface.rdata")
   load("inputlyrs/rdata/pfst.pwind.rdata")
-  load("inputlyrs/rdata/utm.rdata")
   if(spin.up)
     load("inputlyrs/rdata/wildfires.rdata")
   
@@ -128,7 +127,8 @@ land.dyn.mdl <- function(scn.name){
   track.post.fire <- data.frame(run=NA, year=NA, spp.out=NA, spp.in=NA, ha=NA) #Var2=NA, Freq=NA)
   track.afforest <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
   track.encroach <- data.frame(run=NA, year=NA, spp=NA, ha=NA) #Var1=NA, Freq=NA)
-  track.land <- data.frame(run=NA, year=NA, spp=NA, age.class=NA, area=NA, vol=NA, volbark=NA, carbon=NA)
+  track.land <- data.frame(run=NA, year=NA, spp=NA, age.class=NA, area=NA, 
+                           biom=NA, vol=NA, volbark=NA, carbon=NA)
   track.sqi <- data.frame(run=NA, year=NA, spp=NA, sqi=NA, area=NA, vol=NA, volbark=NA)
   
   
@@ -152,11 +152,11 @@ land.dyn.mdl <- function(scn.name){
                          ifelse(spp<=7 & age>50, "old", ifelse(spp>7 & spp<=13 & age<=15, "young",
                          ifelse(spp>7 & spp<=13 & age<=50, "mature", "old")))))) %>%       
                   group_by(spp, age.class) %>% select(-c) %>%
-                  summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+                  summarise(area=length(vol), biom=sum(biom)/10, vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
     aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
-                 summarise(age.class=NA, area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
+                 summarise(age.class=NA, area=length(biom), biom=sum(biom)/10, vol=0, volbark=0, carbon=0)  
     aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
-                 summarise(age.class=NA, area=length(spp), vol=0, volbark=0, carbon=0)  
+                 summarise(age.class=NA, area=length(spp), biom=0, vol=0, volbark=0, carbon=0)  
     track.land <- rbind(track.land, data.frame(run=irun, year=0, aux.forest), data.frame(run=irun, year=0, aux.shrub),
                         data.frame(run=irun, year=0, aux.other))
     
@@ -165,18 +165,40 @@ land.dyn.mdl <- function(scn.name){
     t <- 1
     for(t in time.seq){
       
-      ## Track scenario, replicate and time step
+      ## Print replicate and time step
       cat(paste0("scn: ", scn.name," - run: ", irun, "/", nrun, " - time: ", t, "/", time.horizon), "\n")
+      
+      ## Compute decade
       decade=(1+floor((t-1)/10))*10
       
       ## 1. CLIMATE CHANGE  
-      if(!is.climate.change & t==1){
-        load(paste0("inputlyrs/rdata/clim_hist_", clim.mdl, ".rdata"))  # en comptes d'això, utilitzar hist.clim()
-        load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
+      if(!spin.up){
+        if(!is.climate.change & t==1){
+          clim = hist.clim(land, orography, clim.mdl) 
+          load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
+        }
+        if(is.climate.change & t %in% clim.schedule){
+          clim <- update.clim(land, orography, decade, clim.scn, clim.mdl)
+          load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
+        }
       }
-      if(is.climate.change & t %in% clim.schedule){
-        clim <- update.clim(land, orography, decade, clim.scn, clim.mdl)
-        load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
+      else{
+        # During the spin.up, kill the same amount forest of forest under current or projected climate.
+        # So in 2020, the departing point is the same
+        if(t<=10){  
+          clim <- update.clim(land, orography, decade, clim.scn, clim.mdl)
+          load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
+        } 
+        else{
+          if(!is.climate.change & t==11){
+            clim = hist.clim(land, orography, clim.mdl) 
+            load(paste0("inputlyrs/rdata/sdm_base_hist_", clim.mdl, ".rdata"))
+          }
+          if(is.climate.change & t %in% clim.schedule){
+            clim <- update.clim(land, orography, decade, clim.scn, clim.mdl)
+            load(paste0("inputlyrs/rdata/sdm_base_", clim.scn, "_", clim.mdl, "_", decade, ".rdata"))
+          } 
+        }
       }
       
       ## 2. LAND-COVER CHANGE
@@ -212,10 +234,10 @@ land.dyn.mdl <- function(scn.name){
         ## Update sdm and sqi for shrublands
         clim$sdm[clim$cell.id %in% shrub.cells] <- 1
         if(length(shrub.cells)>0){
-          sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, temp, precip) %>% 
-                       mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                              aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                              aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+          sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, tmin, precip) %>% 
+                       mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                              aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                              aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                               sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) %>% 
                        mutate(sqest.brolla=sq.brolla/max(sq.brolla), sqest.maquia=sq.maquia/max(sq.maquia), sqest.boix=sq.boix/max(sq.boix),
                               sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
@@ -248,7 +270,7 @@ land.dyn.mdl <- function(scn.name){
         # Agriculture conversion
         visit.cells <- chg.cells
         chg.cells <- land.cover.change(land, coord, interface, 2, t, visit.cells)
-        land$spp[land$cell.id %in% chg.cells]<- clim$spp[clim$cell.id %in% chg.cells] <- 16 # arableland or 17 - permanent crops
+        land$spp[land$cell.id %in% chg.cells]<- clim$spp[clim$cell.id %in% chg.cells] <- 16 # 16 - arableland or 17 - orchards (permanent crops)
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
         land$typdist[land$cell.id %in% chg.cells] <- "lchg.agri"
@@ -258,17 +280,20 @@ land.dyn.mdl <- function(scn.name){
         # Rural abandonment
         visit.cells <- c(visit.cells, chg.cells)
         chg.cells <- land.cover.change(land, coord, interface, 3, t, visit.cells)
-        land$spp[land$cell.id %in% chg.cells] <- clim$spp[clim$cell.id %in% chg.cells] <- 14  # shrub
+        land$spp[land$cell.id %in% chg.cells & orography$elev <1500] = 
+          clim$spp[clim$cell.id %in% chg.cells & orography$elev <1500] = 14  # shrub
+        land$spp[land$cell.id %in% chg.cells & orography$elev >=1500] = 
+          clim$spp[clim$cell.id %in% chg.cells & orography$elev >=1500] = 15  # grass
         land$biom[land$cell.id %in% chg.cells] <- 0
         land$age[land$cell.id %in% chg.cells] <- 0
         land$typdist[land$cell.id %in% chg.cells] <- "lchg.rabn"
         land$tsdist[land$cell.id %in% chg.cells] <- 0
         land$tburnt[land$cell.id %in% chg.cells] <- 0
         clim$sdm[clim$cell.id %in% chg.cells] <- 1
-        sqi.shrub <- filter(clim, cell.id %in% chg.cells) %>% select(spp, temp, precip) %>% 
-                     mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                            aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                            aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+        sqi.shrub <- filter(clim, cell.id %in% chg.cells) %>% select(spp, tmin, precip) %>% 
+                     mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                            aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                            aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                             sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) #%>% 
         if(is.infinite(max(sqi.shrub$sq.brolla)) | is.infinite(max(sqi.shrub$sq.maquia))  | is.infinite(max(sqi.shrub$sq.boix)) ){
           write.table(sqi.shrub, paste0(out.path, "/ErrorSQIshrub.txt"), quote=F, row.names=F, sep="\t")
@@ -286,7 +311,7 @@ land.dyn.mdl <- function(scn.name){
         }
         
         # Update interface values
-        interface <- update.interface(land, utm)
+        interface <- update.interface(land, orography)
       }
       
       
@@ -495,7 +520,7 @@ land.dyn.mdl <- function(scn.name){
       
       ## 9. AFFORESTATION
       if(is.afforestation & t %in% afforest.schedule){
-        aux  <- afforestation(land, coord, orography, clim, sdm, utm)
+        aux  <- afforestation(land, coord, orography, clim, sdm)
         land$spp[land$cell.id %in% aux$cell.id] <- aux$spp
         land$biom[land$cell.id %in% aux$cell.id] <- 0
         land$age[land$cell.id %in% aux$cell.id] <- 0
@@ -541,11 +566,11 @@ land.dyn.mdl <- function(scn.name){
                              ifelse(spp<=7 & age>50, "old", ifelse(spp>7 & spp<=13 & age<=15, "young",
                              ifelse(spp>7 & spp<=13 & age<=50, "mature", "old")))))) %>%       
                       group_by(spp, age.class) %>% select(-c) %>%
-                      summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+                      summarise(area=length(vol), biom=sum(biom)/10, vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
-                     summarise(age.class=NA, area=length(biom), vol=sum(biom), volbark=0, carbon=0)  
+                     summarise(age.class=NA, area=length(biom), biom=sum(biom)/10, vol=0, volbark=0, carbon=0)  
         aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
-                     summarise(age.class=NA, area=length(spp), vol=0, volbark=0, carbon=0)  
+                     summarise(age.class=NA, area=length(spp), biom=0, vol=0, volbark=0, carbon=0)  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux.forest), data.frame(run=irun, year=t, aux.shrub),
                             data.frame(run=irun, year=t, aux.other))
         aux.forest <- filter(land, spp<=13) %>% select(cell.id, spp, age, biom) %>% 
@@ -560,11 +585,14 @@ land.dyn.mdl <- function(scn.name){
       
       
       ## Print maps every time step with ignition and low/high intenstiy burnt
-      if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
-        cat("... writing maps", "\n")
-        save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
-        save(clim, file=paste0(out.path, "/rdata/clim_r", irun, "t", t, ".rdata"))
+      if(time.horizon>=write.freq){
+        if(write.maps & t %in% seq(write.freq, time.horizon, write.freq)){
+          cat("... writing maps", "\n")
+          save(land, file=paste0(out.path, "/rdata/land_r", irun, "t", t, ".rdata"))
+          save(clim, file=paste0(out.path, "/rdata/clim_r", irun, "t", t, ".rdata"))
+        }  
       }
+      
     } # time
   
     

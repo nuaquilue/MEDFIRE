@@ -39,18 +39,18 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
 
   
   ## Compute SQ and SQI
-  clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope.stand) %>% 
+  clim <- select(clim, cell.id, spp, tmin, precip, sdm, aspect, slope.stand) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+          mutate(aux=c0+c_mnan*tmin+c2_mnan*tmin*tmin+c_plan*precip+c2_plan*precip*precip+
                  c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
           mutate(sq=1/(1+exp(-aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
-          select(cell.id, spp, temp, precip, sdm, sqi)
+          select(cell.id, spp, tmin, precip, sdm, sqi)
   
   ## SQI for shrubs
-  sqi.shrub <- filter(clim, spp==14) %>% select(spp, temp, precip) %>% 
-               mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                      aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                      aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+  sqi.shrub <- filter(clim, spp==14) %>% select(spp, tmin, precip) %>% 
+               mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                      aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                      aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                       sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) %>% 
                mutate(sqest.brolla=sq.brolla/max(sq.brolla), sqest.maquia=sq.maquia/max(sq.maquia), sqest.boix=sq.boix/max(sq.boix),
                       sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
@@ -64,7 +64,7 @@ update.clim <- function(land, orography, decade, clim.scn, clim.mdl){
 
 hist.clim <- function(land, orography, clim.mdl){
   
-  cat("Historic climate", "\n")
+  cat(paste("Historic climate and sdm with", clim.mdl, "\n"))
   
   ## Read coefficients of site quality
   site.quality.spp <- read.table("inputfiles/SiteQualitySpp.txt", header=T)
@@ -97,18 +97,18 @@ hist.clim <- function(land, orography, clim.mdl){
   clim$sdm[clim$spp==14] <- 1  ## SDM of shrub is always 1
   
   ## Compute SQ and SQI
-  clim <- select(clim, cell.id, spp, temp, precip, sdm, aspect, slope.stand) %>% 
+  clim <- select(clim, cell.id, spp, tmin, tmax, precip, sdm, aspect, slope.stand) %>% 
           left_join(site.quality.spp, by="spp") %>% left_join(site.quality.index, by="spp") %>% 
-          mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+          mutate(aux=c0+c_mnan*tmin+c2_mnan*tmin*tmin+c_plan*precip+c2_plan*precip*precip+
                    c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
           mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
-          select(cell.id, spp, temp, precip, sdm, sqi)
+          select(cell.id, spp, tmin, tmax, precip, sdm, sqi)
   
   ## SQI for shrubs
-  sqi.shrub <- filter(clim, spp %in% 14) %>% select(spp, temp, precip) %>% 
-               mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                      aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                      aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+  sqi.shrub <- filter(clim, spp %in% 14) %>% select(spp, tmin, tmax, precip) %>% 
+               mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                      aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                      aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                       sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix)))%>% 
                mutate(sqest.brolla=sq.brolla/max(sq.brolla), sqest.maquia=sq.maquia/max(sq.maquia), sqest.boix=sq.boix/max(sq.boix),
                       sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
@@ -117,6 +117,7 @@ hist.clim <- function(land, orography, clim.mdl){
   clim$sqi[clim$spp==14] <- sqi.shrub$sqi
   
   save(clim, file=paste0("inputlyrs/rdata/clim_hist_", clim.mdl,".rdata"))
+  return(clim=clim)
 }
 
 

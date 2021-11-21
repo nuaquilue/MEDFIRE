@@ -11,8 +11,8 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   # eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
   eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
   dmnd <- read.table(paste0("inputfiles/", file.dmnd.harvest, ".txt"), header=T)
-  dmnd.sawlog <- dmnd$Sawlogs[t]
-  dmnd.wood <- dmnd$Primary[t]
+  dmnd.sawlog <- dmnd$sawlog[t]
+  dmnd.wood <- dmnd$wood[t]
   
   ## Track cut cells
   track.cut.cells <- data.frame(cut.id=NA, cell.id=NA, spp=NA, cut.sawlog=NA, typcut=NA, 

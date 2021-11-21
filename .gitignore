@@ -5,8 +5,8 @@
 medfire.rproj
 outputs
 clouding
-rscripts/outs
 rscripts/old
+plots
 inputlyrs/asc
 inputlyrs/rdata/clim*
 inputlyrs/rdata/land.cover.changes.rdata

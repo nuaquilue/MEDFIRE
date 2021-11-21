@@ -54,19 +54,19 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
                            biom=0, sdm=1, age=1)
   
   ## Join climatic and orographic variables to compute sq and then sqi
-  new.cohort <- left_join(new.cohort, filter(clim, cell.id %in% new.cohort$cell.id) %>% select(cell.id, temp, precip), by = "cell.id") %>%
+  new.cohort <- left_join(new.cohort, filter(clim, cell.id %in% new.cohort$cell.id) %>% select(cell.id, tmin, precip), by = "cell.id") %>%
                 left_join(filter(orography, cell.id %in% new.cohort$cell.id) %>% select(cell.id, aspect, slope.stand), by = "cell.id") %>%
                 left_join(site.quality.spp, by = "spp") %>% left_join(site.quality.index, by = "spp") %>% 
-                mutate(aux=c0+c_mnan*temp+c2_mnan*temp*temp+c_plan*precip+c2_plan*precip*precip+
+                mutate(aux=c0+c_mnan*tmin+c2_mnan*tmin*tmin+c_plan*precip+c2_plan*precip*precip+
                          c_aspect*ifelse(aspect!=1,0,1)+c_slope*slope.stand) %>%
                 mutate(sq=1/(1+exp(-1*aux))) %>% mutate(sqi=ifelse(sq<=p50, 1, ifelse(sq<=p90, 2, 3))) %>%
-                select(cell.id, spp, temp, precip, biom, age, sdm, sqi)
+                select(cell.id, spp, tmin, precip, biom, age, sdm, sqi)
   shrub.cells <- new.cohort$cell.id[new.cohort$spp==14]
   if(length(shrub.cells)>0){
-    sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, temp, precip) %>% 
-                 mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*temp+site.quality.shrub$c_temp2_brolla*temp*temp+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
-                        aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*temp+site.quality.shrub$c_temp2_maquia*temp*temp+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
-                        aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*temp+site.quality.shrub$c_temp2_boix*temp*temp+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
+    sqi.shrub <- filter(clim, cell.id %in% shrub.cells) %>% select(spp, tmin, precip) %>% 
+                 mutate(aux.brolla=site.quality.shrub$c0_brolla+site.quality.shrub$c_temp_brolla*tmin+site.quality.shrub$c_temp2_brolla*tmin*tmin+site.quality.shrub$c_precip_brolla*precip+site.quality.shrub$c_precip2_brolla*precip*precip,
+                        aux.maquia=site.quality.shrub$c0_maquia+site.quality.shrub$c_temp_maquia*tmin+site.quality.shrub$c_temp2_maquia*tmin*tmin+site.quality.shrub$c_precip_maquia*precip+site.quality.shrub$c_precip2_maquia*precip*precip,
+                        aux.boix=site.quality.shrub$c0_boix+site.quality.shrub$c_temp_boix*tmin+site.quality.shrub$c_temp2_boix*tmin*tmin+site.quality.shrub$c_precip_boix*precip+site.quality.shrub$c_precip2_boix*precip*precip,
                         sq.brolla=1/(1+exp(-1*aux.brolla)), sq.maquia=1/(1+exp(-1*aux.maquia)), sq.boix=1/(1+exp(-1*aux.boix))) %>% 
                  mutate(sqest.brolla=sq.brolla/max(sq.brolla), sqest.maquia=sq.maquia/max(sq.maquia), sqest.boix=sq.boix/max(sq.boix),
                         sqi=ifelse(sqest.brolla>=sqest.maquia & sqest.brolla>=sqest.boix, 1,
@@ -76,6 +76,6 @@ cohort.establish <- function(land, coord, orography, clim, sdm){
   }
   
   # toc()
-  return(select(new.cohort, -temp, -precip))
+  return(select(new.cohort, -tmin, -precip))
 }
 
