@@ -266,10 +266,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
                       mutate(fuel=ifelse(spp %in% c(15,16,17), 0.1,  # grass, crop
                                    ifelse(spp==14, 0.01638*biom, # shrub
                                     ifelse(age<=7, 0.2, # saplings
-                                      ifelse(biom<=200 & spp>=1 & spp<=7, 0.5, # conifer young
-                                        ifelse(biom<=200 & spp>=8 & spp<=13, 0.3, # decid young
-                                          ifelse(biom<=480 & spp>=1 & spp<=7, 1, # conifer mature
-                                           ifelse(biom<=480 & spp>=8 & spp<=13, 0.8, 0.6)))))))) # decid mature - old
+                                      ifelse(biom<=20 & spp>=1 & spp<=7, 0.5, # conifer young
+                                        ifelse(biom<=20 & spp>=8 & spp<=13, 0.3, # decid young
+                                          ifelse(biom<=48 & spp>=1 & spp<=7, 1, # conifer mature
+                                           ifelse(biom<=48 & spp>=8 & spp<=13, 0.8, 0.6)))))))) # decid mature - old
         
         ## Now, add to i.land.in.neigh the indexes (positions) of fire.front cells (in case these are not already there)
         ## Further on, we'll need to know the elevation of the fire.front cells.
@@ -351,9 +351,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         ## Mark the effectively burnt cells and the fire intensity for effectively burnt cells
         ## First condition indicates is something has burn and the second that has not been suppressed by any type of suppression
         if(sum(sprd.rate$burn & !(sprd.rate$tosupp.fuel | sprd.rate$tosupp.sprd))>0)  
-          track.burnt.cells <- rbind(track.burnt.cells, data.frame(fire.id=fire.id, 
-                                                                   cell.id=sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel], 
-                                                                   igni=F, fintensity=sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]))
+          track.burnt.cells <- rbind(track.burnt.cells, 
+                                     data.frame(fire.id=fire.id, 
+                                     cell.id=sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel], 
+                                     igni=F, fintensity=sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]))
         
         ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
         ## In severe and extreme climatic years, everything, always, burn in high-intensity

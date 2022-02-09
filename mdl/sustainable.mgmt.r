@@ -41,7 +41,7 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   
   ## Count stock (ha and volum) per species that is suitable for managment 
   suit.mgmt <- left_join(suit.mgmt, select(clim, cell.id, sqi), by="cell.id") %>% 
-               left_join(eq.ba.volbark, by="spp") %>% mutate(vol=cx*biom/10+cx2*biom*biom/100) 
+               left_join(eq.ba.volbark, by="spp") %>% mutate(vol=cx*biom+cx2*biom*biom) 
   track.stock.area <- group_by(suit.mgmt, spp, sqi) %>% summarise(suitable=length(spp)) %>%
                       pivot_wider(names_from=sqi, values_from=suitable)
   track.stock.vol <- group_by(suit.mgmt, spp, sqi) %>% summarise(vol=sum(vol)) %>%
@@ -62,13 +62,13 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   
   ## 1. Preparatory cut
   to.prep.cut <- left_join(filter(rules, prescription=="prep.cut"), suit.mgmt, by=c("spp", "sqi")) %>% 
-                 mutate(age.allow=(age>=min.age), ba.allow=(biom/10>=min.ba))
+                 mutate(age.allow=(age>=min.age), ba.allow=(biom>=min.ba))
   dispo.prep.cut <- group_by(to.prep.cut, spp, sqi) %>% summarise(age.ndispo=sum(age.allow), ba.ndispo=sum(ba.allow), 
                     all=length(spp)) %>% mutate(pct=ba.ndispo/all*100)
   ## Compute the volume that can be extracted in locations where harvesting is sustainable:
   ## Verify BA restriction and cutting cycle
   # vol.from.prep <- filter(to.prep.cut, ba.allow, ifelse(!is.na(tscut), tscut>=ts.harvest, T))  %>% 
-  #                  mutate(ba.extract=pmin((pctg.extract/100)*(biom/10), biom/10-remain.ba),
+  #                  mutate(ba.extract=pmin((pctg.extract/100)*biom, biom-remain.ba),
   #                         vol.extract=cx*ba.extract+cx2*ba.extract)  
   prep.cut <- filter(to.prep.cut, ba.allow, ifelse(!is.na(tscut), tscut>=ts.harvest, T))
   suit.mgmt$todo[suit.mgmt$cell.id %in% unique(prep.cut$cell.id)] <- "prep.cut"
@@ -76,14 +76,14 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   
   ## 2. Seed cut
   to.seed.cut <- left_join(filter(rules, prescription=="seed.cut"), suit.mgmt, by=c("spp", "sqi")) %>% 
-                 mutate(age.allow=(age>=min.age), ba.allow=(biom/10>=min.ba)) %>% 
+                 mutate(age.allow=(age>=min.age), ba.allow=(biom>=min.ba)) %>% 
                  filter(cell.id %notin% to.prep.cut$cell.id)
   dispo.seed.cut <- group_by(to.seed.cut, spp, sqi) %>% summarise(age.ndispo=sum(age.allow), ba.ndispo=sum(ba.allow), 
                    all=length(spp)) %>% mutate(pct=ba.ndispo/all*100)
   ## Compute the volume that can be extracted in locations where harvesting is sustainable:
   ## Verify BA restriction, cutting cycle, and not cut under Preparatory cut
   # vol.from.seed <- filter(to.seed.cut, ba.allow, ifelse(!is.na(tscut), tscut>=ts.harvest, T))  %>% 
-  #   mutate(ba.extract=pmin((pctg.extract/100)*(biom/10), biom/10-remain.ba),
+  #   mutate(ba.extract=pmin((pctg.extract/100)*biom, biom-remain.ba),
   #          vol.extract=cx*ba.extract+cx2*ba.extract) 
   seed.cut <- filter(to.seed.cut, ba.allow, ifelse(!is.na(tscut), tscut>=ts.harvest, T))
                      # ifelse(cycle, typcut=="prep.cut", T))
@@ -92,13 +92,13 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   
   ## 3. Removal cut
   to.removal.cut <- left_join(filter(rules, prescription=="removal.cut"), suit.mgmt, by=c("spp", "sqi")) %>% 
-                     mutate(age.allow=(age>=min.age), ba.allow=((biom/10)>=min.ba)) %>% 
+                     mutate(age.allow=(age>=min.age), ba.allow=(biom>=min.ba)) %>% 
                    filter(cell.id %notin% to.prep.cut$cell.id) %>%  filter(cell.id %notin% to.seed.cut$cell.id)
   dispo.removal.cut <- group_by(to.removal.cut, spp, sqi) %>% summarise(age.ndispo=sum(age.allow), ba.ndispo=sum(ba.allow), 
                       all=length(spp)) %>% mutate(pct=ba.ndispo/all*100)
   ## The 0.90 volum to sawlogs
   # vol.from.removal <- filter(to.seed.cut, ba.allow, ifelse(!is.na(tscut), tscut>=ts.harvest, T))  %>% 
-  #   mutate(ba.extract=pmin((pctg.extract/100)*(biom/10), biom/10-remain.ba),
+  #   mutate(ba.extract=pmin((pctg.extract/100)*biom), biom-remain.ba),
   #          vol.extract=cx*ba.extract+cx2*ba.extract) %>% filter(spp %notin% c(8,10,11)) ## quercus no s'extrauen per sawlog
   removal.cut <- filter(to.removal.cut, ba.allow, ifelse(!is.na(tscut), tscut>=ts.harvest, T))
                         # ifelse(cycle, typcut=="seed.cut", T))
@@ -125,8 +125,8 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   sustain <- filter(suit.mgmt, !is.na(todo)) %>% 
              left_join(select(rules, spp, sqi, prescription, pctg.extract, remain.ba),
                          by=c("spp", "sqi", "todo"="prescription")) %>% 
-              mutate(ba.extract=pmin((pctg.extract/100)*(biom/10), ifelse(is.na(remain.ba), biom/10, biom/10-remain.ba)),
-                     vol.extract=cx*ba.extract+cx2*ba.extract) 
+              mutate(ba.extract=pmin((pctg.extract/100)*biom, ifelse(is.na(remain.ba), biom, biom-remain.ba)),
+                     vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) 
   
   ## now determine the volume that may go to sawlogs, and the volume that may go to wood
   sustain$vol.extract.sawlog <- 0

@@ -7,14 +7,12 @@ library(viridis)
 library(cowplot)
 options(dplyr.summarise.inform=F)
 source("rscripts/09.reporting.one.scn.r")
-source("rscripts/10.reporting.bytime.r")
+source("rscripts/10.reporting.paper.r")
 
 list.scn <- c("NULL", "LC", "FM", "WF", "WF_FS", "LC_FM", "LC_WF", "LC_WF_FS", 
               "FM_WF", "FM_WF_FS", "LC_FM_WF", "LC_FM_WF_FS",
               "CC", "CC_LC", "CC_FM", "CC_WF", "CC_WF_FS", "CC_LC_FM", "CC_LC_WF", "CC_LC_WF_FS", 
               "CC_FM_WF", "CC_FM_WF_FS", "CC_LC_FM_WF", "CC_LC_FM_WF_FS")
-
-scn.name <- "CC_LC_FM_WF_FS"
 
 species <- data.frame(spp=1:17, 
                       name=c("phalepensis", "pnigra", "ppinea", "psylvestris", "ppinaster",
@@ -53,15 +51,20 @@ for(scn.name in list.scn){
 }
 
 
-## 10.reporting.bytime.r
-plot.volume(list.scn)
+## 10.reporting.paper.r
+# Relative area change of land-cover types --> Figure 3, Table C.1, stats
+plot.rel.lc(list.scn)
+# Change on forest dominance after fire  --> Figure 4
+dyn.afforest(list.scn)
+# SQI
+scn.name <- "CC_LC_FM_WF_FS"
+plot.sqi(scn.name, species)
+
 taxo.rich(list.scn)
 plot.age(list.scn)
 plot.carbon.burnt()
 plot.spp.burnt()
 plot.ab.at()
-
-## 11.reporting.compare.r
 plot.rel.lc(list.scn)
 
 

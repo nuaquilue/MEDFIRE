@@ -9,7 +9,7 @@
 ######################################################################## 
 
 rm(list=ls())
-library(rgdal)
+library(sp)
 library(raster)
 library(tidyverse)
 setwd("c:/work/MEDMOD/SpatialModelsR/MEDFIRE")  #NúLaptop
@@ -115,38 +115,40 @@ writeRaster(TSF.1k, "D:/MEDMOD/Inputlayers_medfire_ii/tooriol_1km/TSDisturb_1km_
 
 
 ############################# BIOPHYSIC VARIABLES: BASAL AREA --> BIOMASS ################################
-all.files <- list.files("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData")
+all.files <- list.files("d:/OneDrive - ctfc.cat/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData")
 files.select <- all.files[seq(1,230,8)]
-BA <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", files.select[1]))
-BAall <- extend(BA, extent(c(250000, 540000, 4480000, 4766800)))
+BAsheet <- raster(paste0("d:/OneDrive - ctfc.cat/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", files.select[1]))
+BAall <- extend(BAsheet, extent(c(250000, 540000, 4480000, 4766800)))
 for(sh in files.select[-1]){
-  BAsheet <- raster(paste0("D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", sh))
-  aux <- extend(BAsheet, extent(c(250000, 540000, 4480000, 4766800)))
-  BAall <- merge(BAall, aux)
+  cat(paste(which(files.select ==sh), "-", sh, "\n"))
+  BAsheet <- raster(paste0("d:/OneDrive - ctfc.cat/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/LidarData/", sh))
+  BAsheet <- extend(BAsheet, extent(c(250000, 540000, 4480000, 4766800)))
+  BAall <- merge(BAall, BAsheet)
 }
+rm(BAsheet); gc()
 crs(BAall) <- CRS("+init=epsg:25831")
-BAall[BAall[]<0] <- 0
-BAall[] <- BAall[]*10
-plot(BAall)
+BAall[BAall[]<0] <- 0  # posar-ho dins del for
+# BAall[] <- BAall[]*10 A LA MERDA, February 2022!
+# plot(BAall)
 ## Change resolution from 20m to 100m
 BAcat <- crop(BAall, extCat)
-BA100m <- resample(BAcat, MASK, fun="bilinear", expand=T)
+BA <- resample(BAcat, MASK, fun="bilinear", expand=T)
 ## Now, match BA and LCFspp, phagocite in MiraMon
-LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
-BA <- BA100m
+LCFM <- raster("d:/OneDrive - ctfc.cat/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
 BA[LCFM[]>13] <- NA
 BA[LCFM[]<=13 & is.na(BA[])] <- 0
-writeRaster(BA, "D:/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA0_100m_31N-ETRS89.asc")
+writeRaster(BA, "d:/OneDrive - ctfc.cat/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA0_100m_31N-ETRS89.asc")
+### Phagotize in miramon the 0's  
 
 ## Overlap Biomass of Shurbs: kg (or tones) as function of Time Since Fire
-LCFM <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
-TSF <- raster("c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
-BA <- raster("c:/work/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA10_100m_31N-ETRS89.asc")
+LCFM <- raster("d:/OneDrive - ctfc.cat/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/LCFspp_100m_31N-ETRS89.asc")
+TSF <- raster("d:/OneDrive - ctfc.cat/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/TSDisturb_100m_31N-ETRS89.asc")
+BA <- raster("d:/OneDrive - ctfc.cat/MEDMOD/InputLayers_MEDFIRE_II/VarsBiophysic/ToPhagoBA9_100m_31N-ETRS89.asc")
 load("inputlyrs/rdata/land.rdata")
 load("inputlyrs/rdata/orography.rdata")
 source("mdl/update.clim.r")
 clim <- hist.clim(land, orography, "SMHI-RCA4_MOHC-HadGEM2-ES")
-w <- read.table("C:/WORK/MEDMOD/SpatialModelsR/MEDFIRE/inputfiles/InitialBiomassShrub.txt", header=T)
+w <- read.table("d:/OneDrive - ctfc.cat/MEDMOD/SpatialModelsR/MEDFIRE/inputfiles/InitialBiomassShrub.txt", header=T)
 # Shrub Biomassa: W=exp(a0+a1*ln(hm*x)+a2*ln(fcc*x)) where x=TSF and W=Biomassa (Tones/hectarea)
 dta.shrub <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], tsf=TSF[]) %>% filter(!is.na(lcfm)) %>%
              filter(lcfm==14) %>%  left_join(select(clim, cell.id, sqi), by="cell.id") %>% 
@@ -157,17 +159,20 @@ BA[LCFM[]==14] <- dta.shrub$ba
 # final test
 dta  <- data.frame(cell.id=1:ncell(LCFM), lcfm=LCFM[], ba=BA[]) %>% filter(!is.na(lcfm)) %>%
         filter(lcfm<=14)
-any(is.na(dta$ba))
-# only 1 phalepensis cell
-dta$ba[is.na(dta$ba)] <- mean(dta$ba[dta$lcfm==1], na.rm=T)
-BA[LCFM[]<=14] <- dta$ba
-writeRaster(BA, "c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc",
-            format="ascii", NAflag=-1, overwrite=T)  ## Biomass forest is m2/ha * 10 and Biomass shrubs is tones/ha
+any(is.na(dta$ba))  #FALSE, cool!
+  # only 1 phalepensis cell
+  # dta$ba[is.na(dta$ba)] <- mean(dta$ba[dta$lcfm==1], na.rm=T)
+  # BA[LCFM[]<=14] <- dta$ba
+writeRaster(BA, "d:/OneDrive - ctfc.cat/MEDMOD/SpatialModelsR/medfire/inputlyrs/asc/Biomass_100m_31N-ETRS89.asc",
+            format="ascii", NAflag=-1, overwrite=T)  ## Biomass forest is m2/ha and Biomass shrubs is tones/ha
 
+# Update biomass values in land (09/02/2022)
 load("inputlyrs/rdata/land.rdata")
-land$biom[land$spp==14] <- dta.shrub$ba
-land[land$spp<=14 & is.na(land$ba), ]
-save(land, file="c:/work/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/land.rdata")
+  # kk = left_join(land, dta, by="cell.id") %>% filter(spp<=14)
+land = left_join(land, dta, by="cell.id") 
+land$biom[land$spp<=14] <- land$ba[land$spp<=14]
+land = select(land, -lcfm, -ba)
+save(land, file="d:/OneDrive - ctfc.cat/MEDMOD/SpatialModelsR/medfire/inputlyrs/rdata/land.rdata")
 
 # final check
 dta <- data.frame(cell.id=1:ncell(LCFM), lcf=LCFM[], ba=BA[]) %>% filter(lcf<=13)
