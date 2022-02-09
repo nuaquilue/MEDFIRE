@@ -101,7 +101,7 @@ forest.mgmt <- function(land, harvest, clim, t, out.path){
   ## Compute the volume that can be extracted in locations where harvesting is sustainable
   volume <- select(sustain, cell.id, spp, biom, pctgextract) %>% 
             left_join(eq.ba.vol, by="spp") %>% 
-            mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+            mutate(vol=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>% 
             mutate(vol.extract = vol*pctgextract/100) 
             # mutate(vol.fake=ifelse(spp<=7, vol.extract*5, vol.extract))
   aux <- group_by(volume, spp) %>% summarise(vol.extract=sum(vol.extract))
@@ -183,7 +183,7 @@ forest.mgmt <- function(land, harvest, clim, t, out.path){
     ## Harvest this first cell and decrease overall demand (later on, if it is already reached, stop cutting
     area.cut <- 1
     aux <- filter(sustain, cell.id==igni.id) %>% left_join(eq.ba.vol, by="spp") %>% 
-           mutate(vol=cx*biom/10+cx2*biom*biom/100, vol.extract=vol*pctgextract/100,
+           mutate(vol=cx*biom+cx2*biom*biom, vol.extract=vol*pctgextract/100,
                   pwood=ifelse(todo=="fin", runif(1, 1-0.95, 1-0.9), runif(1, 1-0.85, 1-0.65)))
     
     ## Decide if harvesting for Sawlog or for Wood  (I think I'll have to adjust these thresholds)
@@ -265,7 +265,7 @@ forest.mgmt <- function(land, harvest, clim, t, out.path){
       ## Do harvesting and track it
       area.cut <- area.cut + nrow(neigh.land)
       aux <- filter(sustain, cell.id %in% neigh.land$cell.id) %>% left_join(eq.ba.vol, by="spp") %>% 
-             mutate(vol=cx*biom/10+cx2*biom*biom/100, vol.extract=vol*pctgextract/100)
+             mutate(vol=cx*biom+cx2*biom*biom, vol.extract=vol*pctgextract/100)
       aux$pwood <- runif(nrow(aux), 1-0.95, 1-0.9) * (aux$todo=="fin") +
                    runif(nrow(aux), 1-0.85, 1-0.65) * (aux$todo!="fin")
       

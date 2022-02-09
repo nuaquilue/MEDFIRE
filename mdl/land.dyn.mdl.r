@@ -143,18 +143,18 @@ land.dyn.mdl <- function(scn.name){
     
     ## Land at time 0, at the initial stage
     aux.forest <- filter(land, spp<=13) %>% select(spp, age, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
-                  mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+                  mutate(vol=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>%
                   left_join(eq.ba.volbark, by="spp") %>% 
-                  mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+                  mutate(volbark=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>% 
                   left_join(eq.ba.carbon, by="spp") %>% 
-                  mutate(carbon=c*biom/10) %>% 
+                  mutate(carbon=c*biom) %>% 
                   mutate(age.class=ifelse(spp<=7 & age<=15, "young", ifelse(spp<=7 & age<=50, "mature",
                          ifelse(spp<=7 & age>50, "old", ifelse(spp>7 & spp<=13 & age<=15, "young",
                          ifelse(spp>7 & spp<=13 & age<=50, "mature", "old")))))) %>%       
                   group_by(spp, age.class) %>% select(-c) %>%
-                  summarise(area=length(vol), biom=sum(biom)/10, vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+                  summarise(area=length(vol), biom=sum(biom), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
     aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
-                 summarise(age.class=NA, area=length(biom), biom=sum(biom)/10, vol=0, volbark=0, carbon=0)  
+                 summarise(age.class=NA, area=length(biom), biom=sum(biom), vol=0, volbark=0, carbon=0)  
     aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
                  summarise(age.class=NA, area=length(spp), biom=0, vol=0, volbark=0, carbon=0)  
     track.land <- rbind(track.land, data.frame(run=irun, year=0, aux.forest), data.frame(run=irun, year=0, aux.shrub),
@@ -339,9 +339,9 @@ land.dyn.mdl <- function(scn.name){
         land$age[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$pctg.extract == 100]] <- 0 # quercus, conif plantation and other.tress are clear cut
         # change the basal area in harvested stands
         land$biom[land$cell.id %in% extracted.sawlog$cell.id] <- 
-          land$biom[land$cell.id %in% extracted.sawlog$cell.id]-extracted.sawlog$ba.extract*10
+          land$biom[land$cell.id %in% extracted.sawlog$cell.id]-extracted.sawlog$ba.extract
         land$biom[land$cell.id %in% extracted.wood$cell.id] <- 
-          land$biom[land$cell.id %in% extracted.wood$cell.id]-extracted.wood$ba.extract*10
+          land$biom[land$cell.id %in% extracted.wood$cell.id]-extracted.wood$ba.extract
         # after removal.cut make explicity that basal area is 0
         land$biom[land$cell.id %in% extracted.sawlog$cell.id[extracted.sawlog$todo=="removal.cut"] ] <- 0
         land$biom[land$cell.id %in% extracted.wood$cell.id[extracted.wood$todo=="removal.cut"] ] <- 0
@@ -557,27 +557,27 @@ land.dyn.mdl <- function(scn.name){
         land$tsdist <- pmin(land$tsdist+1,600)
         land$tscut <- pmin(land$tscut+1,600)
         aux.forest <- filter(land, spp<=13) %>% select(spp, age, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
-                      mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+                      mutate(vol=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>%
                       left_join(eq.ba.volbark, by="spp") %>% 
-                      mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+                      mutate(volbark=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>% 
                       left_join(eq.ba.carbon, by="spp") %>% 
-                      mutate(carbon=c*biom/10) %>% 
+                      mutate(carbon=c*biom) %>% 
                       mutate(age.class=ifelse(spp<=7 & age<=15, "young", ifelse(spp<=7 & age<=50, "mature",
                              ifelse(spp<=7 & age>50, "old", ifelse(spp>7 & spp<=13 & age<=15, "young",
                              ifelse(spp>7 & spp<=13 & age<=50, "mature", "old")))))) %>%       
                       group_by(spp, age.class) %>% select(-c) %>%
-                      summarise(area=length(vol), biom=sum(biom)/10, vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
+                      summarise(area=length(vol), biom=sum(biom), vol=sum(vol), volbark=sum(volbark), carbon=sum(carbon))  
         aux.shrub <- filter(land, spp==14) %>% select(spp, biom) %>% group_by(spp) %>%
-                     summarise(age.class=NA, area=length(biom), biom=sum(biom)/10, vol=0, volbark=0, carbon=0)  
+                     summarise(age.class=NA, area=length(biom), biom=sum(biom), vol=0, volbark=0, carbon=0)  
         aux.other <- filter(land, spp>14) %>% select(spp) %>% group_by(spp) %>%
                      summarise(age.class=NA, area=length(spp), biom=0, vol=0, volbark=0, carbon=0)  
         track.land <- rbind(track.land, data.frame(run=irun, year=t, aux.forest), data.frame(run=irun, year=t, aux.shrub),
                             data.frame(run=irun, year=t, aux.other))
         aux.forest <- filter(land, spp<=13) %>% select(cell.id, spp, age, biom) %>% 
                       left_join(eq.ba.vol, by="spp") %>% 
-                      mutate(vol=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>%
+                      mutate(vol=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>%
                       left_join(eq.ba.volbark, by="spp") %>% 
-                      mutate(volbark=cx*biom/10+cx2*biom*biom/100) %>% select(-cx, -cx2) %>% 
+                      mutate(volbark=cx*biom+cx2*biom*biom) %>% select(-cx, -cx2) %>% 
                       left_join(select(clim, cell.id, sqi), by="cell.id") %>% group_by(spp, sqi) %>% 
                       summarise(area=length(vol), vol=sum(vol), volbark=sum(volbark))
         track.sqi <- rbind(track.sqi, data.frame(run=irun, year=t, aux.forest)) 
@@ -621,3 +621,4 @@ land.dyn.mdl <- function(scn.name){
   
 
 }
+

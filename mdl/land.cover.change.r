@@ -74,7 +74,8 @@ land.cover.change <- function(land, coord, interface, lc.trans=1, t, visit.cells
   while(achg <= trgt.dmnd){
   
     ## Look for 8+1 neighbours of front cells
-    neighs <- nn2(coord.land[,-1], filter(coord.land, cell.id %in% front)[,-1], searchtype="priority", k=9)  
+    neighs <- nn2(coord.land[,-1], filter(coord.land, cell.id %in% front)[,-1], 
+                  searchtype="priority", k=9)  
     
     ## Recuperate initial waiting times of the first source cells
     wt.inis <- matrix(unlist(filter(chg, cell.id %in% front) %>% select(wt.ini)), 

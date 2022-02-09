@@ -10,16 +10,16 @@ scn.name <- "joqse"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
 time.horizon <- 2
-spin.up <- T
+spin.up <- F
 write.maps <- F
 is.climate.change <- T
 clim.scn <- "rcp85"
 file.clim.severity <- paste0("ClimaticSeverity_", ifelse(is.na(clim.scn), "noCC", clim.scn))
 file.pctg.hot.days <- paste0("PctgHotDays_", ifelse(is.na(clim.scn), "noCC", clim.scn)) 
-is.land.cover.change <- T
-is.harvest <- T
-is.wildfire <- T
-is.postfire <- T
+is.land.cover.change <- F
+is.harvest <- F
+is.wildfire <- F
+is.postfire <- F
 is.drought <- T
 is.cohort.establish <- T
 is.afforestation <- T
@@ -37,11 +37,12 @@ land.dyn.mdl(scn.name)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r") 
 scenarios <- readxl::read_xlsx("Scenarios.xlsx", sheet="GCM5")
-for(i in 19){
-  scn.name <- paste0(scenarios$scn.name[i], "_D")
+i=1
+for(i in 1){
+  scn.name <- paste0(scenarios$scn.name[i], "_1run")
   define.scenario(scn.name)
   ## general
-  nrun <- 11 #scenarios$nrun[i]
+  nrun <-1 #scenarios$nrun[i]
   write.maps <- F
   spin.up <- as.logical(scenarios$spin.up[i])
   ## processes

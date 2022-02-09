@@ -16,7 +16,7 @@ afforestation <- function(land, coord, orography, clim, sdm){
   site.quality.index <- read.table("inputfiles/SiteQualityIndex.txt", header=T)
   
   ## Join utm and sdm info to land
-  land.utm <- land %>% select(cell.id, spp, biom, age) %>% left_join(select(clim, cell.id, sdm), by="cell.id") %>% 
+  land.utm <- land %>% select(cell.id, spp, age) %>% left_join(select(clim, cell.id, sdm), by="cell.id") %>% 
               left_join(select(orography, cell.id, utm), by="cell.id") 
   
   ## Calculate the percentage of old forest within its climatic niche per utm cell
