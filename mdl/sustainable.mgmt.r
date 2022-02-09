@@ -126,7 +126,8 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
              left_join(select(rules, spp, sqi, prescription, pctg.extract, remain.ba),
                          by=c("spp", "sqi", "todo"="prescription")) %>% 
               mutate(ba.extract=pmin((pctg.extract/100)*(biom/10), ifelse(is.na(remain.ba), biom/10, biom/10-remain.ba)),
-                     vol.extract=cx*ba.extract+cx2*ba.extract) 
+                     vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) ## AIXÒ ESTÀ MALAMENT SEGUR
+                                    ## COM A MÍNIM HAURIA DE SER +cx2*ba.extract*ba.extract 
   
   ## now determine the volume that may go to sawlogs, and the volume that may go to wood
   sustain$vol.extract.sawlog <- 0

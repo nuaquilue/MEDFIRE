@@ -351,9 +351,10 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
         ## Mark the effectively burnt cells and the fire intensity for effectively burnt cells
         ## First condition indicates is something has burn and the second that has not been suppressed by any type of suppression
         if(sum(sprd.rate$burn & !(sprd.rate$tosupp.fuel | sprd.rate$tosupp.sprd))>0)  
-          track.burnt.cells <- rbind(track.burnt.cells, data.frame(fire.id=fire.id, 
-                                                                   cell.id=sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel], 
-                                                                   igni=F, fintensity=sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]))
+          track.burnt.cells <- rbind(track.burnt.cells, 
+                                     data.frame(fire.id=fire.id, 
+                                     cell.id=sprd.rate$cell.id[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel], 
+                                     igni=F, fintensity=sprd.rate$fi[sprd.rate$burn & !sprd.rate$tosupp.sprd & !sprd.rate$tosupp.fuel]))
         
         ## Increase area burnt in either high or low intensity (Prescribed burns always burnt in low intensity)
         ## In severe and extreme climatic years, everything, always, burn in high-intensity

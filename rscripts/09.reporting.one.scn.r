@@ -260,6 +260,10 @@ plot.afforest = function(scn.name, species, species.sort){
   tiff(paste0("plots/07.Afforestation_", scn.name, ".tiff"), width=1200, height=500)
   gridExtra::grid.arrange(p1,p2, nrow=1)
   dev.off() 
+  
+  ## PAPER: Annual rate in NULL
+  kk = group_by(dta.afforest, decade) %>% summarise(ha=sum(ha)) 
+  
 }
 
 
@@ -354,13 +358,14 @@ plot.sqi = function(scn.name, species){
                "Quercus ilex", "Quercus faginea", "Quercus humilis", "Quercus suber"))
   dta.land.spp$SQI = factor(dta.land.spp$SQI, levels=c("optimal", "high", "low"))
   ppt = ggplot(filter(dta.land.spp, spp<13), aes(x=year, y=area.km2, fill=SQI)) + geom_area() + 
-     # scale_fill_brewer(palette = 5, direction=-1) +
-      scale_fill_viridis_d(direction=-1)+
+      # scale_fill_brewer(palette = 5, direction=-1) +
+      # scale_fill_viridis_d(direction=-1, option="C")+
     # scale_fill_manual(values=c("grey5", "grey50", "grey85")) + 
+    scale_fill_manual(values=c("darkslategrey", "forestgreen", "darkolivegreen1")) +
     theme_cowplot() + facet_wrap(.~namefull, scales = "free") +
     scale_y_continuous(expression(km^2)) + theme(legend.position ="bottom") 
     # geom_vline(xintercept = 2060, col="grey95", size=1.5, linetype = "solid") 
-  tiff(paste0("plots/ppt/SQIsppAreaGrey_", scn.name, ".tiff"), width=800, height=500)
+  png(paste0("plots/ppt_paper/SQIsppAreaGreen_", scn.name, ".png"), width=800, height=500)
   ppt  
   dev.off()  
 
