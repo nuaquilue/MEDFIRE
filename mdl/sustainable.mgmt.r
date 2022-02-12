@@ -10,6 +10,7 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   rules <- read.table("inputfiles/MgmtORGEST.txt", header=T)
   # eq.ba.vol <- read.table("inputfiles/EqBasalAreaVol.txt", header=T)
   eq.ba.volbark <- read.table("inputfiles/EqBasalAreaVolWithBark.txt", header=T)
+  eq.ba.carbon <- read.table("inputfiles/EqBasalAreaCarbon.txt", header=T)
   dmnd <- read.table(paste0("inputfiles/", file.dmnd.harvest, ".txt"), header=T)
   dmnd.sawlog <- dmnd$sawlog[t]
   dmnd.wood <- dmnd$wood[t]
@@ -41,7 +42,8 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
   
   ## Count stock (ha and volum) per species that is suitable for managment 
   suit.mgmt <- left_join(suit.mgmt, select(clim, cell.id, sqi), by="cell.id") %>% 
-               left_join(eq.ba.volbark, by="spp") %>% mutate(vol=cx*biom+cx2*biom*biom) 
+               left_join(eq.ba.volbark, by="spp") %>% left_join(eq.ba.carbon, by="spp") %>% 
+               mutate(vol=cx*biom+cx2*biom*biom, carbon=c*biom) 
   track.stock.area <- group_by(suit.mgmt, spp, sqi) %>% summarise(suitable=length(spp)) %>%
                       pivot_wider(names_from=sqi, values_from=suitable)
   track.stock.vol <- group_by(suit.mgmt, spp, sqi) %>% summarise(vol=sum(vol)) %>%
@@ -126,24 +128,29 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
              left_join(select(rules, spp, sqi, prescription, pctg.extract, remain.ba),
                          by=c("spp", "sqi", "todo"="prescription")) %>% 
               mutate(ba.extract=pmin((pctg.extract/100)*biom, ifelse(is.na(remain.ba), biom, biom-remain.ba)),
-                     vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract) 
+                     vol.extract=cx*ba.extract+cx2*ba.extract*ba.extract, carbon.extract=c*ba.extract) 
   
   ## now determine the volume that may go to sawlogs, and the volume that may go to wood
-  sustain$vol.extract.sawlog <- 0
-  aux <- sustain$todo=="prep.cut"
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.65,0.85)  #0.65 - 0.85
-  aux <- sustain$todo=="seed.cut"
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.85,1)  #0.65 - 0.85
-  aux <- sustain$todo=="removal.cut" & sustain$spp %notin% c(8,10,11)
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.95,1)   #0.90 - 0.95
-  aux <- sustain$todo=="removal.cut" & sustain$spp %in% c(8,10,11)
-  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*runif(sum(aux),0.1,0.2)
+  sustain$vol.extract.sawlog = sustain$carbon.extract.sawlog = 0
+  aux <- sustain$todo=="prep.cut"; r = runif(sum(aux),0.65,0.85)  #0.65 - 0.85
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*r
+  sustain$carbon.extract.sawlog[aux] <- sustain$carbon.extract[aux]*r
+  aux <- sustain$todo=="seed.cut"; r = runif(sum(aux),0.85,1)  #0.65 - 0.85
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*r
+  sustain$carbon.extract.sawlog[aux] <- sustain$carbon.extract[aux]*r
+  aux <- sustain$todo=="removal.cut" & sustain$spp %notin% c(8,10,11); r=runif(sum(aux),0.95,1)   #0.90 - 0.95
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*r
+  sustain$carbon.extract.sawlog[aux] <- sustain$carbon.extract[aux]*r
+  aux <- sustain$todo=="removal.cut" & sustain$spp %in% c(8,10,11); r=runif(sum(aux),0.1,0.2)
+  sustain$vol.extract.sawlog[aux] <- sustain$vol.extract[aux]*r
+  sustain$carbon.extract.sawlog[aux] <- sustain$carbon.extract[aux]*r
 
   ## ?thinnigs donen algo per sawlogs??
   sustain$vol.extract.wood <- sustain$vol.extract - sustain$vol.extract.sawlog
+  sustain$carbon.extract.wood <- sustain$carbon.extract - sustain$carbon.extract.sawlog
   
   ## Adjust sawlog and wood demand
-  group_by(sustain, spp) %>% summarise(vol.saw=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood))
+    # group_by(sustain, spp) %>% summarise(vol.saw=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood))
   dmnd.sawlog <- min(dmnd.sawlog, sum(sustain$vol.extract.sawlog))
   dmnd.wood <- min(dmnd.wood, sum(sustain$vol.extract.wood))
   
@@ -188,7 +195,10 @@ sustainable.mgmt <- function(land, harvest, clim, t, policy="BAU"){
     cumulative.vol <- cumsum(extracted.wood$vol.extract.sawlog+extracted.wood$vol.extract.wood) # both volums go to wood
     extracted.wood <- extracted.wood[1:which(cumulative.vol>dmnd.wood)[1],]
   }
-
+  else{
+    extracted.wood = NULL
+  }
+    
   return(list(suit.mgmt=suit.mgmt, sustain=sustain, extracted.sawlog=extracted.sawlog, extracted.wood=extracted.wood))
   
 }

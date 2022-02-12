@@ -6,7 +6,7 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "joqse"; define.scenario(scn.name)
+scn.name <- "joqse2"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
 time.horizon <- 2
@@ -16,10 +16,10 @@ is.climate.change <- T
 clim.scn <- "rcp85"
 file.clim.severity <- paste0("ClimaticSeverity_", ifelse(is.na(clim.scn), "noCC", clim.scn))
 file.pctg.hot.days <- paste0("PctgHotDays_", ifelse(is.na(clim.scn), "noCC", clim.scn)) 
-is.land.cover.change <- F
-is.harvest <- F
-is.wildfire <- F
-is.postfire <- F
+is.land.cover.change <- T
+is.harvest <- T
+is.wildfire <- T
+is.postfire <- T
 is.drought <- T
 is.cohort.establish <- T
 is.afforestation <- T

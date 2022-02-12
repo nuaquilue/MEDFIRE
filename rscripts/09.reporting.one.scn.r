@@ -472,3 +472,14 @@ plot.harvest = function(scn.name, species){
 }
 
 
+plot.cbalance = function(scn.name){
+  e = track.cbalance$carbon[track.cbalance$type=="emission"]
+  g = track.cbalance$carbon[track.cbalance$type=="generation"]
+  c = track.cbalance$carbon[track.cbalance$type=="change"]
+  e = sum(e, na.rm=T)
+  g = sum(g, na.rm=T)
+  c = sum(c, na.rm=T)
+  sink = g+c
+  net = e-g-c
+  
+}

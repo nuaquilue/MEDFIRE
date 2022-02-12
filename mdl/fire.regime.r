@@ -90,8 +90,9 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
     }
     ## Find annual target area for prescribed burns
     else{
-      if(!is.na(pb.target.area))
+      if(!is.na(pb.target.area)){
         area.target <- pb.target.area
+      }
       else{
         accum.burnt.area[2:7] <- accum.burnt.area[1:6]
         accum.burnt.area[1] <- annual.burnt.area
