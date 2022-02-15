@@ -23,4 +23,5 @@ merge.output.files <- function(scn, nset){
     rm(dta)
   }
 }
-merge.output.files("Scn_CC_FM_WF", 2)
+merge.output.files("Scn_CC_LC_WF", 4)
+scn = "Scn_CC_LC_WF_FS"

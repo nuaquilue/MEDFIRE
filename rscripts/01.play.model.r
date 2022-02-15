@@ -6,10 +6,10 @@ library(tidyverse)
 rm(list=ls())
 source("mdl/define.scenario.r"); source("mdl/land.dyn.mdl.r")  
 # Define scenario
-scn.name <- "joqse2"; define.scenario(scn.name)
+scn.name <- "Scn_ALL"; define.scenario(scn.name)
 # Change target parameters
 nrun <- 1
-time.horizon <- 2
+time.horizon <- 10
 spin.up <- F
 write.maps <- F
 is.climate.change <- T
@@ -69,7 +69,7 @@ for(i in 1){
 }
 
 
-###########################################################################################################
+ ###########################################################################################################
 ## Create .Rdata with static variables of the model, only run once for all scenarios!
 source("mdl/read.static.vars.r")
 read.static.vars()

@@ -473,6 +473,28 @@ plot.harvest = function(scn.name, species){
 
 
 plot.cbalance = function(scn.name){
+  
+  dta.cb = read.table(paste0("outputs/Scn_", scn.name, "/CarbonBalance.txt"), header=T)
+  dta.cb = mutate(dta.cb, year=year+2010) 
+  dta.tot = dta.cb %>% group_by(run, year, type) %>% summarise(carbon=sum(carbon))
+  
+  ggplot(data=dta.tot, aes(x=year, y=carbon/10^6, colour=type)) +
+    geom_line( size=1.5) + scale_color_viridis_d() + 
+    ggtitle("Carbon balance") + ylab("Mg") + theme_bw() 
+  
+  dta.source.sink = dta.tot %>% mutate(ss=ifelse(type=="emission", "source", "sink")) %>% 
+    group_by(run, year, ss) %>% summarise(carbon=sum(carbon))
+  ggplot(data=dta.source.sink, aes(x=year, y=carbon/10^6, colour=ss)) +
+    geom_line( size=1.5) + scale_color_viridis_d() + 
+    ggtitle("Carbon source & sink") + ylab("Mg") + theme_bw() 
+  
+  dta.balance = dta.source.sink %>% pivot_wider(names_from="ss", values_from="carbon") %>% 
+    mutate(net=source-sink)
+  ggplot(data=dta.balance, aes(x=year, y=net/10^6)) +
+    geom_line( size=1.5) + scale_color_viridis_d() + 
+    ggtitle("Carbon balance") + ylab("Mg") + theme_bw() 
+  
+  
   e = track.cbalance$carbon[track.cbalance$type=="emission"]
   g = track.cbalance$carbon[track.cbalance$type=="generation"]
   c = track.cbalance$carbon[track.cbalance$type=="change"]

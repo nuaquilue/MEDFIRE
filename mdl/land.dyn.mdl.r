@@ -262,8 +262,10 @@ land.dyn.mdl <- function(scn.name){
         chg.cells <- land.cover.change(land, coord, interface, 1, t, numeric())
         emissions = filter(land, spp<=13, cell.id %in% chg.cells) %>% 
                     left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-                         process="urbanization", type="emission", carbon=sum(emissions$carbon)))
+        if(nrow(emissions)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+                           process="urbanization", type="emission", carbon=sum(emissions$carbon)))
+        }
         land$spp[land$cell.id %in% chg.cells] <- clim$spp[clim$cell.id %in% chg.cells] <- 20 # urban
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
@@ -276,8 +278,10 @@ land.dyn.mdl <- function(scn.name){
         chg.cells <- land.cover.change(land, coord, interface, 2, t, visit.cells)
         emissions = filter(land, spp<=13, cell.id %in% chg.cells) %>% 
                     left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-                         process="agri.conver", type="emission",  carbon=sum(emissions$carbon)))
+        if(nrow(emissions)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+                           process="agri.conver", type="emission",  carbon=sum(emissions$carbon)))
+        }
         land$spp[land$cell.id %in% chg.cells]<- clim$spp[clim$cell.id %in% chg.cells] <- 16 # 16 - arableland or 17 - orchards (permanent crops)
         land$biom[land$cell.id %in% chg.cells] <- NA
         land$age[land$cell.id %in% chg.cells] <- NA
@@ -362,16 +366,22 @@ land.dyn.mdl <- function(scn.name){
           ## Carbon generation
           emissions = filter(land, spp<=13, cell.id %in% extracted.sawlog$cell.id[sel]) %>% 
             left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-            process="removal", type="change", carbon=sum(emissions$carbon)))
+          if(nrow(emissions)>0){
+            track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+                              process="removal", type="change", carbon=sum(emissions$carbon)))
+          }
         }
         
         # track carbon emissions and generation
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, process="cut.sawlog", type="generation", 
-          carbon=sum(extracted.sawlog$carbon.extract.sawlog)))
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, process="cut.wood", type="emission", 
-          carbon=sum(extracted.sawlog$carbon.extract.wood)+sum(extracted.wood$carbon.extract.sawlog)+
-            sum(extracted.wood$carbon.extract.wood)))
+        if(nrow(extracted.sawlog)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, process="cut.sawlog", type="generation", 
+            carbon=sum(extracted.sawlog$carbon.extract.sawlog)))
+        }
+        if(nrow(extracted.wood)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, process="cut.wood", type="emission", 
+            carbon=sum(extracted.sawlog$carbon.extract.wood)+sum(extracted.wood$carbon.extract.sawlog)+
+              sum(extracted.wood$carbon.extract.wood)))
+        }
         
         # track the vol extracted per each spp
         aux <- rbind(group_by(extracted.sawlog,spp) %>% summarize(vol.sawlog=sum(vol.extract.sawlog), vol.wood=sum(vol.extract.wood)),
@@ -415,8 +425,10 @@ land.dyn.mdl <- function(scn.name){
         ## Count carbon emissions
         emissions = filter(land, spp<=13, cell.id %in% burnt.cells$cell.id) %>% 
           left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-          process="fire", type="emission",  carbon=sum(emissions$carbon)))
+        if(nrow(emissions)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+            process="fire", type="emission",  carbon=sum(emissions$carbon)))
+        }
         ## Make it effectively burnt
         land$tsdist[land$cell.id %in% burnt.cells$cell.id] <- 0
         land$tburnt[land$cell.id %in% burnt.cells$cell.id] <- land$tburnt[land$cell.id %in% burnt.cells$cell.id] + 1
@@ -440,8 +452,10 @@ land.dyn.mdl <- function(scn.name){
           aux <- left_join(burnt.cells, select(land, cell.id, spp, biom), by="cell.id") %>%
                   mutate(biom.burnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) 
           emissions = aux %>% filter(spp<=13) %>% left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-            process="fire", type="emission",  carbon=sum(emissions$carbon)))
+          if(nrow(emissions)>0){
+            track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+              process="fire", type="emission",  carbon=sum(emissions$carbon)))
+          }
           aux = aux %>% group_by(fire.id, spp) %>% summarize(area.burnt=length(spp), biom.burnt=round(sum(biom.burnt, na.rm=T),1))
           track.fire.spp <-  rbind(track.fire.spp, data.frame(run=irun, year=t, aux)) 
           # track.step <- rbind(track.step, data.frame(run=irun, fire.out[[3]]))
@@ -475,8 +489,10 @@ land.dyn.mdl <- function(scn.name){
           aux <- left_join(burnt.cells, select(land, cell.id, spp, biom), by="cell.id") %>%
             mutate(biom.burnt=ifelse(fintensity>fire.intens.th, biom, biom*(1-fintensity))) 
           emissions = aux %>% filter(spp<=13) %>% left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-            process="pb", type="emission",  carbon=sum(emissions$carbon)))
+          if(nrow(emissions)>0){
+            track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+              process="pb", type="emission",  carbon=sum(emissions$carbon)))
+          }
         }
         # Track pb and Done with prescribed burns!
         if(nrow(fire.out[[1]])>0){
@@ -507,8 +523,10 @@ land.dyn.mdl <- function(scn.name){
             filter(land, cell.id %in% killed.cells) %>% group_by(spp) %>% summarize(ha=length(spp))))
           emissions = filter(land, spp<=13, cell.id %in%killed.cells) %>% 
             left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=biom*c)
-          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
-            process="drought", type="emission",  carbon=sum(emissions$carbon)))
+          if(nrow(emissions)>0){
+            track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, 
+              process="drought", type="emission",  carbon=sum(emissions$carbon)))
+          }
         }
       }
       
@@ -608,19 +626,25 @@ land.dyn.mdl <- function(scn.name){
           left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=c*biom) %>% 
           mutate(process=ifelse(typdist=="highfire", "fire.rege", ifelse(typdist=="drght", "cohort.establish", typdist)), type="generation") %>% 
           group_by(process, type) %>% summarise(carbon=sum(carbon))
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, aux))
+        if(nrow(aux)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, aux))
+        }
         # Track carbon generation: growht in cut stands and low-intensity burnt (removal cuts of 9-y are here)
         aux = filter(land, spp<=13, tsdist==1, typdist %in% c("cut", "lowfire")) %>% 
           left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=c*(biom-prev.biom)) %>% 
           mutate(process=ifelse(typdist=="cut", "cut", "burnt"), type="change") %>% 
           group_by(process, type) %>% summarise(carbon=sum(carbon))
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, aux))
+        if(nrow(aux)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, aux))
+        }
         # Track carbon generation by growth
         aux = filter(land, spp<=13, tsdist>1) %>% 
           left_join(eq.ba.carbon, by="spp") %>% mutate(carbon=c*(biom-prev.biom)) %>% 
           mutate(process="growth", type="change") %>% 
           group_by(process, type) %>% summarise(carbon=sum(carbon))
-        track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, aux))
+        if(nrow(aux)>0){
+          track.cbalance = rbind(track.cbalance, data.frame(run=irun, year=t, aux))
+        }
         
         # Track totals
         aux.forest <- filter(land, spp<=13) %>% select(spp, age, biom) %>% left_join(eq.ba.vol, by="spp") %>% 
