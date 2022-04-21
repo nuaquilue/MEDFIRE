@@ -157,7 +157,7 @@ fire.regime <- function(land, coord, orography, clim, interface, pfst.pwind, all
       wslope <- fst.sprd.weight[3,fire.spread.type+1]
       
       ## Assign the fire suppression levels and
-      ## minimum number of ha suppressed before to acivate fire-level suppression. 
+      ## minimum number of ha suppressed before to activate fire-level suppression. 
       ## It applies for both types of suppression
       sprd.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$sprd.th
       fuel.th <- filter(fire.supp, clim==clim.sever, fst==fire.spread.type)$fuel.th
